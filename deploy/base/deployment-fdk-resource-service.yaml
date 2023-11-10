@@ -1,0 +1,35 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fdk-resource-service
+  labels:
+    app: fdk-resource-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: fdk-resource-service
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: fdk-resource-service
+      annotations:
+        prometheus.io/scrape: "false"
+    spec:
+      containers:
+        - name: fdk-resource-service
+          image: fdk-resource-service
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          livenessProbe:
+            httpGet:
+              path: /ping
+              port: 8080
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8080
