@@ -11,6 +11,10 @@ func InitializeRoutes(e *gin.Engine) {
 	e.SetTrustedProxies(nil)
 	e.GET(env.PathValues.Ping, handlers.PingHandler())
 	e.GET(env.PathValues.Ready, handlers.ReadyHandler())
+	
+	e.POST(env.PathValues.Datasets, handlers.StoreDatasets())
+	e.GET(env.PathValues.Datasets, handlers.GetDatasets())
+	e.GET(env.PathValues.Dataset, handlers.GetDataset())
 }
 
 func Cors() gin.HandlerFunc {
