@@ -1,5 +1,20 @@
 db = db.getSiblingDB('fdkResourceService');
-db.createCollection('datasets');
+db.createCollection('datasets', {
+    validator: {
+       $jsonSchema: {
+          bsonType: "object",
+          title: "ID Validation",
+          required: [ "_id" ],
+          properties: {
+             _id: {
+                bsonType: "string",
+                minLength: 1,
+                description: "'_id' must have length over 0"
+             }
+          }
+       }
+    }
+});
 db.datasets.insert(
     {
         "_id": "123",

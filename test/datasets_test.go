@@ -127,3 +127,39 @@ func TestCreateUpdate(t *testing.T) {
 	assert.Nil(t, err1)
 	assert.Equal(t, dataset1, updated)
 }
+
+func TestAbortCompleteUpdateWhenOneFails(t *testing.T) {
+	app := router.SetupRouter()
+
+	w := httptest.NewRecorder()
+
+	dataset0 := model.Dataset{
+		ID:   "123",
+		Type: "is-aborted",
+	}
+
+	dataset1 := model.Dataset{
+		ID:   "",
+		Type: "invalid-dataset",
+	}
+
+	var toBeStored []model.Dataset
+	toBeStored = append(toBeStored, dataset0)
+	toBeStored = append(toBeStored, dataset1)
+
+	body, _ := json.Marshal(toBeStored)
+	req, _ := http.NewRequest("POST", "/datasets", bytes.NewBuffer(body))
+	app.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+
+	wGet := httptest.NewRecorder()
+	reqGet, _ := http.NewRequest("GET", "/datasets/123", nil)
+	app.ServeHTTP(wGet, reqGet)
+	assert.Equal(t, http.StatusOK, wGet.Code)
+
+	var dataset model.Dataset
+	errGet := json.Unmarshal(wGet.Body.Bytes(), &dataset)
+	assert.Nil(t, errGet)
+	assert.Equal(t, "datasets", dataset.Type)
+}

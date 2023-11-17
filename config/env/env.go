@@ -18,7 +18,7 @@ func MongoPassword() string {
 }
 
 func MongoUsername() string {
-	return getEnv("MONGO_USERNAME", "admin")
+	return getEnv("MONGO_USERNAME", "root")
 }
 
 func MongoAuthSource() string {
@@ -26,7 +26,7 @@ func MongoAuthSource() string {
 }
 
 func MongoReplicaSet() string {
-	return getEnv("MONGODB_REPLICASET", "")
+	return getEnv("MONGODB_REPLICASET", "replicaset")
 }
 
 type MongoConstants struct {
@@ -47,8 +47,8 @@ var MongoValues = MongoConstants{
 }
 
 var PathValues = Paths{
-	Ping:  "/ping",
-	Ready: "/ready",
-	Datasets:  "/datasets",
-	Dataset: "/datasets/:id",
+	Ping:     "/ping",
+	Ready:    "/ready",
+	Datasets: "/datasets",
+	Dataset:  "/datasets/:id",
 }
