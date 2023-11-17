@@ -2,8 +2,8 @@ package test
 
 import (
 	"context"
-	"fmt"
 	"github.com/ory/dockertest/v3"
+	"go.mongodb.org/mongo-driver/bson"
 	"log"
 	"os"
 	"testing"
@@ -31,14 +31,20 @@ func MongoContainerRunner(m *testing.M) {
 	}
 
 	resource, err := pool.RunWithOptions(&dockertest.RunOptions{
-		Repository: "mongo",
-		Tag:        "4",
+		Repository: "bitnami/mongodb",
+		Tag:        "latest",
 		Env: []string{
-			"MONGO_INITDB_ROOT_USERNAME=admin",
-			"MONGO_INITDB_ROOT_PASSWORD=admin",
+			"MONGODB_ROOT_PASSWORD=admin",
+			"MONGODB_ADVERTISED_HOSTNAME=localhost",
+			"MONGODB_REPLICA_SET_MODE=primary",
+			"MONGODB_REPLICA_SET_KEY=replicaset",
+		},
+		ExposedPorts: []string{"27017/tcp"},
+		PortBindings: map[docker.Port][]docker.PortBinding{
+			"27017/tcp": {{HostIP: "localhost", HostPort: "27017/tcp"}},
 		},
 		Mounts: []string{
-			currentDirectory + "/init-mongo:/docker-entrypoint-initdb.d",
+			currentDirectory + "/init-mongo/init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro",
 		},
 	}, func(config *docker.HostConfig) {
 		// set AutoRemove to true so that stopped container is automatically removed
@@ -51,8 +57,9 @@ func MongoContainerRunner(m *testing.M) {
 		log.Fatalf("Could not start resource: %s", err)
 	}
 
-	// set MONGO_HOST environment variable to reference test db
-	os.Setenv("MONGO_HOST", fmt.Sprintf("localhost:%s", resource.GetPort("27017/tcp")))
+	if err != nil {
+		log.Fatalf("Could not start resource: %s", err)
+	}
 
 	// exponential backoff-retry, because the application in the container might not be ready to accept connections yet
 	err = pool.Retry(func() error {
@@ -60,15 +67,17 @@ func MongoContainerRunner(m *testing.M) {
 		dbClient, err = mongo.Connect(
 			context.TODO(),
 			options.Client().ApplyURI(
-				fmt.Sprintf("mongodb://admin:admin@localhost:%s", resource.GetPort("27017/tcp")),
+				"mongodb://root:admin@localhost:27017",
 			),
 		)
 		if err != nil {
 			return err
 		}
-		return dbClient.Ping(context.TODO(), nil)
+		db := dbClient.Database("fdkResourceService")
+		coll := db.Collection("datasets")
+		_, err = coll.FindOne(context.TODO(), bson.D{{Key: "_id", Value: "123"}}).Raw()
+		return err
 	})
-
 	if err != nil {
 		log.Fatalf("Could not connect to docker: %s", err)
 	}

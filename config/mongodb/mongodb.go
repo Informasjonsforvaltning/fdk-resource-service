@@ -24,28 +24,29 @@ func ConnectionString() string {
 	connectionString.WriteString(env.MongoValues.Database)
 	connectionString.WriteString("?authSource=")
 	connectionString.WriteString(env.MongoAuthSource())
-
-	replicaSet := env.MongoReplicaSet()
-	if len(replicaSet) > 0 {
-		connectionString.WriteString("&replicaSet=")
-		connectionString.WriteString(replicaSet)
-	}
+	connectionString.WriteString("&replicaSet=")
+	connectionString.WriteString(env.MongoReplicaSet())
 
 	return connectionString.String()
 }
 
-func collection(collectionName string) *mongo.Collection {
+func Client() *mongo.Client {
 	mongoOptions := options.Client().ApplyURI(ConnectionString())
 	client, err := mongo.Connect(context.Background(), mongoOptions)
 	if err != nil {
 		logrus.Error("mongo client failed")
 		logger.LogAndPrintError(err)
 	}
-	collection := client.Database(env.MongoValues.Database).Collection(collectionName)
 
-	return collection
+	return client
+}
+
+func Collection(client *mongo.Client, collectionName string) *mongo.Collection {
+	return client.Database(env.MongoValues.Database).Collection(collectionName)
 }
 
 func DatasetsCollection() *mongo.Collection {
-	return collection(env.MongoValues.DatasetsCollection)
+	coll := Collection(Client(), env.MongoValues.DatasetsCollection)
+	coll.Indexes()
+	return coll
 }
