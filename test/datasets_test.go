@@ -58,7 +58,31 @@ func TestGetUpdates(t *testing.T) {
 	assert.True(t, len(actualResponse) > 1)
 }
 
-func TestCreateUpdate(t *testing.T) {
+func TestUnauthorizedCreate(t *testing.T) {
+	app := router.SetupRouter()
+
+	dataset := model.Dataset{
+		ID: "999",
+	}
+	var toBeStored []model.Dataset
+	toBeStored = append(toBeStored, dataset)
+	body, _ := json.Marshal(toBeStored)
+
+	wWrongKey := httptest.NewRecorder()
+	reqWrongKey, _ := http.NewRequest("POST", "/datasets", bytes.NewBuffer(body))
+	reqWrongKey.Header.Set("X-API-Key", "wrong")
+	app.ServeHTTP(wWrongKey, reqWrongKey)
+
+	assert.Equal(t, http.StatusUnauthorized, wWrongKey.Code)
+
+	wMissingKey := httptest.NewRecorder()
+	reqMissingKey, _ := http.NewRequest("POST", "/datasets", bytes.NewBuffer(body))
+	app.ServeHTTP(wMissingKey, reqMissingKey)
+
+	assert.Equal(t, http.StatusUnauthorized, wMissingKey.Code)
+}
+
+func TestCreateResource(t *testing.T) {
 	app := router.SetupRouter()
 
 	w := httptest.NewRecorder()
@@ -103,6 +127,7 @@ func TestCreateUpdate(t *testing.T) {
 
 	body, _ := json.Marshal(toBeStored)
 	req, _ := http.NewRequest("POST", "/datasets", bytes.NewBuffer(body))
+	req.Header.Set("X-API-Key", "test")
 	app.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusOK, w.Code)
