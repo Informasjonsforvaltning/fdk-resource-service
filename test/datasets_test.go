@@ -174,6 +174,7 @@ func TestAbortCompleteUpdateWhenOneFails(t *testing.T) {
 
 	body, _ := json.Marshal(toBeStored)
 	req, _ := http.NewRequest("POST", "/datasets", bytes.NewBuffer(body))
+	req.Header.Set("X-API-Key", "test")
 	app.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
