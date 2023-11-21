@@ -11,7 +11,7 @@ import (
 )
 
 func GetDatasets() func(c *gin.Context) {
-	datasetService := service.InitService()
+	datasetService := service.InitDatasetService()
 	return func(c *gin.Context) {
 		datasets, status := datasetService.GetDatasets(c.Request.Context())
 		if status == http.StatusOK {
@@ -23,7 +23,7 @@ func GetDatasets() func(c *gin.Context) {
 }
 
 func GetDataset() func(c *gin.Context) {
-	datasetService := service.InitService()
+	datasetService := service.InitDatasetService()
 	return func(c *gin.Context) {
 		id := c.Param("id")
 		dataset, status := datasetService.GetDataset(c.Request.Context(), id)
@@ -36,7 +36,7 @@ func GetDataset() func(c *gin.Context) {
 }
 
 func StoreDatasets() func(c *gin.Context) {
-	datasetService := service.InitService()
+	datasetService := service.InitDatasetService()
 	return func(c *gin.Context) {
 		bytes, err := c.GetRawData()
 

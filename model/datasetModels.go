@@ -10,6 +10,7 @@ type Dataset struct {
 }
 
 type DatasetDBO struct {
-	ID        string  `bson:"_id"`
-	Dataset   Dataset `bson:"dataset"`
+	ID      string  `bson:"_id"`
+	Dataset Dataset `bson:"dataset"`
+	Removed bool    `bson:"removed"`
 }

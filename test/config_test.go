@@ -2,13 +2,13 @@ package test
 
 import (
 	"context"
-	"github.com/ory/dockertest/v3"
-	"go.mongodb.org/mongo-driver/bson"
 	"log"
 	"os"
 	"testing"
 
+	"github.com/ory/dockertest/v3"
 	"github.com/ory/dockertest/v3/docker"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )

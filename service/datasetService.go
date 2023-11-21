@@ -18,7 +18,7 @@ type DatasetService struct {
 	DatasetRepository repository.DatasetRepository
 }
 
-func InitService() *DatasetService {
+func InitDatasetService() *DatasetService {
 	service := DatasetService{
 		DatasetRepository: repository.InitRepository(),
 	}
@@ -70,10 +70,21 @@ func (service DatasetService) StoreDatasets(ctx context.Context, bytes []byte) i
 	return http.StatusOK
 }
 
+func (service DatasetService) RemoveDataset(ctx context.Context, id string) error {
+	logrus.Infof("Tagging dataset %s as removed", id)
+	dataset, err := service.DatasetRepository.GetDataset(ctx, id)
+	if err == nil {
+		dataset.Removed = true
+		err = service.DatasetRepository.StoreDatasets(ctx, []model.DatasetDBO{dataset})
+	}
+
+	return err
+}
+
 func dboToDTO(dboDatasets []model.DatasetDBO) []model.Dataset {
 	var dtoDatasets []model.Dataset
 	for _, dbo := range dboDatasets {
-		dtoDatasets = append(dtoDatasets, dbo.Dataset) 
+		dtoDatasets = append(dtoDatasets, dbo.Dataset)
 	}
 	return dtoDatasets
 }
@@ -81,11 +92,12 @@ func dboToDTO(dboDatasets []model.DatasetDBO) []model.Dataset {
 func dtoToDBO(dtoDatasets []model.Dataset) []model.DatasetDBO {
 	var dboDatasets []model.DatasetDBO
 	for _, dto := range dtoDatasets {
-		var dbo model.DatasetDBO = model.DatasetDBO{
-			ID: dto.ID,
+		var dbo = model.DatasetDBO{
+			ID:      dto.ID,
 			Dataset: dto,
+			Removed: false,
 		}
-		dboDatasets = append(dboDatasets, dbo) 
+		dboDatasets = append(dboDatasets, dbo)
 	}
 	return dboDatasets
 }

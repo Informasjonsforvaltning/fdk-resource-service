@@ -48,7 +48,7 @@ func (r DatasetRepositoryImpl) StoreDatasets(ctx context.Context, datasets []mod
 			SetReadConcern(readconcern.Snapshot()).
 			SetWriteConcern(writeconcern.Majority()),
 		)
-		
+
 		if err != nil {
 			return err
 		}
