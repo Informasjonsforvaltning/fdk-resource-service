@@ -33,9 +33,21 @@ func MongoReplicaSet() string {
 	return getEnv("MONGODB_REPLICASET", "replicaset")
 }
 
+func KafkaBrokers() string {
+	return getEnv("KAFKA_BROKERS", "localhost:9092")
+}
+
+func SchemaRegistry() string {
+	return getEnv("SCHEMA_REGISTRY", "http://localhost:5050")
+}
+
 type MongoConstants struct {
 	DatasetsCollection string
 	Database           string
+}
+
+type KafkaConstants struct {
+	DatasetTopic string
 }
 
 type Paths struct {
@@ -48,6 +60,10 @@ type Paths struct {
 var MongoValues = MongoConstants{
 	DatasetsCollection: "datasets",
 	Database:           "fdkResourceService",
+}
+
+var KafkaValues = KafkaConstants{
+	DatasetTopic: "dataset-events",
 }
 
 var PathValues = Paths{
