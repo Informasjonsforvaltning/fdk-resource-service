@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"strings"
 
 	"github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/bson"
@@ -25,8 +26,11 @@ func InitDatasetService() *DatasetService {
 	return &service
 }
 
-func (service DatasetService) GetDatasets(ctx context.Context) ([]model.Dataset, int) {
+func (service DatasetService) GetDatasets(ctx context.Context, includeRemoved string) ([]model.Dataset, int) {
 	query := bson.D{}
+	if strings.ToLower(includeRemoved) != "true" {
+		query = bson.D{{Key: "removed", Value: false}}
+	}
 	datasets, err := service.DatasetRepository.GetDatasets(ctx, query)
 	if err != nil {
 		logrus.Error("Get datasets failed ")
