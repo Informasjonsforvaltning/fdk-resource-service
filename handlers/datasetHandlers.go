@@ -13,7 +13,7 @@ import (
 func GetDatasets() func(c *gin.Context) {
 	datasetService := service.InitDatasetService()
 	return func(c *gin.Context) {
-		datasets, status := datasetService.GetDatasets(c.Request.Context())
+		datasets, status := datasetService.GetDatasets(c.Request.Context(), c.Query("includeRemoved"))
 		if status == http.StatusOK {
 			c.JSON(status, datasets)
 		} else {
