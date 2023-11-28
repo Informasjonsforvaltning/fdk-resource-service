@@ -47,7 +47,8 @@ type MongoConstants struct {
 }
 
 type KafkaConstants struct {
-	DatasetTopic string
+	DatasetTopic   string
+	InfoModelTopic string
 }
 
 type Paths struct {
@@ -63,7 +64,8 @@ var MongoValues = MongoConstants{
 }
 
 var KafkaValues = KafkaConstants{
-	DatasetTopic: "dataset-events",
+	DatasetTopic:   "dataset-events",
+	InfoModelTopic: "information-model-events",
 }
 
 var PathValues = Paths{
