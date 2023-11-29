@@ -1,0 +1,48 @@
+name: Deploy to production & demo
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build-production:
+    name: Build for prod on merge to main branch
+    uses: Informasjonsforvaltning/workflows/.github/workflows/build-push.yaml@main
+    with:
+      app_name: fdk-resource-service
+      environment: prod
+      build_env: true
+      build_env_name: BINARY
+      build_env_value: fdk-resource-service
+    secrets:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GCP_SA_DIGDIR_FDK_GCR_KEY: ${{ secrets.GCP_SA_DIGDIR_FDK_GCR_KEY }}
+
+  deploy-to-prod:
+    needs: build-production
+    name: Deploy to prod if build is successful
+    uses: Informasjonsforvaltning/workflows/.github/workflows/kustomize-deploy.yaml@main
+    with:
+      app_name: fdk-resource-service
+      environment: prod
+      cluster: digdir-fdk-prod
+    secrets:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      DIGDIR_FDK_AUTODEPLOY: ${{ secrets.DIGDIR_FDK_PROD_AUTODEPLOY }}
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  deploy-to-demo:
+    needs: deploy-to-prod
+    name: Deploy to demo if prod-deploy is successful
+    uses: Informasjonsforvaltning/workflows/.github/workflows/kustomize-deploy.yaml@main
+    with:
+      app_name: fdk-resource-service
+      environment: demo
+      cluster: digdir-fdk-dev
+    secrets:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      DIGDIR_FDK_AUTODEPLOY: ${{ secrets.DIGDIR_FDK_DEV_AUTODEPLOY }}
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+      DEPENDABOT_SLACK_WEBHOOK_URL: ${{ secrets.DEPENDABOT_SLACK_WEBHOOK_URL }}
