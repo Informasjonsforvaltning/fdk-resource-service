@@ -6,7 +6,7 @@ metadata:
 spec:
   ingressClassName: nginx
   rules:
-    - host: fdk-resource.api.staging.fellesdatakatalog.digdir.no
+    - host: resource.api.staging.fellesdatakatalog.digdir.no
       http:
         paths:
           - backend:
