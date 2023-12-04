@@ -80,13 +80,13 @@ var ConsumeKafkaEvents = func() {
 				continue
 			}
 
-			switch eventType := event.(type) {
+			switch message := event.(type) {
 			case *kafka.Message:
-				consumeMessage(eventType, deserializer)
+				consumeMessage(message, deserializer)
 			case kafka.Error:
-				logrus.Errorf("Error: %v: %v", eventType.Code(), eventType)
+				logrus.Errorf("Error: %v: %v", message.Code(), message)
 			default:
-				// Ignoring other event types
+				// Ignoring other messages
 			}
 		}
 	}
