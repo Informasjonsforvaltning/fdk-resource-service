@@ -1,7 +1,6 @@
-package service
+package kafka
 
 import (
-	"context"
 	"os"
 	"os/signal"
 	"syscall"
@@ -14,47 +13,14 @@ import (
 
 	"github.com/Informasjonsforvaltning/fdk-resource-service/config/env"
 	"github.com/Informasjonsforvaltning/fdk-resource-service/config/logger"
-	modelAvro "github.com/Informasjonsforvaltning/fdk-resource-service/model/avro"
 )
-
-type DatasetInputType interface {
-	DatasetEvent() (modelAvro.DatasetEvent, error)
-}
-
-type DatasetInput struct {
-	message      *kafka.Message
-	deserializer *avro.SpecificDeserializer
-}
-
-func (input DatasetInput) DatasetEvent() (modelAvro.DatasetEvent, error) {
-	event := modelAvro.DatasetEvent{}
-	err := input.deserializer.DeserializeInto(*input.message.TopicPartition.Topic, input.message.Value, &event)
-	return event, err
-}
-
-func ConsumeDatasetMessage(input DatasetInputType) error {
-	event, err := input.DatasetEvent()
-	if err == nil {
-		switch event.Type {
-		case modelAvro.DatasetEventTypeDATASET_REMOVED:
-			datasetService := InitDatasetService()
-			err = datasetService.RemoveDataset(context.TODO(), event.FdkId)
-		default:
-			// Ignoring other dataset events
-		}
-	}
-
-	if err != nil {
-		logrus.Errorf("Error when consuming dataset event")
-		logger.LogAndPrintError(err)
-	}
-	return err
-}
 
 func consumeMessage(message *kafka.Message, deserializer *avro.SpecificDeserializer) {
 	switch *message.TopicPartition.Topic {
 	case env.KafkaValues.DatasetTopic:
 		ConsumeDatasetMessage(DatasetInput{message: message, deserializer: deserializer})
+	case env.KafkaValues.InfoModelTopic:
+		ConsumeInfoModelMessage(InfoModelInput{message: message, deserializer: deserializer})
 	default:
 		// ignoring other topics
 	}
@@ -89,7 +55,11 @@ var ConsumeKafkaEvents = func() {
 		run = false
 	}
 
-	err = consumer.SubscribeTopics([]string{env.KafkaValues.DatasetTopic}, nil)
+	topics := []string{
+		env.KafkaValues.DatasetTopic,
+		env.KafkaValues.InfoModelTopic,
+	}
+	err = consumer.SubscribeTopics(topics, nil)
 	if err != nil {
 		logrus.Errorf("Error when subscribing to kafka topics")
 		logger.LogAndPrintError(err)
@@ -110,13 +80,13 @@ var ConsumeKafkaEvents = func() {
 				continue
 			}
 
-			switch eventType := event.(type) {
+			switch message := event.(type) {
 			case *kafka.Message:
-				consumeMessage(eventType, deserializer)
+				consumeMessage(message, deserializer)
 			case kafka.Error:
-				logrus.Errorf("Error: %v: %v", eventType.Code(), eventType)
+				logrus.Errorf("Error: %v: %v", message.Code(), message)
 			default:
-				// Ignoring other event types
+				// Ignoring other messages
 			}
 		}
 	}
