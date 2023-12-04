@@ -17,6 +17,8 @@ import (
 
 func consumeMessage(message *kafka.Message, deserializer *avro.SpecificDeserializer) {
 	switch *message.TopicPartition.Topic {
+	case env.KafkaValues.ConceptTopic:
+		ConsumeConceptMessage(ConceptInput{message: message, deserializer: deserializer})
 	case env.KafkaValues.DatasetTopic:
 		ConsumeDatasetMessage(DatasetInput{message: message, deserializer: deserializer})
 	case env.KafkaValues.InfoModelTopic:
@@ -56,6 +58,7 @@ var ConsumeKafkaEvents = func() {
 	}
 
 	topics := []string{
+		env.KafkaValues.ConceptTopic,
 		env.KafkaValues.DatasetTopic,
 		env.KafkaValues.InfoModelTopic,
 	}
