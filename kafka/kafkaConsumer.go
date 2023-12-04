@@ -27,6 +27,8 @@ func consumeMessage(message *kafka.Message, deserializer *avro.SpecificDeseriali
 		ConsumeEventMessage(EventInput{message: message, deserializer: deserializer})
 	case env.KafkaValues.InfoModelTopic:
 		ConsumeInfoModelMessage(InfoModelInput{message: message, deserializer: deserializer})
+	case env.KafkaValues.ServiceTopic:
+		ConsumeServiceMessage(ServiceInput{message: message, deserializer: deserializer})
 	default:
 		// ignoring other topics
 	}
@@ -67,6 +69,7 @@ var ConsumeKafkaEvents = func() {
 		env.KafkaValues.DatasetTopic,
 		env.KafkaValues.EventTopic,
 		env.KafkaValues.InfoModelTopic,
+		env.KafkaValues.ServiceTopic,
 	}
 	err = consumer.SubscribeTopics(topics, nil)
 	if err != nil {
