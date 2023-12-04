@@ -47,6 +47,7 @@ type MongoConstants struct {
 }
 
 type KafkaConstants struct {
+	ConceptTopic   string
 	DatasetTopic   string
 	InfoModelTopic string
 }
@@ -64,6 +65,7 @@ var MongoValues = MongoConstants{
 }
 
 var KafkaValues = KafkaConstants{
+	ConceptTopic:   "concept-events",
 	DatasetTopic:   "dataset-events",
 	InfoModelTopic: "information-model-events",
 }
