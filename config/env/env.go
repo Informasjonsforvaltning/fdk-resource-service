@@ -47,9 +47,10 @@ type MongoConstants struct {
 }
 
 type KafkaConstants struct {
-	ConceptTopic   string
-	DatasetTopic   string
-	InfoModelTopic string
+	ConceptTopic     string
+	DataServiceTopic string
+	DatasetTopic     string
+	InfoModelTopic   string
 }
 
 type Paths struct {
@@ -65,9 +66,10 @@ var MongoValues = MongoConstants{
 }
 
 var KafkaValues = KafkaConstants{
-	ConceptTopic:   "concept-events",
-	DatasetTopic:   "dataset-events",
-	InfoModelTopic: "information-model-events",
+	ConceptTopic:     "concept-events",
+	DataServiceTopic: "data-service-events",
+	DatasetTopic:     "dataset-events",
+	InfoModelTopic:   "information-model-events",
 }
 
 var PathValues = Paths{
