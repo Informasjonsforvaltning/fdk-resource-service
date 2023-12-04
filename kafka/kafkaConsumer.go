@@ -23,6 +23,8 @@ func consumeMessage(message *kafka.Message, deserializer *avro.SpecificDeseriali
 		ConsumeDataServiceMessage(DataServiceInput{message: message, deserializer: deserializer})
 	case env.KafkaValues.DatasetTopic:
 		ConsumeDatasetMessage(DatasetInput{message: message, deserializer: deserializer})
+	case env.KafkaValues.EventTopic:
+		ConsumeEventMessage(EventInput{message: message, deserializer: deserializer})
 	case env.KafkaValues.InfoModelTopic:
 		ConsumeInfoModelMessage(InfoModelInput{message: message, deserializer: deserializer})
 	default:
@@ -63,6 +65,7 @@ var ConsumeKafkaEvents = func() {
 		env.KafkaValues.ConceptTopic,
 		env.KafkaValues.DataServiceTopic,
 		env.KafkaValues.DatasetTopic,
+		env.KafkaValues.EventTopic,
 		env.KafkaValues.InfoModelTopic,
 	}
 	err = consumer.SubscribeTopics(topics, nil)

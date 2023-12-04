@@ -50,6 +50,7 @@ type KafkaConstants struct {
 	ConceptTopic     string
 	DataServiceTopic string
 	DatasetTopic     string
+	EventTopic       string
 	InfoModelTopic   string
 }
 
@@ -69,6 +70,7 @@ var KafkaValues = KafkaConstants{
 	ConceptTopic:     "concept-events",
 	DataServiceTopic: "data-service-events",
 	DatasetTopic:     "dataset-events",
+	EventTopic:       "event-events",
 	InfoModelTopic:   "information-model-events",
 }
 
