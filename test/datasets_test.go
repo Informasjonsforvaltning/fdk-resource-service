@@ -4,13 +4,21 @@ import (
 	"bytes"
 	"encoding/json"
 	"github.com/Informasjonsforvaltning/fdk-resource-service/config/router"
-	"github.com/Informasjonsforvaltning/fdk-resource-service/model"
 	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"
 	"slices"
 	"testing"
 )
+
+type TestDataset struct {
+	ID          string            `json:"id"`
+	Type        string            `json:"type"`
+	Uri         string            `json:"uri"`
+	Identifier  string            `json:"identifier"`
+	Title       map[string]string `json:"title"`
+	Description map[string]string `json:"description"`
+}
 
 func TestGetDataset(t *testing.T) {
 	app := router.SetupRouter()
@@ -20,7 +28,7 @@ func TestGetDataset(t *testing.T) {
 	app.ServeHTTP(w, req)
 	assert.Equal(t, http.StatusOK, w.Code)
 
-	expectedResponse := model.Dataset{
+	expectedResponse := TestDataset{
 		ID:         "123",
 		Type:       "datasets",
 		Uri:        "https://datasets.digdir.no/321",
@@ -37,7 +45,7 @@ func TestGetDataset(t *testing.T) {
 		},
 	}
 
-	var actualResponse model.Dataset
+	var actualResponse TestDataset
 	err := json.Unmarshal(w.Body.Bytes(), &actualResponse)
 
 	assert.Nil(t, err)
@@ -52,7 +60,7 @@ func TestGetDatasets(t *testing.T) {
 	app.ServeHTTP(w, req)
 	assert.Equal(t, http.StatusOK, w.Code)
 
-	var actualResponse []model.Dataset
+	var actualResponse []TestDataset
 	err := json.Unmarshal(w.Body.Bytes(), &actualResponse)
 
 	assert.Nil(t, err)
@@ -74,7 +82,7 @@ func TestGetDatasetsIncludeRemoved(t *testing.T) {
 	app.ServeHTTP(w, req)
 	assert.Equal(t, http.StatusOK, w.Code)
 
-	var actualResponse []model.Dataset
+	var actualResponse []TestDataset
 	err := json.Unmarshal(w.Body.Bytes(), &actualResponse)
 
 	assert.Nil(t, err)
@@ -90,10 +98,10 @@ func TestGetDatasetsIncludeRemoved(t *testing.T) {
 func TestUnauthorizedCreate(t *testing.T) {
 	app := router.SetupRouter()
 
-	dataset := model.Dataset{
+	dataset := TestDataset{
 		ID: "999",
 	}
-	var toBeStored []model.Dataset
+	var toBeStored []TestDataset
 	toBeStored = append(toBeStored, dataset)
 	body, _ := json.Marshal(toBeStored)
 
@@ -116,7 +124,7 @@ func TestCreateResource(t *testing.T) {
 
 	w := httptest.NewRecorder()
 
-	dataset0 := model.Dataset{
+	dataset0 := TestDataset{
 		ID:         "000",
 		Type:       "datasets",
 		Uri:        "https://datasets.digdir.no/987",
@@ -133,7 +141,7 @@ func TestCreateResource(t *testing.T) {
 		},
 	}
 
-	dataset1 := model.Dataset{
+	dataset1 := TestDataset{
 		ID:         "111",
 		Type:       "datasets",
 		Uri:        "https://datasets.digdir.no/654",
@@ -150,7 +158,7 @@ func TestCreateResource(t *testing.T) {
 		},
 	}
 
-	var toBeStored []model.Dataset
+	var toBeStored []TestDataset
 	toBeStored = append(toBeStored, dataset0)
 	toBeStored = append(toBeStored, dataset1)
 
@@ -166,7 +174,7 @@ func TestCreateResource(t *testing.T) {
 	app.ServeHTTP(wGet0, reqGet0)
 	assert.Equal(t, http.StatusOK, wGet0.Code)
 
-	var created model.Dataset
+	var created TestDataset
 	err0 := json.Unmarshal(wGet0.Body.Bytes(), &created)
 	assert.Nil(t, err0)
 	assert.Equal(t, dataset0, created)
@@ -176,7 +184,7 @@ func TestCreateResource(t *testing.T) {
 	app.ServeHTTP(wGet1, reqGet1)
 	assert.Equal(t, http.StatusOK, wGet1.Code)
 
-	var updated model.Dataset
+	var updated TestDataset
 	err1 := json.Unmarshal(wGet1.Body.Bytes(), &updated)
 	assert.Nil(t, err1)
 	assert.Equal(t, dataset1, updated)
@@ -187,17 +195,17 @@ func TestAbortCompleteUpdateWhenOneFails(t *testing.T) {
 
 	w := httptest.NewRecorder()
 
-	dataset0 := model.Dataset{
+	dataset0 := TestDataset{
 		ID:   "123",
 		Type: "is-aborted",
 	}
 
-	dataset1 := model.Dataset{
+	dataset1 := TestDataset{
 		ID:   "",
 		Type: "invalid-dataset",
 	}
 
-	var toBeStored []model.Dataset
+	var toBeStored []TestDataset
 	toBeStored = append(toBeStored, dataset0)
 	toBeStored = append(toBeStored, dataset1)
 
@@ -213,7 +221,7 @@ func TestAbortCompleteUpdateWhenOneFails(t *testing.T) {
 	app.ServeHTTP(wGet, reqGet)
 	assert.Equal(t, http.StatusOK, wGet.Code)
 
-	var dataset model.Dataset
+	var dataset TestDataset
 	errGet := json.Unmarshal(wGet.Body.Bytes(), &dataset)
 	assert.Nil(t, errGet)
 	assert.Equal(t, "datasets", dataset.Type)

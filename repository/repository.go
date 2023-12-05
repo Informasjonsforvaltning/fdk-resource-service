@@ -17,33 +17,33 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-type DatasetRepository interface {
-	StoreDatasets(ctx context.Context, datasets []model.DatasetDBO) error
-	GetDatasets(ctx context.Context, query bson.D) ([]model.DatasetDBO, error)
-	GetDataset(ctx context.Context, id string) (model.DatasetDBO, error)
+type ResourceRepository interface {
+	StoreResources(ctx context.Context, resources []model.DBO) error
+	GetResources(ctx context.Context, query bson.D) ([]model.DBO, error)
+	GetResource(ctx context.Context, id string) (model.DBO, error)
 }
 
-type DatasetRepositoryImpl struct {
+type ResourceRepositoryImpl struct {
+	client     *mongo.Client
 	collection *mongo.Collection
 }
 
-var datasetRepository *DatasetRepositoryImpl
+var datasetRepository *ResourceRepositoryImpl
 
-func InitRepository() *DatasetRepositoryImpl {
+func InitDatasetRepository() *ResourceRepositoryImpl {
 	if datasetRepository == nil {
-		datasetRepository = &DatasetRepositoryImpl{collection: mongodb.DatasetsCollection()}
+		client := mongodb.Client()
+		collection := mongodb.Collection(client, env.MongoValues.DatasetsCollection)
+		datasetRepository = &ResourceRepositoryImpl{client: client, collection: collection}
 	}
 	return datasetRepository
 }
 
-func (r DatasetRepositoryImpl) StoreDatasets(ctx context.Context, datasets []model.DatasetDBO) error {
+func (r ResourceRepositoryImpl) StoreResources(ctx context.Context, resources []model.DBO) error {
 	var replaceOptions = options.Replace()
 	replaceOptions.Upsert = pointer.Of(true)
 
-	client := mongodb.Client()
-	coll := mongodb.Collection(client, env.MongoValues.DatasetsCollection)
-
-	return client.UseSession(ctx, func(sctx mongo.SessionContext) error {
+	return r.client.UseSession(ctx, func(sctx mongo.SessionContext) error {
 		err := sctx.StartTransaction(options.Transaction().
 			SetReadConcern(readconcern.Snapshot()).
 			SetWriteConcern(writeconcern.Majority()),
@@ -53,8 +53,8 @@ func (r DatasetRepositoryImpl) StoreDatasets(ctx context.Context, datasets []mod
 			return err
 		}
 
-		for _, dataset := range datasets {
-			_, err := coll.ReplaceOne(sctx, bson.D{{Key: "_id", Value: dataset.ID}}, dataset, replaceOptions)
+		for _, dbo := range resources {
+			_, err := r.collection.ReplaceOne(sctx, bson.D{{Key: "_id", Value: dbo.ID}}, dbo, replaceOptions)
 			if err != nil {
 				sctx.AbortTransaction(sctx)
 				return err
@@ -79,25 +79,25 @@ func (r DatasetRepositoryImpl) StoreDatasets(ctx context.Context, datasets []mod
 	})
 }
 
-func (r DatasetRepositoryImpl) GetDatasets(ctx context.Context, query bson.D) ([]model.DatasetDBO, error) {
-	var datasets []model.DatasetDBO
+func (r ResourceRepositoryImpl) GetResources(ctx context.Context, query bson.D) ([]model.DBO, error) {
+	var resources []model.DBO
 
 	current, err := r.collection.Find(ctx, query)
 	if err != nil {
-		return datasets, err
+		return resources, err
 	}
 
 	for current.Next(ctx) {
-		var dataset model.DatasetDBO
-		err := bson.Unmarshal(current.Current, &dataset)
+		var dbo model.DBO
+		err := bson.Unmarshal(current.Current, &dbo)
 		if err != nil {
-			return datasets, err
+			return resources, err
 		}
-		datasets = append(datasets, dataset)
+		resources = append(resources, dbo)
 	}
 
 	if err := current.Err(); err != nil {
-		return datasets, err
+		return resources, err
 	}
 	defer func(current *mongo.Cursor, ctx context.Context) {
 		err := current.Close(ctx)
@@ -106,22 +106,22 @@ func (r DatasetRepositoryImpl) GetDatasets(ctx context.Context, query bson.D) ([
 		}
 	}(current, ctx)
 
-	return datasets, nil
+	return resources, nil
 }
 
-func (r DatasetRepositoryImpl) GetDataset(ctx context.Context, id string) (model.DatasetDBO, error) {
+func (r ResourceRepositoryImpl) GetResource(ctx context.Context, id string) (model.DBO, error) {
 	filter := bson.D{{Key: "_id", Value: id}}
 	bytes, err := r.collection.FindOne(ctx, filter).Raw()
 
 	if err != nil {
-		return model.DatasetDBO{}, err
+		return model.DBO{}, err
 	}
 
-	var dataset model.DatasetDBO
-	unmarshalError := bson.Unmarshal(bytes, &dataset)
+	var dbo model.DBO
+	unmarshalError := bson.Unmarshal(bytes, &dbo)
 	if unmarshalError != nil {
-		return model.DatasetDBO{}, unmarshalError
+		return model.DBO{}, unmarshalError
 	}
 
-	return dataset, nil
+	return dbo, nil
 }

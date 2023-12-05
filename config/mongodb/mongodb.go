@@ -44,9 +44,3 @@ func Client() *mongo.Client {
 func Collection(client *mongo.Client, collectionName string) *mongo.Collection {
 	return client.Database(env.MongoValues.Database).Collection(collectionName)
 }
-
-func DatasetsCollection() *mongo.Collection {
-	coll := Collection(Client(), env.MongoValues.DatasetsCollection)
-	coll.Indexes()
-	return coll
-}
