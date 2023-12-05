@@ -19,7 +19,7 @@ db.datasets.insert(
     {
         "_id": "123",
         "removed": false,
-        "dataset": {
+        "resource": {
             "id": "123",
             "type": "datasets",
             "uri": "https://datasets.digdir.no/321",
@@ -41,7 +41,7 @@ db.datasets.insert(
     {
         "_id": "111",
         "removed": false,
-        "dataset": {
+        "resource": {
             "id": "111",
             "type": "datasets",
             "uri": "https://datasets.digdir.no/654",
@@ -63,7 +63,7 @@ db.datasets.insert(
     {
         "_id": "222",
         "removed": true,
-        "dataset": {
+        "resource": {
             "id": "222",
             "type": "datasets",
             "uri": "https://datasets.digdir.no/777",

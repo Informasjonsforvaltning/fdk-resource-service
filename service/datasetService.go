@@ -16,48 +16,48 @@ import (
 )
 
 type DatasetService struct {
-	DatasetRepository repository.DatasetRepository
+	DatasetRepository repository.ResourceRepository
 }
 
 func InitDatasetService() *DatasetService {
 	service := DatasetService{
-		DatasetRepository: repository.InitRepository(),
+		DatasetRepository: repository.InitDatasetRepository(),
 	}
 	return &service
 }
 
-func (service DatasetService) GetDatasets(ctx context.Context, includeRemoved string) ([]model.Dataset, int) {
+func (service DatasetService) GetDatasets(ctx context.Context, includeRemoved string) ([]map[string]interface{}, int) {
 	query := bson.D{}
 	if strings.ToLower(includeRemoved) != "true" {
 		query = bson.D{{Key: "removed", Value: false}}
 	}
-	datasets, err := service.DatasetRepository.GetDatasets(ctx, query)
+	datasets, err := service.DatasetRepository.GetResources(ctx, query)
 	if err != nil {
 		logrus.Error("Get datasets failed ")
 		logger.LogAndPrintError(err)
-		return []model.Dataset{}, http.StatusInternalServerError
+		return []map[string]interface{}{}, http.StatusInternalServerError
 	} else if datasets == nil {
-		return []model.Dataset{}, http.StatusOK
+		return []map[string]interface{}{}, http.StatusOK
 	}
 
 	return dboToDTO(datasets), http.StatusOK
 }
 
-func (service DatasetService) GetDataset(ctx context.Context, id string) (model.Dataset, int) {
-	dbo, err := service.DatasetRepository.GetDataset(ctx, id)
+func (service DatasetService) GetDataset(ctx context.Context, id string) (map[string]interface{}, int) {
+	dbo, err := service.DatasetRepository.GetResource(ctx, id)
 	if err == mongo.ErrNoDocuments {
-		return model.Dataset{}, http.StatusNotFound
+		return map[string]interface{}{}, http.StatusNotFound
 	} else if err != nil {
 		logrus.Errorf("Get dataset with id %s failed, ", id)
 		logger.LogAndPrintError(err)
-		return model.Dataset{}, http.StatusInternalServerError
+		return map[string]interface{}{}, http.StatusInternalServerError
 	} else {
-		return dbo.Dataset, http.StatusOK
+		return dbo.Resource, http.StatusOK
 	}
 }
 
 func (service DatasetService) StoreDatasets(ctx context.Context, bytes []byte) int {
-	var datasets []model.Dataset
+	var datasets []map[string]interface{}
 	err := json.Unmarshal(bytes, &datasets)
 	if err != nil {
 		logrus.Error("Unable to unmarshal datasets")
@@ -65,7 +65,7 @@ func (service DatasetService) StoreDatasets(ctx context.Context, bytes []byte) i
 		return http.StatusBadRequest
 	}
 
-	err = service.DatasetRepository.StoreDatasets(ctx, dtoToDBO(datasets))
+	err = service.DatasetRepository.StoreResources(ctx, dtoToDBO(datasets))
 	if err != nil {
 		logrus.Error("Could not store datasets")
 		logger.LogAndPrintError(err)
@@ -76,30 +76,30 @@ func (service DatasetService) StoreDatasets(ctx context.Context, bytes []byte) i
 
 func (service DatasetService) RemoveDataset(ctx context.Context, id string) error {
 	logrus.Infof("Tagging dataset %s as removed", id)
-	dataset, err := service.DatasetRepository.GetDataset(ctx, id)
+	dataset, err := service.DatasetRepository.GetResource(ctx, id)
 	if err == nil {
 		dataset.Removed = true
-		err = service.DatasetRepository.StoreDatasets(ctx, []model.DatasetDBO{dataset})
+		err = service.DatasetRepository.StoreResources(ctx, []model.DBO{dataset})
 	}
 
 	return err
 }
 
-func dboToDTO(dboDatasets []model.DatasetDBO) []model.Dataset {
-	var dtoDatasets []model.Dataset
+func dboToDTO(dboDatasets []model.DBO) []map[string]interface{} {
+	var dtoDatasets []map[string]interface{}
 	for _, dbo := range dboDatasets {
-		dtoDatasets = append(dtoDatasets, dbo.Dataset)
+		dtoDatasets = append(dtoDatasets, dbo.Resource)
 	}
 	return dtoDatasets
 }
 
-func dtoToDBO(dtoDatasets []model.Dataset) []model.DatasetDBO {
-	var dboDatasets []model.DatasetDBO
+func dtoToDBO(dtoDatasets []map[string]interface{}) []model.DBO {
+	var dboDatasets []model.DBO
 	for _, dto := range dtoDatasets {
-		var dbo = model.DatasetDBO{
-			ID:      dto.ID,
-			Dataset: dto,
-			Removed: false,
+		var dbo = model.DBO{
+			ID:       dto["id"].(string),
+			Resource: dto,
+			Removed:  false,
 		}
 		dboDatasets = append(dboDatasets, dbo)
 	}
