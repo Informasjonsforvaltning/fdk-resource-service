@@ -13,6 +13,7 @@ import (
 	"github.com/Informasjonsforvaltning/fdk-resource-service/config/logger"
 	"github.com/Informasjonsforvaltning/fdk-resource-service/model"
 	"github.com/Informasjonsforvaltning/fdk-resource-service/repository"
+	"github.com/Informasjonsforvaltning/fdk-resource-service/utils/mappers"
 )
 
 type DatasetService struct {
@@ -40,7 +41,7 @@ func (service DatasetService) GetDatasets(ctx context.Context, includeRemoved st
 		return []map[string]interface{}{}, http.StatusOK
 	}
 
-	return dboToDTO(datasets), http.StatusOK
+	return mappers.ToDTO(datasets), http.StatusOK
 }
 
 func (service DatasetService) GetDataset(ctx context.Context, id string) (map[string]interface{}, int) {
@@ -65,7 +66,7 @@ func (service DatasetService) StoreDatasets(ctx context.Context, bytes []byte) i
 		return http.StatusBadRequest
 	}
 
-	err = service.DatasetRepository.StoreResources(ctx, dtoToDBO(datasets))
+	err = service.DatasetRepository.StoreResources(ctx, mappers.ToDBO(datasets))
 	if err != nil {
 		logrus.Error("Could not store datasets")
 		logger.LogAndPrintError(err)
@@ -83,25 +84,4 @@ func (service DatasetService) RemoveDataset(ctx context.Context, id string) erro
 	}
 
 	return err
-}
-
-func dboToDTO(dboDatasets []model.DBO) []map[string]interface{} {
-	var dtoDatasets []map[string]interface{}
-	for _, dbo := range dboDatasets {
-		dtoDatasets = append(dtoDatasets, dbo.Resource)
-	}
-	return dtoDatasets
-}
-
-func dtoToDBO(dtoDatasets []map[string]interface{}) []model.DBO {
-	var dboDatasets []model.DBO
-	for _, dto := range dtoDatasets {
-		var dbo = model.DBO{
-			ID:       dto["id"].(string),
-			Resource: dto,
-			Removed:  false,
-		}
-		dboDatasets = append(dboDatasets, dbo)
-	}
-	return dboDatasets
 }
