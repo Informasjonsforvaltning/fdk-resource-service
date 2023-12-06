@@ -28,6 +28,17 @@ type ResourceRepositoryImpl struct {
 	collection *mongo.Collection
 }
 
+var conceptRepository *ResourceRepositoryImpl
+
+func InitConceptRepository() *ResourceRepositoryImpl {
+	if conceptRepository == nil {
+		client := mongodb.Client()
+		collection := mongodb.Collection(client, env.MongoValues.ConceptsCollection)
+		conceptRepository = &ResourceRepositoryImpl{client: client, collection: collection}
+	}
+	return conceptRepository
+}
+
 var datasetRepository *ResourceRepositoryImpl
 
 func InitDatasetRepository() *ResourceRepositoryImpl {

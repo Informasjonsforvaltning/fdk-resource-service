@@ -10,7 +10,7 @@ import (
 	"github.com/Informasjonsforvaltning/fdk-resource-service/repository"
 )
 
-var repo = repository.InitDatasetRepository()
+var datasetRepository = repository.InitDatasetRepository()
 
 func TestDatasetErrorReturnsError(t *testing.T) {
 	err := kafka.ConsumeDatasetMessage(MockDatasetError{})
@@ -19,19 +19,19 @@ func TestDatasetErrorReturnsError(t *testing.T) {
 
 func TestDatasetHarvestedIsIgnored(t *testing.T) {
 	kafka.ConsumeDatasetMessage(MockDatasetHarvested{})
-	dbo, _ := repo.GetResource(context.TODO(), "111")
+	dbo, _ := datasetRepository.GetResource(context.TODO(), "111")
 	assert.NotEqual(t, true, dbo.Removed)
 }
 
 func TestDatasetReasonedIsIgnored(t *testing.T) {
 	kafka.ConsumeDatasetMessage(MockDatasetReasoned{})
-	dbo, _ := repo.GetResource(context.TODO(), "111")
+	dbo, _ := datasetRepository.GetResource(context.TODO(), "111")
 	assert.NotEqual(t, true, dbo.Removed)
 }
 
 func TestDatasetRemovedTagsDatasetAsRemoved(t *testing.T) {
 	kafka.ConsumeDatasetMessage(MockDatasetRemoved{})
-	dbo, _ := repo.GetResource(context.TODO(), "123")
+	dbo, _ := datasetRepository.GetResource(context.TODO(), "123")
 	assert.Equal(t, true, dbo.Removed)
 }
 

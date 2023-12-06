@@ -73,9 +73,10 @@ func MongoContainerRunner(m *testing.M) {
 		if err != nil {
 			return err
 		}
+		// try to find last document added in init-mongo file
 		db := dbClient.Database("fdkResourceService")
-		coll := db.Collection("datasets")
-		_, err = coll.FindOne(context.TODO(), bson.D{{Key: "_id", Value: "123"}}).Raw()
+		coll := db.Collection("concepts")
+		_, err = coll.FindOne(context.TODO(), bson.D{{Key: "_id", Value: "222"}}).Raw()
 		return err
 	})
 	if err != nil {

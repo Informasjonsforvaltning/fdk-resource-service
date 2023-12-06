@@ -1,12 +1,15 @@
 package kafka
 
 import (
+	"context"
+
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	"github.com/confluentinc/confluent-kafka-go/v2/schemaregistry/serde/avro"
 	"github.com/sirupsen/logrus"
 
 	"github.com/Informasjonsforvaltning/fdk-resource-service/config/logger"
 	modelAvro "github.com/Informasjonsforvaltning/fdk-resource-service/model/avro"
+	"github.com/Informasjonsforvaltning/fdk-resource-service/service"
 )
 
 type ConceptInputType interface {
@@ -29,7 +32,8 @@ func ConsumeConceptMessage(input ConceptInputType) error {
 	if err == nil {
 		switch event.Type {
 		case modelAvro.ConceptEventTypeCONCEPT_REMOVED:
-			// TODO: tag concept as removed in db
+			conceptService := service.InitConceptService()
+			err = conceptService.RemoveConcept(context.TODO(), event.FdkId)
 		default:
 			// Ignoring other concept messages
 		}

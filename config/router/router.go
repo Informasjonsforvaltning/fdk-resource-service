@@ -13,6 +13,10 @@ func InitializeRoutes(e *gin.Engine) {
 	e.GET(env.PathValues.Ping, handlers.PingHandler())
 	e.GET(env.PathValues.Ready, handlers.ReadyHandler())
 
+	e.POST(env.PathValues.Concepts, security.ValidateAPIKey(), handlers.StoreConcepts())
+	e.GET(env.PathValues.Concepts, handlers.GetConcepts())
+	e.GET(env.PathValues.Concept, handlers.GetConcept())
+
 	e.POST(env.PathValues.Datasets, security.ValidateAPIKey(), handlers.StoreDatasets())
 	e.GET(env.PathValues.Datasets, handlers.GetDatasets())
 	e.GET(env.PathValues.Dataset, handlers.GetDataset())
