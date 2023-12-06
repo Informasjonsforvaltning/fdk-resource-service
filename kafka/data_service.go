@@ -1,12 +1,15 @@
 package kafka
 
 import (
+	"context"
+
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	"github.com/confluentinc/confluent-kafka-go/v2/schemaregistry/serde/avro"
 	"github.com/sirupsen/logrus"
 
 	"github.com/Informasjonsforvaltning/fdk-resource-service/config/logger"
 	modelAvro "github.com/Informasjonsforvaltning/fdk-resource-service/model/avro"
+	"github.com/Informasjonsforvaltning/fdk-resource-service/service"
 )
 
 type DataServiceInputType interface {
@@ -29,7 +32,8 @@ func ConsumeDataServiceMessage(input DataServiceInputType) error {
 	if err == nil {
 		switch event.Type {
 		case modelAvro.DataServiceEventTypeDATA_SERVICE_REMOVED:
-			// TODO: tag data service as removed in db
+			dataServiceService := service.InitDataServiceService()
+			err = dataServiceService.RemoveDataService(context.TODO(), event.FdkId)
 		default:
 			// Ignoring other data service messages
 		}

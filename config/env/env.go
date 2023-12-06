@@ -42,9 +42,10 @@ func SchemaRegistry() string {
 }
 
 type MongoConstants struct {
-	ConceptsCollection string
-	DatasetsCollection string
-	Database           string
+	ConceptsCollection     string
+	DataServicesCollection string
+	DatasetsCollection     string
+	Database               string
 }
 
 type KafkaConstants struct {
@@ -57,18 +58,21 @@ type KafkaConstants struct {
 }
 
 type Paths struct {
-	Ping     string
-	Ready    string
-	Concepts string
-	Concept  string
-	Datasets string
-	Dataset  string
+	Ping         string
+	Ready        string
+	Concepts     string
+	Concept      string
+	DataServices string
+	DataService  string
+	Datasets     string
+	Dataset      string
 }
 
 var MongoValues = MongoConstants{
-	ConceptsCollection: "concepts",
-	DatasetsCollection: "datasets",
-	Database:           "fdkResourceService",
+	ConceptsCollection:     "concepts",
+	DataServicesCollection: "dataServices",
+	DatasetsCollection:     "datasets",
+	Database:               "fdkResourceService",
 }
 
 var KafkaValues = KafkaConstants{
@@ -81,10 +85,12 @@ var KafkaValues = KafkaConstants{
 }
 
 var PathValues = Paths{
-	Ping:     "/ping",
-	Ready:    "/ready",
-	Concepts: "/concepts",
-	Concept:  "/concepts/:id",
-	Datasets: "/datasets",
-	Dataset:  "/datasets/:id",
+	Ping:         "/ping",
+	Ready:        "/ready",
+	Concepts:     "/concepts",
+	Concept:      "/concepts/:id",
+	DataServices: "/data-services",
+	DataService:  "/data-services/:id",
+	Datasets:     "/datasets",
+	Dataset:      "/datasets/:id",
 }
