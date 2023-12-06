@@ -39,6 +39,17 @@ func InitConceptRepository() *ResourceRepositoryImpl {
 	return conceptRepository
 }
 
+var dataServiceRepository *ResourceRepositoryImpl
+
+func InitDataServiceRepository() *ResourceRepositoryImpl {
+	if dataServiceRepository == nil {
+		client := mongodb.Client()
+		collection := mongodb.Collection(client, env.MongoValues.DataServicesCollection)
+		dataServiceRepository = &ResourceRepositoryImpl{client: client, collection: collection}
+	}
+	return dataServiceRepository
+}
+
 var datasetRepository *ResourceRepositoryImpl
 
 func InitDatasetRepository() *ResourceRepositoryImpl {

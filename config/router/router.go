@@ -17,6 +17,10 @@ func InitializeRoutes(e *gin.Engine) {
 	e.GET(env.PathValues.Concepts, handlers.GetConcepts())
 	e.GET(env.PathValues.Concept, handlers.GetConcept())
 
+	e.POST(env.PathValues.DataServices, security.ValidateAPIKey(), handlers.StoreDataServices())
+	e.GET(env.PathValues.DataServices, handlers.GetDataServices())
+	e.GET(env.PathValues.DataService, handlers.GetDataService())
+
 	e.POST(env.PathValues.Datasets, security.ValidateAPIKey(), handlers.StoreDatasets())
 	e.GET(env.PathValues.Datasets, handlers.GetDatasets())
 	e.GET(env.PathValues.Dataset, handlers.GetDataset())

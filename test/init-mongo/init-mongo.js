@@ -82,6 +82,89 @@ db.datasets.insert(
     }
 );
 
+db.createCollection('dataServices', {
+    validator: {
+        $jsonSchema: {
+            bsonType: "object",
+            title: "ID Validation",
+            required: [ "_id" ],
+            properties: {
+                _id: {
+                    bsonType: "string",
+                    minLength: 1,
+                    description: "'_id' must have length over 0"
+                }
+            }
+        }
+    }
+});
+db.dataServices.insert(
+    {
+        "_id": "123",
+        "removed": false,
+        "resource": {
+            "id": "123",
+            "type": "dataServices",
+            "uri": "https://data-services.digdir.no/321",
+            "identifier": "321",
+            "title": {
+                "nb": "data service nb",
+                "nn": "data service nn",
+                "en": "data service en"
+            },
+            "description": {
+                "nb": "data service desc nb",
+                "nn": "data service desc nn",
+                "en": "data service desc en"
+            }
+        }
+    }
+);
+db.dataServices.insert(
+    {
+        "_id": "111",
+        "removed": false,
+        "resource": {
+            "id": "111",
+            "type": "dataServices",
+            "uri": "https://data-services.digdir.no/654",
+            "identifier": "654",
+            "title": {
+                "nb": "data service nb",
+                "nn": "data service nn",
+                "en": "data service en"
+            },
+            "description": {
+                "nb": "data service desc nb",
+                "nn": "data service desc nn",
+                "en": "data service desc en"
+            }
+        }
+    }
+);
+db.dataServices.insert(
+    {
+        "_id": "222",
+        "removed": true,
+        "resource": {
+            "id": "222",
+            "type": "dataServices",
+            "uri": "https://data-services.digdir.no/777",
+            "identifier": "777",
+            "title": {
+                "nb": "removed data service nb",
+                "nn": "removed data service nn",
+                "en": "removed data service en"
+            },
+            "description": {
+                "nb": "removed data service desc nb",
+                "nn": "removed data service desc nn",
+                "en": "removed data service desc en"
+            }
+        }
+    }
+);
+
 db.createCollection('concepts', {
     validator: {
         $jsonSchema: {
