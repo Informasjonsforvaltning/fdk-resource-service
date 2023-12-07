@@ -1,12 +1,15 @@
 package kafka
 
 import (
+	"context"
+
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	"github.com/confluentinc/confluent-kafka-go/v2/schemaregistry/serde/avro"
 	"github.com/sirupsen/logrus"
 
 	"github.com/Informasjonsforvaltning/fdk-resource-service/config/logger"
 	modelAvro "github.com/Informasjonsforvaltning/fdk-resource-service/model/avro"
+	"github.com/Informasjonsforvaltning/fdk-resource-service/service"
 )
 
 type EventInputType interface {
@@ -29,7 +32,8 @@ func ConsumeEventMessage(input EventInputType) error {
 	if err == nil {
 		switch event.Type {
 		case modelAvro.EventEventTypeEVENT_REMOVED:
-			// TODO: tag event as removed in db
+			eventService := service.InitEventService()
+			err = eventService.RemoveEvent(context.TODO(), event.FdkId)
 		default:
 			// Ignoring other event messages
 		}
