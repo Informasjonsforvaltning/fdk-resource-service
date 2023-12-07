@@ -72,6 +72,17 @@ func InitEventRepository() *ResourceRepositoryImpl {
 	return eventRepository
 }
 
+var informationModelRepository *ResourceRepositoryImpl
+
+func InitInformationModelRepository() *ResourceRepositoryImpl {
+	if informationModelRepository == nil {
+		client := mongodb.Client()
+		collection := mongodb.Collection(client, env.MongoValues.InformationModelsCollection)
+		informationModelRepository = &ResourceRepositoryImpl{client: client, collection: collection}
+	}
+	return informationModelRepository
+}
+
 func (r ResourceRepositoryImpl) StoreResources(ctx context.Context, resources []model.DBO) error {
 	var replaceOptions = options.Replace()
 	replaceOptions.Upsert = pointer.Of(true)

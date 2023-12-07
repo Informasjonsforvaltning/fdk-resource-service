@@ -165,6 +165,89 @@ db.events.insert(
     }
 );
 
+db.createCollection('informationModels', {
+    validator: {
+        $jsonSchema: {
+            bsonType: "object",
+            title: "ID Validation",
+            required: [ "_id" ],
+            properties: {
+                _id: {
+                    bsonType: "string",
+                    minLength: 1,
+                    description: "'_id' must have length over 0"
+                }
+            }
+        }
+    }
+});
+db.informationModels.insert(
+    {
+        "_id": "123",
+        "removed": false,
+        "resource": {
+            "id": "123",
+            "type": "informationModels",
+            "uri": "https://information-models.digdir.no/321",
+            "identifier": "321",
+            "title": {
+                "nb": "information model nb",
+                "nn": "information model nn",
+                "en": "information model en"
+            },
+            "description": {
+                "nb": "information model desc nb",
+                "nn": "information model desc nn",
+                "en": "information model desc en"
+            }
+        }
+    }
+);
+db.informationModels.insert(
+    {
+        "_id": "111",
+        "removed": false,
+        "resource": {
+            "id": "111",
+            "type": "informationModels",
+            "uri": "https://information-models.digdir.no/654",
+            "identifier": "654",
+            "title": {
+                "nb": "information model nb",
+                "nn": "information model nn",
+                "en": "information model en"
+            },
+            "description": {
+                "nb": "information model desc nb",
+                "nn": "information model desc nn",
+                "en": "information model desc en"
+            }
+        }
+    }
+);
+db.informationModels.insert(
+    {
+        "_id": "222",
+        "removed": true,
+        "resource": {
+            "id": "222",
+            "type": "informationModels",
+            "uri": "https://information-models.digdir.no/777",
+            "identifier": "777",
+            "title": {
+                "nb": "removed information model nb",
+                "nn": "removed information model nn",
+                "en": "removed information model en"
+            },
+            "description": {
+                "nb": "removed information model desc nb",
+                "nn": "removed information model desc nn",
+                "en": "removed information model desc en"
+            }
+        }
+    }
+);
+
 db.createCollection('dataServices', {
     validator: {
         $jsonSchema: {
