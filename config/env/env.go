@@ -42,11 +42,12 @@ func SchemaRegistry() string {
 }
 
 type MongoConstants struct {
-	ConceptsCollection     string
-	DataServicesCollection string
-	DatasetsCollection     string
-	Database               string
-	EventsCollection       string
+	ConceptsCollection          string
+	DataServicesCollection      string
+	DatasetsCollection          string
+	Database                    string
+	EventsCollection            string
+	InformationModelsCollection string
 }
 
 type KafkaConstants struct {
@@ -59,24 +60,27 @@ type KafkaConstants struct {
 }
 
 type Paths struct {
-	Ping         string
-	Ready        string
-	Concepts     string
-	Concept      string
-	DataServices string
-	DataService  string
-	Datasets     string
-	Dataset      string
-	Events       string
-	Event        string
+	Ping              string
+	Ready             string
+	Concepts          string
+	Concept           string
+	DataServices      string
+	DataService       string
+	Datasets          string
+	Dataset           string
+	Events            string
+	Event             string
+	InformationModels string
+	InformationModel  string
 }
 
 var MongoValues = MongoConstants{
-	ConceptsCollection:     "concepts",
-	DataServicesCollection: "dataServices",
-	DatasetsCollection:     "datasets",
-	Database:               "fdkResourceService",
-	EventsCollection:       "events",
+	ConceptsCollection:          "concepts",
+	DataServicesCollection:      "dataServices",
+	DatasetsCollection:          "datasets",
+	Database:                    "fdkResourceService",
+	EventsCollection:            "events",
+	InformationModelsCollection: "informationModels",
 }
 
 var KafkaValues = KafkaConstants{
@@ -89,14 +93,16 @@ var KafkaValues = KafkaConstants{
 }
 
 var PathValues = Paths{
-	Ping:         "/ping",
-	Ready:        "/ready",
-	Concepts:     "/concepts",
-	Concept:      "/concepts/:id",
-	DataServices: "/data-services",
-	DataService:  "/data-services/:id",
-	Datasets:     "/datasets",
-	Dataset:      "/datasets/:id",
-	Events:       "/events",
-	Event:        "/events/:id",
+	Ping:              "/ping",
+	Ready:             "/ready",
+	Concepts:          "/concepts",
+	Concept:           "/concepts/:id",
+	DataServices:      "/data-services",
+	DataService:       "/data-services/:id",
+	Datasets:          "/datasets",
+	Dataset:           "/datasets/:id",
+	Events:            "/events",
+	Event:             "/events/:id",
+	InformationModels: "/information-models",
+	InformationModel:  "/information-models/:id",
 }

@@ -1,12 +1,15 @@
 package kafka
 
 import (
+	"context"
+
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	"github.com/confluentinc/confluent-kafka-go/v2/schemaregistry/serde/avro"
 	"github.com/sirupsen/logrus"
 
 	"github.com/Informasjonsforvaltning/fdk-resource-service/config/logger"
 	modelAvro "github.com/Informasjonsforvaltning/fdk-resource-service/model/avro"
+	"github.com/Informasjonsforvaltning/fdk-resource-service/service"
 )
 
 type InfoModelInputType interface {
@@ -29,7 +32,8 @@ func ConsumeInfoModelMessage(input InfoModelInputType) error {
 	if err == nil {
 		switch event.Type {
 		case modelAvro.InformationModelEventTypeINFORMATION_MODEL_REMOVED:
-			// TODO: tag information models as removed in db
+			informationModelService := service.InitInformationModelService()
+			err = informationModelService.RemoveInformationModel(context.TODO(), event.FdkId)
 		default:
 			// Ignoring other information model events
 		}
