@@ -82,6 +82,89 @@ db.datasets.insert(
     }
 );
 
+db.createCollection('events', {
+    validator: {
+        $jsonSchema: {
+            bsonType: "object",
+            title: "ID Validation",
+            required: [ "_id" ],
+            properties: {
+                _id: {
+                    bsonType: "string",
+                    minLength: 1,
+                    description: "'_id' must have length over 0"
+                }
+            }
+        }
+    }
+});
+db.events.insert(
+    {
+        "_id": "123",
+        "removed": false,
+        "resource": {
+            "id": "123",
+            "type": "events",
+            "uri": "https://events.digdir.no/321",
+            "identifier": "321",
+            "title": {
+                "nb": "event nb",
+                "nn": "event nn",
+                "en": "event en"
+            },
+            "description": {
+                "nb": "event desc nb",
+                "nn": "event desc nn",
+                "en": "event desc en"
+            }
+        }
+    }
+);
+db.events.insert(
+    {
+        "_id": "111",
+        "removed": false,
+        "resource": {
+            "id": "111",
+            "type": "events",
+            "uri": "https://events.digdir.no/654",
+            "identifier": "654",
+            "title": {
+                "nb": "event nb",
+                "nn": "event nn",
+                "en": "event en"
+            },
+            "description": {
+                "nb": "event desc nb",
+                "nn": "event desc nn",
+                "en": "event desc en"
+            }
+        }
+    }
+);
+db.events.insert(
+    {
+        "_id": "222",
+        "removed": true,
+        "resource": {
+            "id": "222",
+            "type": "events",
+            "uri": "https://events.digdir.no/777",
+            "identifier": "777",
+            "title": {
+                "nb": "removed event nb",
+                "nn": "removed event nn",
+                "en": "removed event en"
+            },
+            "description": {
+                "nb": "removed event desc nb",
+                "nn": "removed event desc nn",
+                "en": "removed event desc en"
+            }
+        }
+    }
+);
+
 db.createCollection('dataServices', {
     validator: {
         $jsonSchema: {
