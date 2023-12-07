@@ -1,12 +1,15 @@
 package kafka
 
 import (
+	"context"
+
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	"github.com/confluentinc/confluent-kafka-go/v2/schemaregistry/serde/avro"
 	"github.com/sirupsen/logrus"
 
 	"github.com/Informasjonsforvaltning/fdk-resource-service/config/logger"
 	modelAvro "github.com/Informasjonsforvaltning/fdk-resource-service/model/avro"
+	"github.com/Informasjonsforvaltning/fdk-resource-service/service"
 )
 
 type ServiceInputType interface {
@@ -29,7 +32,8 @@ func ConsumeServiceMessage(input ServiceInputType) error {
 	if err == nil {
 		switch event.Type {
 		case modelAvro.ServiceEventTypeSERVICE_REMOVED:
-			// TODO: tag service as removed in db
+			serviceService := service.InitServiceService()
+			err = serviceService.RemoveService(context.TODO(), event.FdkId)
 		default:
 			// Ignoring other service messages
 		}

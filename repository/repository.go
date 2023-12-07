@@ -83,6 +83,17 @@ func InitInformationModelRepository() *ResourceRepositoryImpl {
 	return informationModelRepository
 }
 
+var serviceRepository *ResourceRepositoryImpl
+
+func InitServiceRepository() *ResourceRepositoryImpl {
+	if serviceRepository == nil {
+		client := mongodb.Client()
+		collection := mongodb.Collection(client, env.MongoValues.ServicesCollection)
+		serviceRepository = &ResourceRepositoryImpl{client: client, collection: collection}
+	}
+	return serviceRepository
+}
+
 func (r ResourceRepositoryImpl) StoreResources(ctx context.Context, resources []model.DBO) error {
 	var replaceOptions = options.Replace()
 	replaceOptions.Upsert = pointer.Of(true)

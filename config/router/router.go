@@ -32,6 +32,10 @@ func InitializeRoutes(e *gin.Engine) {
 	e.POST(env.PathValues.InformationModels, security.ValidateAPIKey(), handlers.StoreInformationModels())
 	e.GET(env.PathValues.InformationModels, handlers.GetInformationModels())
 	e.GET(env.PathValues.InformationModel, handlers.GetInformationModel())
+
+	e.POST(env.PathValues.Services, security.ValidateAPIKey(), handlers.StoreServices())
+	e.GET(env.PathValues.Services, handlers.GetServices())
+	e.GET(env.PathValues.Service, handlers.GetService())
 }
 
 func Cors() gin.HandlerFunc {

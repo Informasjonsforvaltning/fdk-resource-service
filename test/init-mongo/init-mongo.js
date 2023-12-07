@@ -82,6 +82,89 @@ db.datasets.insert(
     }
 );
 
+db.createCollection('services', {
+    validator: {
+        $jsonSchema: {
+            bsonType: "object",
+            title: "ID Validation",
+            required: [ "_id" ],
+            properties: {
+                _id: {
+                    bsonType: "string",
+                    minLength: 1,
+                    description: "'_id' must have length over 0"
+                }
+            }
+        }
+    }
+});
+db.services.insert(
+    {
+        "_id": "123",
+        "removed": false,
+        "resource": {
+            "id": "123",
+            "type": "services",
+            "uri": "https://services.digdir.no/321",
+            "identifier": "321",
+            "title": {
+                "nb": "service nb",
+                "nn": "service nn",
+                "en": "service en"
+            },
+            "description": {
+                "nb": "service desc nb",
+                "nn": "service desc nn",
+                "en": "service desc en"
+            }
+        }
+    }
+);
+db.services.insert(
+    {
+        "_id": "111",
+        "removed": false,
+        "resource": {
+            "id": "111",
+            "type": "services",
+            "uri": "https://services.digdir.no/654",
+            "identifier": "654",
+            "title": {
+                "nb": "service nb",
+                "nn": "service nn",
+                "en": "service en"
+            },
+            "description": {
+                "nb": "service desc nb",
+                "nn": "service desc nn",
+                "en": "service desc en"
+            }
+        }
+    }
+);
+db.services.insert(
+    {
+        "_id": "222",
+        "removed": true,
+        "resource": {
+            "id": "222",
+            "type": "services",
+            "uri": "https://services.digdir.no/777",
+            "identifier": "777",
+            "title": {
+                "nb": "removed service nb",
+                "nn": "removed service nn",
+                "en": "removed service en"
+            },
+            "description": {
+                "nb": "removed service desc nb",
+                "nn": "removed service desc nn",
+                "en": "removed service desc en"
+            }
+        }
+    }
+);
+
 db.createCollection('events', {
     validator: {
         $jsonSchema: {

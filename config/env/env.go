@@ -48,6 +48,7 @@ type MongoConstants struct {
 	Database                    string
 	EventsCollection            string
 	InformationModelsCollection string
+	ServicesCollection          string
 }
 
 type KafkaConstants struct {
@@ -72,6 +73,8 @@ type Paths struct {
 	Event             string
 	InformationModels string
 	InformationModel  string
+	Services          string
+	Service           string
 }
 
 var MongoValues = MongoConstants{
@@ -81,6 +84,7 @@ var MongoValues = MongoConstants{
 	Database:                    "fdkResourceService",
 	EventsCollection:            "events",
 	InformationModelsCollection: "informationModels",
+	ServicesCollection:          "services",
 }
 
 var KafkaValues = KafkaConstants{
@@ -105,4 +109,6 @@ var PathValues = Paths{
 	Event:             "/events/:id",
 	InformationModels: "/information-models",
 	InformationModel:  "/information-models/:id",
+	Services:          "/services",
+	Service:           "/services/:id",
 }
