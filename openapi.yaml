@@ -1,0 +1,361 @@
+openapi: 3.0.2
+info:
+  version: 1.0.0
+  title: FDK Resource Service
+  contact:
+    name: Digitaliseringsdirektoratet
+    url: 'https://fellesdatakatalog.digdir.no'
+    email: fellesdatakatalog@digdir.no
+  license:
+    name: License of API
+    url: 'http://data.norge.no/nlod/no/2.0'
+servers:
+  - url: 'https://resource.api.fellesdatakatalog.digdir.no'
+    description: Production
+  - url: 'https://resource.api.demo.fellesdatakatalog.digdir.no'
+    description: Demo
+  - url: 'https://resource.api.staging.fellesdatakatalog.digdir.no'
+    description: Test
+paths:
+  /concepts:
+    post:
+      description: Store list of concepts
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/Resource'
+      responses:
+        '200':
+          description: OK
+        '401':
+          description: Not authenticated
+    get:
+      description: Returns all concepts
+      parameters:
+        - in: query
+          name: includeRemoved
+          description: indicate if removed concepts should be included in response, defaults to false
+          required: false
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Resource'
+  /concepts/{id}:
+    get:
+      description: Returns single concept
+      parameters:
+        - name: id
+          in: path
+          description: id of concept
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Resource"
+
+  /data-services:
+    post:
+      description: Store list of data services
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/Resource'
+      responses:
+        '200':
+          description: OK
+        '401':
+          description: Not authenticated
+    get:
+      description: Returns all data services
+      parameters:
+        - in: query
+          name: includeRemoved
+          description: indicate if removed data services should be included in response, defaults to false
+          required: false
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Resource'
+  /data-services/{id}:
+    get:
+      description: Returns single data service
+      parameters:
+        - name: id
+          in: path
+          description: id of data service
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Resource"
+  /datasets:
+    post:
+      description: Store list of datasets
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/Resource'
+      responses:
+        '200':
+          description: OK
+        '401':
+          description: Not authenticated
+    get:
+      description: Returns all datasets
+      parameters:
+        - in: query
+          name: includeRemoved
+          description: indicate if removed datasets should be included in response, defaults to false
+          required: false
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Resource'
+  /datasets/{id}:
+    get:
+      description: Returns single dataset
+      parameters:
+        - name: id
+          in: path
+          description: id of dataset
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Resource"
+  /events:
+    post:
+      description: Store list of events
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/Resource'
+      responses:
+        '200':
+          description: OK
+        '401':
+          description: Not authenticated
+    get:
+      description: Returns all events
+      parameters:
+        - in: query
+          name: includeRemoved
+          description: indicate if removed events should be included in response, defaults to false
+          required: false
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Resource'
+  /events/{id}:
+    get:
+      description: Returns single event
+      parameters:
+        - name: id
+          in: path
+          description: id of event
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Resource"
+  /information-models:
+    post:
+      description: Store list of information models
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/Resource'
+      responses:
+        '200':
+          description: OK
+        '401':
+          description: Not authenticated
+    get:
+      description: Returns all information models
+      parameters:
+        - in: query
+          name: includeRemoved
+          description: indicate if removed information models should be included in response, defaults to false
+          required: false
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Resource'
+  /information-models/{id}:
+    get:
+      description: Returns single information model
+      parameters:
+        - name: id
+          in: path
+          description: id of information model
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Resource"
+  /services:
+    post:
+      description: Store list of services
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/Resource'
+      responses:
+        '200':
+          description: OK
+        '401':
+          description: Not authenticated
+    get:
+      description: Returns all services
+      parameters:
+        - in: query
+          name: includeRemoved
+          description: indicate if removed services should be included in response, defaults to false
+          required: false
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Resource'
+  /services/{id}:
+    get:
+      description: Returns single service
+      parameters:
+        - name: id
+          in: path
+          description: id of service
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Resource"
+
+components:
+  schemas:
+
+    Resource:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Resource id
+      additionalProperties: true
+
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
