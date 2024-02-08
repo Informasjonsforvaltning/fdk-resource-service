@@ -9,19 +9,14 @@ on:
 jobs:
   run-tests:
     name: Run tests
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Set up Go
-        uses: actions/setup-go@v4
-        with:
-          go-version: 1.21.4
-      - name: Test
-        run: go test -v -race -coverpkg=./... -coverprofile=coverage.txt -covermode=atomic ./test
-      - uses: codecov/codecov-action@v4
-        with:
-          files: ./coverage.txt
+    uses: Informasjonsforvaltning/workflows/.github/workflows/coverage-go.yaml@main
+    with:
+      coverage_file_path: ./coverage.txt
+      go_version: 1.21.4
+      test_path: ./test
+    secrets:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   build-fdk-resource-service:
     name: Build fdk-resource-service when pull request is created
