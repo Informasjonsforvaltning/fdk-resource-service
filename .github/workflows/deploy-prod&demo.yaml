@@ -7,6 +7,17 @@ on:
   workflow_dispatch:
 
 jobs:
+  run-tests:
+    name: Run tests
+    uses: Informasjonsforvaltning/workflows/.github/workflows/coverage-go.yaml@main
+    with:
+      coverage_file_path: ./coverage.txt
+      go_version: 1.21.4
+      test_path: ./test
+    secrets:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
   build-production:
     name: Build for prod on merge to main branch
     uses: Informasjonsforvaltning/workflows/.github/workflows/build-push.yaml@main
@@ -21,7 +32,7 @@ jobs:
       GCP_SA_DIGDIR_FDK_GCR_KEY: ${{ secrets.GCP_SA_DIGDIR_FDK_GCR_KEY }}
 
   deploy-to-prod:
-    needs: build-production
+    needs: [run-tests, build-production]
     name: Deploy to prod if build is successful
     uses: Informasjonsforvaltning/workflows/.github/workflows/kustomize-deploy.yaml@main
     with:
