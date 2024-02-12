@@ -39,9 +39,9 @@ func MongoContainerRunner(m *testing.M) {
 			"MONGODB_REPLICA_SET_MODE=primary",
 			"MONGODB_REPLICA_SET_KEY=replicaset",
 		},
-		ExposedPorts: []string{"27017/tcp"},
+		ExposedPorts: []string{"27017"},
 		PortBindings: map[docker.Port][]docker.PortBinding{
-			"27017/tcp": {{HostIP: "localhost", HostPort: "27017/tcp"}},
+			"27017": {{HostIP: "127.0.0.1", HostPort: "27017"}},
 		},
 		Mounts: []string{
 			currentDirectory + "/init-mongo/init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro",
