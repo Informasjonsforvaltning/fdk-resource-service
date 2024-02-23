@@ -9,8 +9,9 @@ type MockConceptHarvested struct{}
 
 func (m MockConceptHarvested) ConceptEvent() (modelAvro.ConceptEvent, error) {
 	return modelAvro.ConceptEvent{
-		Type:  modelAvro.ConceptEventTypeCONCEPT_HARVESTED,
-		FdkId: "111",
+		Type:      modelAvro.ConceptEventTypeCONCEPT_HARVESTED,
+		Timestamp: 123,
+		FdkId:     "111",
 	}, nil
 }
 
@@ -18,8 +19,9 @@ type MockConceptReasoned struct{}
 
 func (m MockConceptReasoned) ConceptEvent() (modelAvro.ConceptEvent, error) {
 	return modelAvro.ConceptEvent{
-		Type:  modelAvro.ConceptEventTypeCONCEPT_REASONED,
-		FdkId: "111",
+		Type:      modelAvro.ConceptEventTypeCONCEPT_REASONED,
+		Timestamp: 123,
+		FdkId:     "111",
 	}, nil
 }
 
@@ -29,12 +31,23 @@ func (m MockConceptError) ConceptEvent() (modelAvro.ConceptEvent, error) {
 	return modelAvro.ConceptEvent{}, errors.New("deserialize error")
 }
 
+type MockConceptOldRemoved struct{}
+
+func (m MockConceptOldRemoved) ConceptEvent() (modelAvro.ConceptEvent, error) {
+	return modelAvro.ConceptEvent{
+		Type:      modelAvro.ConceptEventTypeCONCEPT_REMOVED,
+		Timestamp: 5,
+		FdkId:     "111",
+	}, nil
+}
+
 type MockConceptRemoved struct{}
 
 func (m MockConceptRemoved) ConceptEvent() (modelAvro.ConceptEvent, error) {
 	return modelAvro.ConceptEvent{
-		Type:  modelAvro.ConceptEventTypeCONCEPT_REMOVED,
-		FdkId: "123",
+		Type:      modelAvro.ConceptEventTypeCONCEPT_REMOVED,
+		Timestamp: 123,
+		FdkId:     "123",
 	}, nil
 }
 
@@ -42,7 +55,8 @@ type MockConceptRemovedNotFound struct{}
 
 func (m MockConceptRemovedNotFound) ConceptEvent() (modelAvro.ConceptEvent, error) {
 	return modelAvro.ConceptEvent{
-		Type:  modelAvro.ConceptEventTypeCONCEPT_REMOVED,
-		FdkId: "invalid",
+		Type:      modelAvro.ConceptEventTypeCONCEPT_REMOVED,
+		Timestamp: 123,
+		FdkId:     "invalid",
 	}, nil
 }

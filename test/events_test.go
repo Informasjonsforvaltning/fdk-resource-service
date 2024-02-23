@@ -117,7 +117,7 @@ func TestCreateEvent(t *testing.T) {
 	}
 
 	event0Bytes, _ := json.Marshal(event0)
-	err0 := eventService.StoreEvent(context.TODO(), event0Bytes)
+	err0 := eventService.StoreEvent(context.TODO(), event0Bytes, 100)
 	assert.Nil(t, err0)
 
 	event1 := TestEvent{
@@ -138,7 +138,7 @@ func TestCreateEvent(t *testing.T) {
 	}
 
 	event1Bytes, _ := json.Marshal(event1)
-	err1 := eventService.StoreEvent(context.TODO(), event1Bytes)
+	err1 := eventService.StoreEvent(context.TODO(), event1Bytes, 101)
 	assert.Nil(t, err1)
 
 	app := router.SetupRouter()

@@ -9,8 +9,9 @@ type MockInformationModelHarvested struct{}
 
 func (m MockInformationModelHarvested) InfoModelEvent() (modelAvro.InformationModelEvent, error) {
 	return modelAvro.InformationModelEvent{
-		Type:  modelAvro.InformationModelEventTypeINFORMATION_MODEL_HARVESTED,
-		FdkId: "111",
+		Type:      modelAvro.InformationModelEventTypeINFORMATION_MODEL_HARVESTED,
+		Timestamp: 123,
+		FdkId:     "111",
 	}, nil
 }
 
@@ -18,8 +19,9 @@ type MockInformationModelReasoned struct{}
 
 func (m MockInformationModelReasoned) InfoModelEvent() (modelAvro.InformationModelEvent, error) {
 	return modelAvro.InformationModelEvent{
-		Type:  modelAvro.InformationModelEventTypeINFORMATION_MODEL_REASONED,
-		FdkId: "111",
+		Type:      modelAvro.InformationModelEventTypeINFORMATION_MODEL_REASONED,
+		Timestamp: 123,
+		FdkId:     "111",
 	}, nil
 }
 
@@ -29,12 +31,23 @@ func (m MockInformationModelError) InfoModelEvent() (modelAvro.InformationModelE
 	return modelAvro.InformationModelEvent{}, errors.New("deserialize error")
 }
 
+type MockInformationModelOldRemoved struct{}
+
+func (m MockInformationModelOldRemoved) InfoModelEvent() (modelAvro.InformationModelEvent, error) {
+	return modelAvro.InformationModelEvent{
+		Type:      modelAvro.InformationModelEventTypeINFORMATION_MODEL_REMOVED,
+		Timestamp: 5,
+		FdkId:     "111",
+	}, nil
+}
+
 type MockInformationModelRemoved struct{}
 
 func (m MockInformationModelRemoved) InfoModelEvent() (modelAvro.InformationModelEvent, error) {
 	return modelAvro.InformationModelEvent{
-		Type:  modelAvro.InformationModelEventTypeINFORMATION_MODEL_REMOVED,
-		FdkId: "123",
+		Type:      modelAvro.InformationModelEventTypeINFORMATION_MODEL_REMOVED,
+		Timestamp: 123,
+		FdkId:     "123",
 	}, nil
 }
 
@@ -42,7 +55,8 @@ type MockInformationModelRemovedNotFound struct{}
 
 func (m MockInformationModelRemovedNotFound) InfoModelEvent() (modelAvro.InformationModelEvent, error) {
 	return modelAvro.InformationModelEvent{
-		Type:  modelAvro.InformationModelEventTypeINFORMATION_MODEL_REMOVED,
-		FdkId: "invalid",
+		Type:      modelAvro.InformationModelEventTypeINFORMATION_MODEL_REMOVED,
+		Timestamp: 123,
+		FdkId:     "invalid",
 	}, nil
 }

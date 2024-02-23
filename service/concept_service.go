@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"github.com/Informasjonsforvaltning/fdk-resource-service/model"
 	"github.com/Informasjonsforvaltning/fdk-resource-service/utils/mappers"
 	"net/http"
 	"strings"
@@ -56,21 +57,36 @@ func (service ConceptService) GetConcept(ctx context.Context, id string) (map[st
 	}
 }
 
-func (service ConceptService) StoreConcept(ctx context.Context, bytes []byte) error {
+func (service ConceptService) StoreConcept(ctx context.Context, bytes []byte, timestamp int64) error {
 	var concept map[string]interface{}
 	err := json.Unmarshal(bytes, &concept)
 	if err != nil {
 		return err
 	}
 
-	return service.ConceptRepository.StoreResource(ctx, mappers.ToDBO(concept))
+	id := concept["id"].(string)
+	dbo, _ := service.ConceptRepository.GetResource(ctx, id)
+	updated := model.DBO{
+		ID:       id,
+		Resource: concept,
+	}
+	if dbo.Timestamp < timestamp {
+		updated.Removed = false
+		updated.Timestamp = timestamp
+	} else {
+		updated.Removed = dbo.Removed
+		updated.Timestamp = dbo.Timestamp
+	}
+
+	return service.ConceptRepository.StoreResource(ctx, updated)
 }
 
-func (service ConceptService) RemoveConcept(ctx context.Context, id string) error {
+func (service ConceptService) RemoveConcept(ctx context.Context, id string, timestamp int64) error {
 	logrus.Infof("Tagging concept %s as removed", id)
 	concept, err := service.ConceptRepository.GetResource(ctx, id)
-	if err == nil {
+	if err == nil && concept.Timestamp < timestamp {
 		concept.Removed = true
+		concept.Timestamp = timestamp
 		err = service.ConceptRepository.StoreResource(ctx, concept)
 	}
 

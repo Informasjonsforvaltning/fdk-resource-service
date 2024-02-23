@@ -9,8 +9,9 @@ type MockServiceHarvested struct{}
 
 func (m MockServiceHarvested) ServiceEvent() (modelAvro.ServiceEvent, error) {
 	return modelAvro.ServiceEvent{
-		Type:  modelAvro.ServiceEventTypeSERVICE_HARVESTED,
-		FdkId: "111",
+		Type:      modelAvro.ServiceEventTypeSERVICE_HARVESTED,
+		Timestamp: 123,
+		FdkId:     "111",
 	}, nil
 }
 
@@ -18,8 +19,9 @@ type MockServiceReasoned struct{}
 
 func (m MockServiceReasoned) ServiceEvent() (modelAvro.ServiceEvent, error) {
 	return modelAvro.ServiceEvent{
-		Type:  modelAvro.ServiceEventTypeSERVICE_REASONED,
-		FdkId: "111",
+		Type:      modelAvro.ServiceEventTypeSERVICE_REASONED,
+		Timestamp: 123,
+		FdkId:     "111",
 	}, nil
 }
 
@@ -29,12 +31,23 @@ func (m MockServiceError) ServiceEvent() (modelAvro.ServiceEvent, error) {
 	return modelAvro.ServiceEvent{}, errors.New("deserialize error")
 }
 
+type MockServiceOldRemoved struct{}
+
+func (m MockServiceOldRemoved) ServiceEvent() (modelAvro.ServiceEvent, error) {
+	return modelAvro.ServiceEvent{
+		Type:      modelAvro.ServiceEventTypeSERVICE_REMOVED,
+		Timestamp: 5,
+		FdkId:     "111",
+	}, nil
+}
+
 type MockServiceRemoved struct{}
 
 func (m MockServiceRemoved) ServiceEvent() (modelAvro.ServiceEvent, error) {
 	return modelAvro.ServiceEvent{
-		Type:  modelAvro.ServiceEventTypeSERVICE_REMOVED,
-		FdkId: "123",
+		Type:      modelAvro.ServiceEventTypeSERVICE_REMOVED,
+		Timestamp: 123,
+		FdkId:     "123",
 	}, nil
 }
 
@@ -42,7 +55,8 @@ type MockServiceRemovedNotFound struct{}
 
 func (m MockServiceRemovedNotFound) ServiceEvent() (modelAvro.ServiceEvent, error) {
 	return modelAvro.ServiceEvent{
-		Type:  modelAvro.ServiceEventTypeSERVICE_REMOVED,
-		FdkId: "invalid",
+		Type:      modelAvro.ServiceEventTypeSERVICE_REMOVED,
+		Timestamp: 123,
+		FdkId:     "invalid",
 	}, nil
 }

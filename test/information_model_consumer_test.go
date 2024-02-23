@@ -26,6 +26,12 @@ func TestInformationModelReasonedIsIgnored(t *testing.T) {
 	assert.NotEqual(t, true, dbo.Removed)
 }
 
+func TestInformationModelRemovedIsRemovedWhenMessageIsOld(t *testing.T) {
+	kafka.ConsumeInfoModelMessage(MockInformationModelOldRemoved{})
+	dbo, _ := informationModelRepository.GetResource(context.TODO(), "111")
+	assert.Equal(t, false, dbo.Removed)
+}
+
 func TestInformationModelRemovedTagsInformationModelAsRemoved(t *testing.T) {
 	kafka.ConsumeInfoModelMessage(MockInformationModelRemoved{})
 	dbo, _ := informationModelRepository.GetResource(context.TODO(), "123")

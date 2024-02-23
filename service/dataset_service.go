@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"github.com/Informasjonsforvaltning/fdk-resource-service/model"
 	"net/http"
 	"strings"
 
@@ -56,21 +57,36 @@ func (service DatasetService) GetDataset(ctx context.Context, id string) (map[st
 	}
 }
 
-func (service DatasetService) StoreDataset(ctx context.Context, bytes []byte) error {
+func (service DatasetService) StoreDataset(ctx context.Context, bytes []byte, timestamp int64) error {
 	var dataset map[string]interface{}
 	err := json.Unmarshal(bytes, &dataset)
 	if err != nil {
 		return err
 	}
 
-	return service.DatasetRepository.StoreResource(ctx, mappers.ToDBO(dataset))
+	id := dataset["id"].(string)
+	dbo, _ := service.DatasetRepository.GetResource(ctx, id)
+	updated := model.DBO{
+		ID:       id,
+		Resource: dataset,
+	}
+	if dbo.Timestamp < timestamp {
+		updated.Removed = false
+		updated.Timestamp = timestamp
+	} else {
+		updated.Removed = dbo.Removed
+		updated.Timestamp = dbo.Timestamp
+	}
+
+	return service.DatasetRepository.StoreResource(ctx, updated)
 }
 
-func (service DatasetService) RemoveDataset(ctx context.Context, id string) error {
+func (service DatasetService) RemoveDataset(ctx context.Context, id string, timestamp int64) error {
 	logrus.Infof("Tagging dataset %s as removed", id)
 	dataset, err := service.DatasetRepository.GetResource(ctx, id)
-	if err == nil {
+	if err == nil && dataset.Timestamp < timestamp {
 		dataset.Removed = true
+		dataset.Timestamp = timestamp
 		err = service.DatasetRepository.StoreResource(ctx, dataset)
 	}
 

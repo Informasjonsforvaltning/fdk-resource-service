@@ -33,7 +33,7 @@ func ConsumeInfoModelMessage(input InfoModelInputType) error {
 		switch event.Type {
 		case modelAvro.InformationModelEventTypeINFORMATION_MODEL_REMOVED:
 			informationModelService := service.InitInformationModelService()
-			err = informationModelService.RemoveInformationModel(context.TODO(), event.FdkId)
+			err = informationModelService.RemoveInformationModel(context.TODO(), event.FdkId, event.Timestamp)
 		default:
 			// Ignoring other information model events
 		}

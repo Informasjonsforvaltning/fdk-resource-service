@@ -19,6 +19,7 @@ db.datasets.insert(
     {
         "_id": "123",
         "removed": false,
+        "timestamp": 10,
         "resource": {
             "id": "123",
             "type": "datasets",
@@ -41,6 +42,7 @@ db.datasets.insert(
     {
         "_id": "111",
         "removed": false,
+        "timestamp": 10,
         "resource": {
             "id": "111",
             "type": "datasets",
@@ -63,6 +65,7 @@ db.datasets.insert(
     {
         "_id": "222",
         "removed": true,
+        "timestamp": 10,
         "resource": {
             "id": "222",
             "type": "datasets",
@@ -84,9 +87,20 @@ db.datasets.insert(
 db.datasets.insert(
     {
         "_id": "333",
-        "removed": false,
+        "removed": true,
+        "timestamp": 10,
         "resource": {
             "id": "333"
+        }
+    }
+);
+db.datasets.insert(
+    {
+        "_id": "444",
+        "removed": true,
+        "timestamp": 10,
+        "resource": {
+            "id": "444"
         }
     }
 );
@@ -111,6 +125,7 @@ db.services.insert(
     {
         "_id": "123",
         "removed": false,
+        "timestamp": 10,
         "resource": {
             "id": "123",
             "type": "services",
@@ -133,6 +148,7 @@ db.services.insert(
     {
         "_id": "111",
         "removed": false,
+        "timestamp": 10,
         "resource": {
             "id": "111",
             "type": "services",
@@ -155,6 +171,7 @@ db.services.insert(
     {
         "_id": "222",
         "removed": true,
+        "timestamp": 10,
         "resource": {
             "id": "222",
             "type": "services",
@@ -176,9 +193,20 @@ db.services.insert(
 db.services.insert(
     {
         "_id": "333",
-        "removed": false,
+        "removed": true,
+        "timestamp": 10,
         "resource": {
             "id": "333"
+        }
+    }
+);
+db.services.insert(
+    {
+        "_id": "444",
+        "removed": true,
+        "timestamp": 10,
+        "resource": {
+            "id": "444"
         }
     }
 );
@@ -203,6 +231,7 @@ db.events.insert(
     {
         "_id": "123",
         "removed": false,
+        "timestamp": 10,
         "resource": {
             "id": "123",
             "type": "events",
@@ -225,6 +254,7 @@ db.events.insert(
     {
         "_id": "111",
         "removed": false,
+        "timestamp": 10,
         "resource": {
             "id": "111",
             "type": "events",
@@ -247,6 +277,7 @@ db.events.insert(
     {
         "_id": "222",
         "removed": true,
+        "timestamp": 10,
         "resource": {
             "id": "222",
             "type": "events",
@@ -268,9 +299,20 @@ db.events.insert(
 db.events.insert(
     {
         "_id": "333",
-        "removed": false,
+        "removed": true,
+        "timestamp": 10,
         "resource": {
             "id": "333"
+        }
+    }
+);
+db.events.insert(
+    {
+        "_id": "444",
+        "removed": true,
+        "timestamp": 10,
+        "resource": {
+            "id": "444"
         }
     }
 );
@@ -295,6 +337,7 @@ db.informationModels.insert(
     {
         "_id": "123",
         "removed": false,
+        "timestamp": 10,
         "resource": {
             "id": "123",
             "type": "informationModels",
@@ -317,6 +360,7 @@ db.informationModels.insert(
     {
         "_id": "111",
         "removed": false,
+        "timestamp": 10,
         "resource": {
             "id": "111",
             "type": "informationModels",
@@ -339,6 +383,7 @@ db.informationModels.insert(
     {
         "_id": "222",
         "removed": true,
+        "timestamp": 10,
         "resource": {
             "id": "222",
             "type": "informationModels",
@@ -360,9 +405,20 @@ db.informationModels.insert(
 db.informationModels.insert(
     {
         "_id": "333",
-        "removed": false,
+        "removed": true,
+        "timestamp": 10,
         "resource": {
             "id": "333"
+        }
+    }
+);
+db.informationModels.insert(
+    {
+        "_id": "444",
+        "removed": true,
+        "timestamp": 10,
+        "resource": {
+            "id": "444"
         }
     }
 );
@@ -387,6 +443,7 @@ db.dataServices.insert(
     {
         "_id": "123",
         "removed": false,
+        "timestamp": 10,
         "resource": {
             "id": "123",
             "type": "dataServices",
@@ -409,6 +466,7 @@ db.dataServices.insert(
     {
         "_id": "111",
         "removed": false,
+        "timestamp": 10,
         "resource": {
             "id": "111",
             "type": "dataServices",
@@ -431,6 +489,7 @@ db.dataServices.insert(
     {
         "_id": "222",
         "removed": true,
+        "timestamp": 10,
         "resource": {
             "id": "222",
             "type": "dataServices",
@@ -452,9 +511,20 @@ db.dataServices.insert(
 db.dataServices.insert(
     {
         "_id": "333",
-        "removed": false,
+        "removed": true,
+        "timestamp": 10,
         "resource": {
             "id": "333"
+        }
+    }
+);
+db.dataServices.insert(
+    {
+        "_id": "444",
+        "removed": true,
+        "timestamp": 10,
+        "resource": {
+            "id": "444"
         }
     }
 );
@@ -479,6 +549,7 @@ db.concepts.insert(
     {
         "_id": "123",
         "removed": false,
+        "timestamp": 10,
         "resource": {
             "id": "123",
             "type": "concepts",
@@ -501,6 +572,7 @@ db.concepts.insert(
     {
         "_id": "111",
         "removed": false,
+        "timestamp": 10,
         "resource": {
             "id": "111",
             "type": "concepts",
@@ -523,6 +595,7 @@ db.concepts.insert(
     {
         "_id": "222",
         "removed": true,
+        "timestamp": 10,
         "resource": {
             "id": "222",
             "type": "concepts",
@@ -544,9 +617,20 @@ db.concepts.insert(
 db.concepts.insert(
     {
         "_id": "333",
-        "removed": false,
+        "removed": true,
+        "timestamp": 10,
         "resource": {
             "id": "333"
+        }
+    }
+);
+db.concepts.insert(
+    {
+        "_id": "444",
+        "removed": true,
+        "timestamp": 10,
+        "resource": {
+            "id": "444"
         }
     }
 );

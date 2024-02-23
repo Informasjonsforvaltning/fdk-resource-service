@@ -117,7 +117,7 @@ func TestCreateDataService(t *testing.T) {
 	}
 
 	dataService0Bytes, _ := json.Marshal(dataService0)
-	err0 := dataServiceService.StoreDataService(context.TODO(), dataService0Bytes)
+	err0 := dataServiceService.StoreDataService(context.TODO(), dataService0Bytes, 100)
 	assert.Nil(t, err0)
 
 	dataService1 := TestDataService{
@@ -138,7 +138,7 @@ func TestCreateDataService(t *testing.T) {
 	}
 
 	dataService1Bytes, _ := json.Marshal(dataService1)
-	err1 := dataServiceService.StoreDataService(context.TODO(), dataService1Bytes)
+	err1 := dataServiceService.StoreDataService(context.TODO(), dataService1Bytes, 101)
 	assert.Nil(t, err1)
 
 	app := router.SetupRouter()

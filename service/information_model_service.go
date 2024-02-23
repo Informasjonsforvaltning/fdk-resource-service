@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"github.com/Informasjonsforvaltning/fdk-resource-service/model"
 	"github.com/Informasjonsforvaltning/fdk-resource-service/utils/mappers"
 	"net/http"
 	"strings"
@@ -56,21 +57,36 @@ func (service InformationModelService) GetInformationModel(ctx context.Context, 
 	}
 }
 
-func (service InformationModelService) StoreInformationModel(ctx context.Context, bytes []byte) error {
+func (service InformationModelService) StoreInformationModel(ctx context.Context, bytes []byte, timestamp int64) error {
 	var informationModel map[string]interface{}
 	err := json.Unmarshal(bytes, &informationModel)
 	if err != nil {
 		return err
 	}
 
-	return service.InformationModelRepository.StoreResource(ctx, mappers.ToDBO(informationModel))
+	id := informationModel["id"].(string)
+	dbo, _ := service.InformationModelRepository.GetResource(ctx, id)
+	updated := model.DBO{
+		ID:       id,
+		Resource: informationModel,
+	}
+	if dbo.Timestamp < timestamp {
+		updated.Removed = false
+		updated.Timestamp = timestamp
+	} else {
+		updated.Removed = dbo.Removed
+		updated.Timestamp = dbo.Timestamp
+	}
+
+	return service.InformationModelRepository.StoreResource(ctx, updated)
 }
 
-func (service InformationModelService) RemoveInformationModel(ctx context.Context, id string) error {
+func (service InformationModelService) RemoveInformationModel(ctx context.Context, id string, timestamp int64) error {
 	logrus.Infof("Tagging information model %s as removed", id)
 	informationModel, err := service.InformationModelRepository.GetResource(ctx, id)
-	if err == nil {
+	if err == nil && informationModel.Timestamp < timestamp {
 		informationModel.Removed = true
+		informationModel.Timestamp = timestamp
 		err = service.InformationModelRepository.StoreResource(ctx, informationModel)
 	}
 

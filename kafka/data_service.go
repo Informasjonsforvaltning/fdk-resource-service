@@ -33,7 +33,7 @@ func ConsumeDataServiceMessage(input DataServiceInputType) error {
 		switch event.Type {
 		case modelAvro.DataServiceEventTypeDATA_SERVICE_REMOVED:
 			dataServiceService := service.InitDataServiceService()
-			err = dataServiceService.RemoveDataService(context.TODO(), event.FdkId)
+			err = dataServiceService.RemoveDataService(context.TODO(), event.FdkId, event.Timestamp)
 		default:
 			// Ignoring other data service messages
 		}
