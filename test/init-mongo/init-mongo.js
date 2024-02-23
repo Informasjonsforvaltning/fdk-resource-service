@@ -81,6 +81,15 @@ db.datasets.insert(
         }
     }
 );
+db.datasets.insert(
+    {
+        "_id": "333",
+        "removed": false,
+        "resource": {
+            "id": "333"
+        }
+    }
+);
 
 db.createCollection('services', {
     validator: {
@@ -161,6 +170,15 @@ db.services.insert(
                 "nn": "removed service desc nn",
                 "en": "removed service desc en"
             }
+        }
+    }
+);
+db.services.insert(
+    {
+        "_id": "333",
+        "removed": false,
+        "resource": {
+            "id": "333"
         }
     }
 );
@@ -247,6 +265,15 @@ db.events.insert(
         }
     }
 );
+db.events.insert(
+    {
+        "_id": "333",
+        "removed": false,
+        "resource": {
+            "id": "333"
+        }
+    }
+);
 
 db.createCollection('informationModels', {
     validator: {
@@ -327,6 +354,15 @@ db.informationModels.insert(
                 "nn": "removed information model desc nn",
                 "en": "removed information model desc en"
             }
+        }
+    }
+);
+db.informationModels.insert(
+    {
+        "_id": "333",
+        "removed": false,
+        "resource": {
+            "id": "333"
         }
     }
 );
@@ -413,6 +449,15 @@ db.dataServices.insert(
         }
     }
 );
+db.dataServices.insert(
+    {
+        "_id": "333",
+        "removed": false,
+        "resource": {
+            "id": "333"
+        }
+    }
+);
 
 db.createCollection('concepts', {
     validator: {
@@ -493,6 +538,15 @@ db.concepts.insert(
                 "nn": "removed concept desc nn",
                 "en": "removed concept desc en"
             }
+        }
+    }
+);
+db.concepts.insert(
+    {
+        "_id": "333",
+        "removed": false,
+        "resource": {
+            "id": "333"
         }
     }
 );

@@ -7,10 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/Informasjonsforvaltning/fdk-resource-service/kafka"
-	"github.com/Informasjonsforvaltning/fdk-resource-service/repository"
 )
-
-var eventRepository = repository.InitEventRepository()
 
 func TestEventErrorReturnsError(t *testing.T) {
 	err := kafka.ConsumeEventMessage(MockEventError{})

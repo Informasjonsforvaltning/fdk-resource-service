@@ -53,6 +53,7 @@ type KafkaConstants struct {
 	DatasetTopic     string
 	EventTopic       string
 	InfoModelTopic   string
+	RdfParseTopic    string
 	ServiceTopic     string
 }
 
@@ -89,6 +90,7 @@ var KafkaValues = KafkaConstants{
 	DatasetTopic:     "dataset-events",
 	EventTopic:       "event-events",
 	InfoModelTopic:   "information-model-events",
+	RdfParseTopic:    "rdf-parse-events",
 	ServiceTopic:     "service-events",
 }
 
