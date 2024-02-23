@@ -3,11 +3,8 @@ package handlers
 import (
 	"net/http"
 
-	"github.com/gin-gonic/gin"
-	"github.com/sirupsen/logrus"
-
-	"github.com/Informasjonsforvaltning/fdk-resource-service/config/logger"
 	"github.com/Informasjonsforvaltning/fdk-resource-service/service"
+	"github.com/gin-gonic/gin"
 )
 
 func GetConcepts() func(c *gin.Context) {
@@ -30,23 +27,6 @@ func GetConcept() func(c *gin.Context) {
 		if status == http.StatusOK {
 			c.JSON(status, concept)
 		} else {
-			c.Status(status)
-		}
-	}
-}
-
-func StoreConcepts() func(c *gin.Context) {
-	conceptService := service.InitConceptService()
-	return func(c *gin.Context) {
-		bytes, err := c.GetRawData()
-
-		if err != nil {
-			logrus.Errorf("Unable to get bytes from request.")
-			logger.LogAndPrintError(err)
-
-			c.JSON(http.StatusBadRequest, err.Error())
-		} else {
-			status := conceptService.StoreConcepts(c.Request.Context(), bytes)
 			c.Status(status)
 		}
 	}
