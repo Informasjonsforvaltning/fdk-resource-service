@@ -12,7 +12,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 
 	"github.com/Informasjonsforvaltning/fdk-resource-service/config/logger"
-	"github.com/Informasjonsforvaltning/fdk-resource-service/model"
 	"github.com/Informasjonsforvaltning/fdk-resource-service/repository"
 )
 
@@ -57,22 +56,14 @@ func (service InformationModelService) GetInformationModel(ctx context.Context, 
 	}
 }
 
-func (service InformationModelService) StoreInformationModels(ctx context.Context, bytes []byte) int {
-	var informationModels []map[string]interface{}
-	err := json.Unmarshal(bytes, &informationModels)
+func (service InformationModelService) StoreInformationModel(ctx context.Context, bytes []byte) error {
+	var informationModel map[string]interface{}
+	err := json.Unmarshal(bytes, &informationModel)
 	if err != nil {
-		logrus.Error("Unable to unmarshal information models")
-		logger.LogAndPrintError(err)
-		return http.StatusBadRequest
+		return err
 	}
 
-	err = service.InformationModelRepository.StoreResources(ctx, mappers.ToDBO(informationModels))
-	if err != nil {
-		logrus.Error("Could not store information models")
-		logger.LogAndPrintError(err)
-		return http.StatusInternalServerError
-	}
-	return http.StatusOK
+	return service.InformationModelRepository.StoreResource(ctx, mappers.ToDBO(informationModel))
 }
 
 func (service InformationModelService) RemoveInformationModel(ctx context.Context, id string) error {
@@ -80,7 +71,7 @@ func (service InformationModelService) RemoveInformationModel(ctx context.Contex
 	informationModel, err := service.InformationModelRepository.GetResource(ctx, id)
 	if err == nil {
 		informationModel.Removed = true
-		err = service.InformationModelRepository.StoreResources(ctx, []model.DBO{informationModel})
+		err = service.InformationModelRepository.StoreResource(ctx, informationModel)
 	}
 
 	return err

@@ -12,7 +12,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 
 	"github.com/Informasjonsforvaltning/fdk-resource-service/config/logger"
-	"github.com/Informasjonsforvaltning/fdk-resource-service/model"
 	"github.com/Informasjonsforvaltning/fdk-resource-service/repository"
 )
 
@@ -57,22 +56,14 @@ func (service EventService) GetEvent(ctx context.Context, id string) (map[string
 	}
 }
 
-func (service EventService) StoreEvents(ctx context.Context, bytes []byte) int {
-	var events []map[string]interface{}
-	err := json.Unmarshal(bytes, &events)
+func (service EventService) StoreEvent(ctx context.Context, bytes []byte) error {
+	var event map[string]interface{}
+	err := json.Unmarshal(bytes, &event)
 	if err != nil {
-		logrus.Error("Unable to unmarshal events")
-		logger.LogAndPrintError(err)
-		return http.StatusBadRequest
+		return err
 	}
 
-	err = service.EventRepository.StoreResources(ctx, mappers.ToDBO(events))
-	if err != nil {
-		logrus.Error("Could not store events")
-		logger.LogAndPrintError(err)
-		return http.StatusInternalServerError
-	}
-	return http.StatusOK
+	return service.EventRepository.StoreResource(ctx, mappers.ToDBO(event))
 }
 
 func (service EventService) RemoveEvent(ctx context.Context, id string) error {
@@ -80,7 +71,7 @@ func (service EventService) RemoveEvent(ctx context.Context, id string) error {
 	event, err := service.EventRepository.GetResource(ctx, id)
 	if err == nil {
 		event.Removed = true
-		err = service.EventRepository.StoreResources(ctx, []model.DBO{event})
+		err = service.EventRepository.StoreResource(ctx, event)
 	}
 
 	return err

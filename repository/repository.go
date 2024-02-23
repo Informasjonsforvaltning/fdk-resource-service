@@ -18,7 +18,7 @@ import (
 )
 
 type ResourceRepository interface {
-	StoreResources(ctx context.Context, resources []model.DBO) error
+	StoreResource(ctx context.Context, resource model.DBO) error
 	GetResources(ctx context.Context, query bson.D) ([]model.DBO, error)
 	GetResource(ctx context.Context, id string) (model.DBO, error)
 }
@@ -94,7 +94,7 @@ func InitServiceRepository() *ResourceRepositoryImpl {
 	return serviceRepository
 }
 
-func (r ResourceRepositoryImpl) StoreResources(ctx context.Context, resources []model.DBO) error {
+func (r ResourceRepositoryImpl) StoreResource(ctx context.Context, resource model.DBO) error {
 	var replaceOptions = options.Replace()
 	replaceOptions.Upsert = pointer.Of(true)
 
@@ -108,12 +108,10 @@ func (r ResourceRepositoryImpl) StoreResources(ctx context.Context, resources []
 			return err
 		}
 
-		for _, dbo := range resources {
-			_, err := r.collection.ReplaceOne(sctx, bson.D{{Key: "_id", Value: dbo.ID}}, dbo, replaceOptions)
-			if err != nil {
-				sctx.AbortTransaction(sctx)
-				return err
-			}
+		_, err = r.collection.ReplaceOne(sctx, bson.D{{Key: "_id", Value: resource.ID}}, resource, replaceOptions)
+		if err != nil {
+			sctx.AbortTransaction(sctx)
+			return err
 		}
 		for {
 			err = sctx.CommitTransaction(sctx)

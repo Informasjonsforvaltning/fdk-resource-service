@@ -1,8 +1,10 @@
 package test
 
 import (
+	"context"
 	"encoding/json"
 	"github.com/Informasjonsforvaltning/fdk-resource-service/config/router"
+	"github.com/Informasjonsforvaltning/fdk-resource-service/service"
 	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"
@@ -92,4 +94,72 @@ func TestGetDataServicesIncludeRemoved(t *testing.T) {
 		ids = append(ids, dataService.ID)
 	}
 	assert.True(t, slices.Contains(ids, "222"))
+}
+
+func TestCreateDataService(t *testing.T) {
+	dataServiceService := service.InitDataServiceService()
+
+	dataService0 := TestDataService{
+		ID:         "000",
+		Type:       "dataServices",
+		Uri:        "https://data-services.digdir.no/987",
+		Identifier: "987",
+		Title: map[string]string{
+			"nb": "nb",
+			"nn": "nn",
+			"en": "en",
+		},
+		Description: map[string]string{
+			"nb": "desc nb",
+			"nn": "desc nn",
+			"en": "desc en",
+		},
+	}
+
+	dataService0Bytes, _ := json.Marshal(dataService0)
+	err0 := dataServiceService.StoreDataService(context.TODO(), dataService0Bytes)
+	assert.Nil(t, err0)
+
+	dataService1 := TestDataService{
+		ID:         "111",
+		Type:       "dataServices",
+		Uri:        "https://data-services.digdir.no/654",
+		Identifier: "654",
+		Title: map[string]string{
+			"nb": "updated data service nb",
+			"nn": "updated data service nn",
+			"en": "updated data service en",
+		},
+		Description: map[string]string{
+			"nb": "updated data service desc nb",
+			"nn": "updated data service desc nn",
+			"en": "updated data service desc en",
+		},
+	}
+
+	dataService1Bytes, _ := json.Marshal(dataService1)
+	err1 := dataServiceService.StoreDataService(context.TODO(), dataService1Bytes)
+	assert.Nil(t, err1)
+
+	app := router.SetupRouter()
+
+	wGet0 := httptest.NewRecorder()
+	reqGet0, _ := http.NewRequest("GET", "/data-services/000", nil)
+	app.ServeHTTP(wGet0, reqGet0)
+	assert.Equal(t, http.StatusOK, wGet0.Code)
+
+	var created TestDataService
+	err0 = json.Unmarshal(wGet0.Body.Bytes(), &created)
+	assert.Nil(t, err0)
+	assert.Equal(t, dataService0, created)
+
+	wGet1 := httptest.NewRecorder()
+	reqGet1, _ := http.NewRequest("GET", "/data-services/111", nil)
+	app.ServeHTTP(wGet1, reqGet1)
+	assert.Equal(t, http.StatusOK, wGet1.Code)
+
+	var updated TestDataService
+	err1 = json.Unmarshal(wGet1.Body.Bytes(), &updated)
+	assert.Nil(t, err1)
+	assert.Equal(t, dataService1, updated)
 }

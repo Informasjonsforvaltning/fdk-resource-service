@@ -12,7 +12,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 
 	"github.com/Informasjonsforvaltning/fdk-resource-service/config/logger"
-	"github.com/Informasjonsforvaltning/fdk-resource-service/model"
 	"github.com/Informasjonsforvaltning/fdk-resource-service/repository"
 )
 
@@ -57,22 +56,14 @@ func (service DataServiceService) GetDataService(ctx context.Context, id string)
 	}
 }
 
-func (service DataServiceService) StoreDataServices(ctx context.Context, bytes []byte) int {
-	var dataServices []map[string]interface{}
-	err := json.Unmarshal(bytes, &dataServices)
+func (service DataServiceService) StoreDataService(ctx context.Context, bytes []byte) error {
+	var dataService map[string]interface{}
+	err := json.Unmarshal(bytes, &dataService)
 	if err != nil {
-		logrus.Error("Unable to unmarshal data services")
-		logger.LogAndPrintError(err)
-		return http.StatusBadRequest
+		return err
 	}
 
-	err = service.DataServiceRepository.StoreResources(ctx, mappers.ToDBO(dataServices))
-	if err != nil {
-		logrus.Error("Could not store data services")
-		logger.LogAndPrintError(err)
-		return http.StatusInternalServerError
-	}
-	return http.StatusOK
+	return service.DataServiceRepository.StoreResource(ctx, mappers.ToDBO(dataService))
 }
 
 func (service DataServiceService) RemoveDataService(ctx context.Context, id string) error {
@@ -80,7 +71,7 @@ func (service DataServiceService) RemoveDataService(ctx context.Context, id stri
 	dataService, err := service.DataServiceRepository.GetResource(ctx, id)
 	if err == nil {
 		dataService.Removed = true
-		err = service.DataServiceRepository.StoreResources(ctx, []model.DBO{dataService})
+		err = service.DataServiceRepository.StoreResource(ctx, dataService)
 	}
 
 	return err

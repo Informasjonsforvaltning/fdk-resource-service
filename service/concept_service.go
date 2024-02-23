@@ -12,7 +12,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 
 	"github.com/Informasjonsforvaltning/fdk-resource-service/config/logger"
-	"github.com/Informasjonsforvaltning/fdk-resource-service/model"
 	"github.com/Informasjonsforvaltning/fdk-resource-service/repository"
 )
 
@@ -57,22 +56,14 @@ func (service ConceptService) GetConcept(ctx context.Context, id string) (map[st
 	}
 }
 
-func (service ConceptService) StoreConcepts(ctx context.Context, bytes []byte) int {
-	var concepts []map[string]interface{}
-	err := json.Unmarshal(bytes, &concepts)
+func (service ConceptService) StoreConcept(ctx context.Context, bytes []byte) error {
+	var concept map[string]interface{}
+	err := json.Unmarshal(bytes, &concept)
 	if err != nil {
-		logrus.Error("Unable to unmarshal concepts")
-		logger.LogAndPrintError(err)
-		return http.StatusBadRequest
+		return err
 	}
 
-	err = service.ConceptRepository.StoreResources(ctx, mappers.ToDBO(concepts))
-	if err != nil {
-		logrus.Error("Could not store concepts")
-		logger.LogAndPrintError(err)
-		return http.StatusInternalServerError
-	}
-	return http.StatusOK
+	return service.ConceptRepository.StoreResource(ctx, mappers.ToDBO(concept))
 }
 
 func (service ConceptService) RemoveConcept(ctx context.Context, id string) error {
@@ -80,7 +71,7 @@ func (service ConceptService) RemoveConcept(ctx context.Context, id string) erro
 	concept, err := service.ConceptRepository.GetResource(ctx, id)
 	if err == nil {
 		concept.Removed = true
-		err = service.ConceptRepository.StoreResources(ctx, []model.DBO{concept})
+		err = service.ConceptRepository.StoreResource(ctx, concept)
 	}
 
 	return err

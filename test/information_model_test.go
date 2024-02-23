@@ -1,8 +1,10 @@
 package test
 
 import (
+	"context"
 	"encoding/json"
 	"github.com/Informasjonsforvaltning/fdk-resource-service/config/router"
+	"github.com/Informasjonsforvaltning/fdk-resource-service/service"
 	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"
@@ -92,4 +94,72 @@ func TestGetInformationModelsIncludeRemoved(t *testing.T) {
 		ids = append(ids, informationModel.ID)
 	}
 	assert.True(t, slices.Contains(ids, "222"))
+}
+
+func TestCreateInformationModel(t *testing.T) {
+	informationModelService := service.InitInformationModelService()
+
+	informationModel0 := TestInformationModel{
+		ID:         "000",
+		Type:       "informationModels",
+		Uri:        "https://information-models.digdir.no/987",
+		Identifier: "987",
+		Title: map[string]string{
+			"nb": "nb",
+			"nn": "nn",
+			"en": "en",
+		},
+		Description: map[string]string{
+			"nb": "desc nb",
+			"nn": "desc nn",
+			"en": "desc en",
+		},
+	}
+
+	informationModel0Bytes, _ := json.Marshal(informationModel0)
+	err0 := informationModelService.StoreInformationModel(context.TODO(), informationModel0Bytes)
+	assert.Nil(t, err0)
+
+	informationModel1 := TestInformationModel{
+		ID:         "111",
+		Type:       "informationModels",
+		Uri:        "https://information-models.digdir.no/654",
+		Identifier: "654",
+		Title: map[string]string{
+			"nb": "updated information model nb",
+			"nn": "updated information model nn",
+			"en": "updated information model en",
+		},
+		Description: map[string]string{
+			"nb": "updated information model desc nb",
+			"nn": "updated information model desc nn",
+			"en": "updated information model desc en",
+		},
+	}
+
+	informationModel1Bytes, _ := json.Marshal(informationModel1)
+	err1 := informationModelService.StoreInformationModel(context.TODO(), informationModel1Bytes)
+	assert.Nil(t, err1)
+
+	app := router.SetupRouter()
+
+	wGet0 := httptest.NewRecorder()
+	reqGet0, _ := http.NewRequest("GET", "/information-models/000", nil)
+	app.ServeHTTP(wGet0, reqGet0)
+	assert.Equal(t, http.StatusOK, wGet0.Code)
+
+	var created TestInformationModel
+	err0 = json.Unmarshal(wGet0.Body.Bytes(), &created)
+	assert.Nil(t, err0)
+	assert.Equal(t, informationModel0, created)
+
+	wGet1 := httptest.NewRecorder()
+	reqGet1, _ := http.NewRequest("GET", "/information-models/111", nil)
+	app.ServeHTTP(wGet1, reqGet1)
+	assert.Equal(t, http.StatusOK, wGet1.Code)
+
+	var updated TestInformationModel
+	err1 = json.Unmarshal(wGet1.Body.Bytes(), &updated)
+	assert.Nil(t, err1)
+	assert.Equal(t, informationModel1, updated)
 }
