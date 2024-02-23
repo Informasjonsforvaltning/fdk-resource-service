@@ -18,23 +18,6 @@ servers:
     description: Test
 paths:
   /concepts:
-    post:
-      description: Store list of concepts
-      security:
-        - ApiKeyAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: array
-              items:
-                $ref: '#/components/schemas/Resource'
-      responses:
-        '200':
-          description: OK
-        '401':
-          description: Not authenticated
     get:
       description: Returns all concepts
       parameters:
@@ -73,23 +56,6 @@ paths:
                 $ref: "#/components/schemas/Resource"
 
   /data-services:
-    post:
-      description: Store list of data services
-      security:
-        - ApiKeyAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: array
-              items:
-                $ref: '#/components/schemas/Resource'
-      responses:
-        '200':
-          description: OK
-        '401':
-          description: Not authenticated
     get:
       description: Returns all data services
       parameters:
@@ -127,23 +93,6 @@ paths:
               schema:
                 $ref: "#/components/schemas/Resource"
   /datasets:
-    post:
-      description: Store list of datasets
-      security:
-        - ApiKeyAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: array
-              items:
-                $ref: '#/components/schemas/Resource'
-      responses:
-        '200':
-          description: OK
-        '401':
-          description: Not authenticated
     get:
       description: Returns all datasets
       parameters:
@@ -181,23 +130,6 @@ paths:
               schema:
                 $ref: "#/components/schemas/Resource"
   /events:
-    post:
-      description: Store list of events
-      security:
-        - ApiKeyAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: array
-              items:
-                $ref: '#/components/schemas/Resource'
-      responses:
-        '200':
-          description: OK
-        '401':
-          description: Not authenticated
     get:
       description: Returns all events
       parameters:
@@ -235,23 +167,6 @@ paths:
               schema:
                 $ref: "#/components/schemas/Resource"
   /information-models:
-    post:
-      description: Store list of information models
-      security:
-        - ApiKeyAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: array
-              items:
-                $ref: '#/components/schemas/Resource'
-      responses:
-        '200':
-          description: OK
-        '401':
-          description: Not authenticated
     get:
       description: Returns all information models
       parameters:
@@ -289,23 +204,6 @@ paths:
               schema:
                 $ref: "#/components/schemas/Resource"
   /services:
-    post:
-      description: Store list of services
-      security:
-        - ApiKeyAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: array
-              items:
-                $ref: '#/components/schemas/Resource'
-      responses:
-        '200':
-          description: OK
-        '401':
-          description: Not authenticated
     get:
       description: Returns all services
       parameters:
@@ -353,9 +251,3 @@ components:
           type: string
           description: Resource id
       additionalProperties: true
-
-  securitySchemes:
-    ApiKeyAuth:
-      type: apiKey
-      in: header
-      name: X-API-Key

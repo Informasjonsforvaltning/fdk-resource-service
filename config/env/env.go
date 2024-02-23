@@ -9,10 +9,6 @@ func getEnv(key, fallback string) string {
 	return fallback
 }
 
-func ApiKey() string {
-	return getEnv("API_KEY", "test")
-}
-
 func MongoHost() string {
 	return getEnv("MONGO_HOST", "localhost:27017")
 }
