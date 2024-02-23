@@ -11,7 +11,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 
 	"github.com/Informasjonsforvaltning/fdk-resource-service/config/logger"
-	"github.com/Informasjonsforvaltning/fdk-resource-service/model"
 	"github.com/Informasjonsforvaltning/fdk-resource-service/repository"
 	"github.com/Informasjonsforvaltning/fdk-resource-service/utils/mappers"
 )
@@ -57,22 +56,14 @@ func (service DatasetService) GetDataset(ctx context.Context, id string) (map[st
 	}
 }
 
-func (service DatasetService) StoreDatasets(ctx context.Context, bytes []byte) int {
-	var datasets []map[string]interface{}
-	err := json.Unmarshal(bytes, &datasets)
+func (service DatasetService) StoreDataset(ctx context.Context, bytes []byte) error {
+	var dataset map[string]interface{}
+	err := json.Unmarshal(bytes, &dataset)
 	if err != nil {
-		logrus.Error("Unable to unmarshal datasets")
-		logger.LogAndPrintError(err)
-		return http.StatusBadRequest
+		return err
 	}
 
-	err = service.DatasetRepository.StoreResources(ctx, mappers.ToDBO(datasets))
-	if err != nil {
-		logrus.Error("Could not store datasets")
-		logger.LogAndPrintError(err)
-		return http.StatusInternalServerError
-	}
-	return http.StatusOK
+	return service.DatasetRepository.StoreResource(ctx, mappers.ToDBO(dataset))
 }
 
 func (service DatasetService) RemoveDataset(ctx context.Context, id string) error {
@@ -80,7 +71,7 @@ func (service DatasetService) RemoveDataset(ctx context.Context, id string) erro
 	dataset, err := service.DatasetRepository.GetResource(ctx, id)
 	if err == nil {
 		dataset.Removed = true
-		err = service.DatasetRepository.StoreResources(ctx, []model.DBO{dataset})
+		err = service.DatasetRepository.StoreResource(ctx, dataset)
 	}
 
 	return err

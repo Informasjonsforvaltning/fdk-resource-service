@@ -1,8 +1,10 @@
 package test
 
 import (
+	"context"
 	"encoding/json"
 	"github.com/Informasjonsforvaltning/fdk-resource-service/config/router"
+	"github.com/Informasjonsforvaltning/fdk-resource-service/service"
 	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"
@@ -92,4 +94,72 @@ func TestGetConceptsIncludeRemoved(t *testing.T) {
 		ids = append(ids, concept.ID)
 	}
 	assert.True(t, slices.Contains(ids, "222"))
+}
+
+func TestCreateConcept(t *testing.T) {
+	conceptService := service.InitConceptService()
+
+	concept0 := TestConcept{
+		ID:         "000",
+		Type:       "concepts",
+		Uri:        "https://concepts.digdir.no/987",
+		Identifier: "987",
+		Title: map[string]string{
+			"nb": "nb",
+			"nn": "nn",
+			"en": "en",
+		},
+		Description: map[string]string{
+			"nb": "desc nb",
+			"nn": "desc nn",
+			"en": "desc en",
+		},
+	}
+
+	concept0Bytes, _ := json.Marshal(concept0)
+	err0 := conceptService.StoreConcept(context.TODO(), concept0Bytes)
+	assert.Nil(t, err0)
+
+	concept1 := TestConcept{
+		ID:         "111",
+		Type:       "concepts",
+		Uri:        "https://concepts.digdir.no/654",
+		Identifier: "654",
+		Title: map[string]string{
+			"nb": "updated concept nb",
+			"nn": "updated concept nn",
+			"en": "updated concept en",
+		},
+		Description: map[string]string{
+			"nb": "updated concept desc nb",
+			"nn": "updated concept desc nn",
+			"en": "updated concept desc en",
+		},
+	}
+
+	concept1Bytes, _ := json.Marshal(concept1)
+	err1 := conceptService.StoreConcept(context.TODO(), concept1Bytes)
+	assert.Nil(t, err1)
+
+	app := router.SetupRouter()
+
+	wGet0 := httptest.NewRecorder()
+	reqGet0, _ := http.NewRequest("GET", "/concepts/000", nil)
+	app.ServeHTTP(wGet0, reqGet0)
+	assert.Equal(t, http.StatusOK, wGet0.Code)
+
+	var created TestConcept
+	err0 = json.Unmarshal(wGet0.Body.Bytes(), &created)
+	assert.Nil(t, err0)
+	assert.Equal(t, concept0, created)
+
+	wGet1 := httptest.NewRecorder()
+	reqGet1, _ := http.NewRequest("GET", "/concepts/111", nil)
+	app.ServeHTTP(wGet1, reqGet1)
+	assert.Equal(t, http.StatusOK, wGet1.Code)
+
+	var updated TestConcept
+	err1 = json.Unmarshal(wGet1.Body.Bytes(), &updated)
+	assert.Nil(t, err1)
+	assert.Equal(t, concept1, updated)
 }

@@ -1,8 +1,10 @@
 package test
 
 import (
+	"context"
 	"encoding/json"
 	"github.com/Informasjonsforvaltning/fdk-resource-service/config/router"
+	"github.com/Informasjonsforvaltning/fdk-resource-service/service"
 	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"
@@ -92,4 +94,72 @@ func TestGetServicesIncludeRemoved(t *testing.T) {
 		ids = append(ids, service.ID)
 	}
 	assert.True(t, slices.Contains(ids, "222"))
+}
+
+func TestCreateService(t *testing.T) {
+	serviceService := service.InitServiceService()
+
+	service0 := TestService{
+		ID:         "000",
+		Type:       "services",
+		Uri:        "https://services.digdir.no/987",
+		Identifier: "987",
+		Title: map[string]string{
+			"nb": "nb",
+			"nn": "nn",
+			"en": "en",
+		},
+		Description: map[string]string{
+			"nb": "desc nb",
+			"nn": "desc nn",
+			"en": "desc en",
+		},
+	}
+
+	service0Bytes, _ := json.Marshal(service0)
+	err0 := serviceService.StoreService(context.TODO(), service0Bytes)
+	assert.Nil(t, err0)
+
+	service1 := TestService{
+		ID:         "111",
+		Type:       "services",
+		Uri:        "https://services.digdir.no/654",
+		Identifier: "654",
+		Title: map[string]string{
+			"nb": "updated service nb",
+			"nn": "updated service nn",
+			"en": "updated service en",
+		},
+		Description: map[string]string{
+			"nb": "updated service desc nb",
+			"nn": "updated service desc nn",
+			"en": "updated service desc en",
+		},
+	}
+
+	service1Bytes, _ := json.Marshal(service1)
+	err1 := serviceService.StoreService(context.TODO(), service1Bytes)
+	assert.Nil(t, err1)
+
+	app := router.SetupRouter()
+
+	wGet0 := httptest.NewRecorder()
+	reqGet0, _ := http.NewRequest("GET", "/services/000", nil)
+	app.ServeHTTP(wGet0, reqGet0)
+	assert.Equal(t, http.StatusOK, wGet0.Code)
+
+	var created TestService
+	err0 = json.Unmarshal(wGet0.Body.Bytes(), &created)
+	assert.Nil(t, err0)
+	assert.Equal(t, service0, created)
+
+	wGet1 := httptest.NewRecorder()
+	reqGet1, _ := http.NewRequest("GET", "/services/111", nil)
+	app.ServeHTTP(wGet1, reqGet1)
+	assert.Equal(t, http.StatusOK, wGet1.Code)
+
+	var updated TestService
+	err1 = json.Unmarshal(wGet1.Body.Bytes(), &updated)
+	assert.Nil(t, err1)
+	assert.Equal(t, service1, updated)
 }

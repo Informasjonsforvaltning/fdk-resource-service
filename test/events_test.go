@@ -1,8 +1,10 @@
 package test
 
 import (
+	"context"
 	"encoding/json"
 	"github.com/Informasjonsforvaltning/fdk-resource-service/config/router"
+	"github.com/Informasjonsforvaltning/fdk-resource-service/service"
 	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"
@@ -92,4 +94,72 @@ func TestGetEventsIncludeRemoved(t *testing.T) {
 		ids = append(ids, event.ID)
 	}
 	assert.True(t, slices.Contains(ids, "222"))
+}
+
+func TestCreateEvent(t *testing.T) {
+	eventService := service.InitEventService()
+
+	event0 := TestEvent{
+		ID:         "000",
+		Type:       "events",
+		Uri:        "https://events.digdir.no/987",
+		Identifier: "987",
+		Title: map[string]string{
+			"nb": "nb",
+			"nn": "nn",
+			"en": "en",
+		},
+		Description: map[string]string{
+			"nb": "desc nb",
+			"nn": "desc nn",
+			"en": "desc en",
+		},
+	}
+
+	event0Bytes, _ := json.Marshal(event0)
+	err0 := eventService.StoreEvent(context.TODO(), event0Bytes)
+	assert.Nil(t, err0)
+
+	event1 := TestEvent{
+		ID:         "111",
+		Type:       "events",
+		Uri:        "https://events.digdir.no/654",
+		Identifier: "654",
+		Title: map[string]string{
+			"nb": "updated event nb",
+			"nn": "updated event nn",
+			"en": "updated event en",
+		},
+		Description: map[string]string{
+			"nb": "updated event desc nb",
+			"nn": "updated event desc nn",
+			"en": "updated event desc en",
+		},
+	}
+
+	event1Bytes, _ := json.Marshal(event1)
+	err1 := eventService.StoreEvent(context.TODO(), event1Bytes)
+	assert.Nil(t, err1)
+
+	app := router.SetupRouter()
+
+	wGet0 := httptest.NewRecorder()
+	reqGet0, _ := http.NewRequest("GET", "/events/000", nil)
+	app.ServeHTTP(wGet0, reqGet0)
+	assert.Equal(t, http.StatusOK, wGet0.Code)
+
+	var created TestEvent
+	err0 = json.Unmarshal(wGet0.Body.Bytes(), &created)
+	assert.Nil(t, err0)
+	assert.Equal(t, event0, created)
+
+	wGet1 := httptest.NewRecorder()
+	reqGet1, _ := http.NewRequest("GET", "/events/111", nil)
+	app.ServeHTTP(wGet1, reqGet1)
+	assert.Equal(t, http.StatusOK, wGet1.Code)
+
+	var updated TestEvent
+	err1 = json.Unmarshal(wGet1.Body.Bytes(), &updated)
+	assert.Nil(t, err1)
+	assert.Equal(t, event1, updated)
 }
