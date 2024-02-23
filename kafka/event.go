@@ -33,7 +33,7 @@ func ConsumeEventMessage(input EventInputType) error {
 		switch event.Type {
 		case modelAvro.EventEventTypeEVENT_REMOVED:
 			eventService := service.InitEventService()
-			err = eventService.RemoveEvent(context.TODO(), event.FdkId)
+			err = eventService.RemoveEvent(context.TODO(), event.FdkId, event.Timestamp)
 		default:
 			// Ignoring other event messages
 		}

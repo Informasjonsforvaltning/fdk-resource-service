@@ -33,7 +33,7 @@ func ConsumeDatasetMessage(input DatasetInputType) error {
 		switch event.Type {
 		case modelAvro.DatasetEventTypeDATASET_REMOVED:
 			datasetService := service.InitDatasetService()
-			err = datasetService.RemoveDataset(context.TODO(), event.FdkId)
+			err = datasetService.RemoveDataset(context.TODO(), event.FdkId, event.Timestamp)
 		default:
 			// Ignoring other dataset events
 		}

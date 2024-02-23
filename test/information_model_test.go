@@ -117,7 +117,7 @@ func TestCreateInformationModel(t *testing.T) {
 	}
 
 	informationModel0Bytes, _ := json.Marshal(informationModel0)
-	err0 := informationModelService.StoreInformationModel(context.TODO(), informationModel0Bytes)
+	err0 := informationModelService.StoreInformationModel(context.TODO(), informationModel0Bytes, 100)
 	assert.Nil(t, err0)
 
 	informationModel1 := TestInformationModel{
@@ -138,7 +138,7 @@ func TestCreateInformationModel(t *testing.T) {
 	}
 
 	informationModel1Bytes, _ := json.Marshal(informationModel1)
-	err1 := informationModelService.StoreInformationModel(context.TODO(), informationModel1Bytes)
+	err1 := informationModelService.StoreInformationModel(context.TODO(), informationModel1Bytes, 101)
 	assert.Nil(t, err1)
 
 	app := router.SetupRouter()

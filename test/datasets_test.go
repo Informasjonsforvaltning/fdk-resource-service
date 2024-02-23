@@ -117,7 +117,7 @@ func TestCreateResource(t *testing.T) {
 	}
 
 	dataset0Bytes, _ := json.Marshal(dataset0)
-	err0 := datasetService.StoreDataset(context.TODO(), dataset0Bytes)
+	err0 := datasetService.StoreDataset(context.TODO(), dataset0Bytes, 100)
 	assert.Nil(t, err0)
 
 	dataset1 := TestDataset{
@@ -138,7 +138,7 @@ func TestCreateResource(t *testing.T) {
 	}
 
 	dataset1Bytes, _ := json.Marshal(dataset1)
-	err1 := datasetService.StoreDataset(context.TODO(), dataset1Bytes)
+	err1 := datasetService.StoreDataset(context.TODO(), dataset1Bytes, 101)
 	assert.Nil(t, err1)
 
 	app := router.SetupRouter()

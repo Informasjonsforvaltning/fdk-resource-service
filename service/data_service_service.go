@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"github.com/Informasjonsforvaltning/fdk-resource-service/model"
 	"github.com/Informasjonsforvaltning/fdk-resource-service/utils/mappers"
 	"net/http"
 	"strings"
@@ -56,21 +57,36 @@ func (service DataServiceService) GetDataService(ctx context.Context, id string)
 	}
 }
 
-func (service DataServiceService) StoreDataService(ctx context.Context, bytes []byte) error {
+func (service DataServiceService) StoreDataService(ctx context.Context, bytes []byte, timestamp int64) error {
 	var dataService map[string]interface{}
 	err := json.Unmarshal(bytes, &dataService)
 	if err != nil {
 		return err
 	}
 
-	return service.DataServiceRepository.StoreResource(ctx, mappers.ToDBO(dataService))
+	id := dataService["id"].(string)
+	dbo, _ := service.DataServiceRepository.GetResource(ctx, id)
+	updated := model.DBO{
+		ID:       id,
+		Resource: dataService,
+	}
+	if dbo.Timestamp < timestamp {
+		updated.Removed = false
+		updated.Timestamp = timestamp
+	} else {
+		updated.Removed = dbo.Removed
+		updated.Timestamp = dbo.Timestamp
+	}
+
+	return service.DataServiceRepository.StoreResource(ctx, updated)
 }
 
-func (service DataServiceService) RemoveDataService(ctx context.Context, id string) error {
+func (service DataServiceService) RemoveDataService(ctx context.Context, id string, timestamp int64) error {
 	logrus.Infof("Tagging data service %s as removed", id)
 	dataService, err := service.DataServiceRepository.GetResource(ctx, id)
-	if err == nil {
+	if err == nil && dataService.Timestamp < timestamp {
 		dataService.Removed = true
+		dataService.Timestamp = timestamp
 		err = service.DataServiceRepository.StoreResource(ctx, dataService)
 	}
 

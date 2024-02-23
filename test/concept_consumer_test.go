@@ -26,6 +26,12 @@ func TestConceptReasonedIsIgnored(t *testing.T) {
 	assert.NotEqual(t, true, dbo.Removed)
 }
 
+func TestConceptRemovedIsIgnoredWhenMessageIsOld(t *testing.T) {
+	kafka.ConsumeConceptMessage(MockConceptRemoved{})
+	dbo, _ := conceptRepository.GetResource(context.TODO(), "123")
+	assert.Equal(t, true, dbo.Removed)
+}
+
 func TestConceptRemovedTagsConceptAsRemoved(t *testing.T) {
 	kafka.ConsumeConceptMessage(MockConceptRemoved{})
 	dbo, _ := conceptRepository.GetResource(context.TODO(), "123")

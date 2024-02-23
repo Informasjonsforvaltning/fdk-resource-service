@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"github.com/Informasjonsforvaltning/fdk-resource-service/model"
 	"github.com/Informasjonsforvaltning/fdk-resource-service/utils/mappers"
 	"net/http"
 	"strings"
@@ -56,21 +57,36 @@ func (service EventService) GetEvent(ctx context.Context, id string) (map[string
 	}
 }
 
-func (service EventService) StoreEvent(ctx context.Context, bytes []byte) error {
+func (service EventService) StoreEvent(ctx context.Context, bytes []byte, timestamp int64) error {
 	var event map[string]interface{}
 	err := json.Unmarshal(bytes, &event)
 	if err != nil {
 		return err
 	}
 
-	return service.EventRepository.StoreResource(ctx, mappers.ToDBO(event))
+	id := event["id"].(string)
+	dbo, _ := service.EventRepository.GetResource(ctx, id)
+	updated := model.DBO{
+		ID:       id,
+		Resource: event,
+	}
+	if dbo.Timestamp < timestamp {
+		updated.Removed = false
+		updated.Timestamp = timestamp
+	} else {
+		updated.Removed = dbo.Removed
+		updated.Timestamp = dbo.Timestamp
+	}
+
+	return service.EventRepository.StoreResource(ctx, updated)
 }
 
-func (service EventService) RemoveEvent(ctx context.Context, id string) error {
+func (service EventService) RemoveEvent(ctx context.Context, id string, timestamp int64) error {
 	logrus.Infof("Tagging event %s as removed", id)
 	event, err := service.EventRepository.GetResource(ctx, id)
-	if err == nil {
+	if err == nil && event.Timestamp < timestamp {
 		event.Removed = true
+		event.Timestamp = timestamp
 		err = service.EventRepository.StoreResource(ctx, event)
 	}
 

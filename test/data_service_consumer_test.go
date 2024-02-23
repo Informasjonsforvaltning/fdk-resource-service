@@ -26,6 +26,12 @@ func TestDataServiceReasonedIsIgnored(t *testing.T) {
 	assert.NotEqual(t, true, dbo.Removed)
 }
 
+func TestDataServiceRemovedIsIgnoredWhenMessageIsOld(t *testing.T) {
+	kafka.ConsumeDataServiceMessage(MockDataServiceOldRemoved{})
+	dbo, _ := dataServiceRepository.GetResource(context.TODO(), "111")
+	assert.Equal(t, false, dbo.Removed)
+}
+
 func TestDataServiceRemovedTagsDataServiceAsRemoved(t *testing.T) {
 	kafka.ConsumeDataServiceMessage(MockDataServiceRemoved{})
 	dbo, _ := dataServiceRepository.GetResource(context.TODO(), "123")

@@ -32,22 +32,22 @@ func ConsumeParseMessage(input ParseInputType) error {
 		switch event.ResourceType {
 		case modelAvro.RdfParseResourceTypeCONCEPT:
 			conceptService := service.InitConceptService()
-			err = conceptService.StoreConcept(context.TODO(), []byte(event.Data))
+			err = conceptService.StoreConcept(context.TODO(), []byte(event.Data), event.Timestamp)
 		case modelAvro.RdfParseResourceTypeDATASERVICE:
 			dataServiceService := service.InitDataServiceService()
-			err = dataServiceService.StoreDataService(context.TODO(), []byte(event.Data))
+			err = dataServiceService.StoreDataService(context.TODO(), []byte(event.Data), event.Timestamp)
 		case modelAvro.RdfParseResourceTypeDATASET:
 			datasetService := service.InitDatasetService()
-			err = datasetService.StoreDataset(context.TODO(), []byte(event.Data))
+			err = datasetService.StoreDataset(context.TODO(), []byte(event.Data), event.Timestamp)
 		case modelAvro.RdfParseResourceTypeEVENT:
 			eventService := service.InitEventService()
-			err = eventService.StoreEvent(context.TODO(), []byte(event.Data))
+			err = eventService.StoreEvent(context.TODO(), []byte(event.Data), event.Timestamp)
 		case modelAvro.RdfParseResourceTypeINFORMATIONMODEL:
 			infoModelService := service.InitInformationModelService()
-			err = infoModelService.StoreInformationModel(context.TODO(), []byte(event.Data))
+			err = infoModelService.StoreInformationModel(context.TODO(), []byte(event.Data), event.Timestamp)
 		case modelAvro.RdfParseResourceTypeSERVICE:
 			serviceService := service.InitServiceService()
-			err = serviceService.StoreService(context.TODO(), []byte(event.Data))
+			err = serviceService.StoreService(context.TODO(), []byte(event.Data), event.Timestamp)
 		default:
 			// Ignoring other parse messages
 		}

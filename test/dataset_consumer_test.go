@@ -26,6 +26,12 @@ func TestDatasetReasonedIsIgnored(t *testing.T) {
 	assert.NotEqual(t, true, dbo.Removed)
 }
 
+func TestDatasetRemovedIsIgnoredWhenMessageIsOld(t *testing.T) {
+	kafka.ConsumeDatasetMessage(MockDatasetOldRemoved{})
+	dbo, _ := datasetRepository.GetResource(context.TODO(), "111")
+	assert.Equal(t, false, dbo.Removed)
+}
+
 func TestDatasetRemovedTagsDatasetAsRemoved(t *testing.T) {
 	kafka.ConsumeDatasetMessage(MockDatasetRemoved{})
 	dbo, _ := datasetRepository.GetResource(context.TODO(), "123")

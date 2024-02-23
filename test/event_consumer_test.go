@@ -26,6 +26,12 @@ func TestEventReasonedIsIgnored(t *testing.T) {
 	assert.NotEqual(t, true, dbo.Removed)
 }
 
+func TestEventRemovedIsIgnoredWhenMessageIsOld(t *testing.T) {
+	kafka.ConsumeEventMessage(MockEventOldRemoved{})
+	dbo, _ := eventRepository.GetResource(context.TODO(), "111")
+	assert.Equal(t, false, dbo.Removed)
+}
+
 func TestEventRemovedTagsEventAsRemoved(t *testing.T) {
 	kafka.ConsumeEventMessage(MockEventRemoved{})
 	dbo, _ := eventRepository.GetResource(context.TODO(), "123")

@@ -1,7 +1,8 @@
 package model
 
 type DBO struct {
-	ID       string                 `bson:"_id"`
-	Resource map[string]interface{} `bson:"resource"`
-	Removed  bool                   `bson:"removed"`
+	ID        string                 `bson:"_id"`
+	Resource  map[string]interface{} `bson:"resource"`
+	Timestamp int64                  `bson:"timestamp"`
+	Removed   bool                   `bson:"removed"`
 }

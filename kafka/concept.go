@@ -33,7 +33,7 @@ func ConsumeConceptMessage(input ConceptInputType) error {
 		switch event.Type {
 		case modelAvro.ConceptEventTypeCONCEPT_REMOVED:
 			conceptService := service.InitConceptService()
-			err = conceptService.RemoveConcept(context.TODO(), event.FdkId)
+			err = conceptService.RemoveConcept(context.TODO(), event.FdkId, event.Timestamp)
 		default:
 			// Ignoring other concept messages
 		}

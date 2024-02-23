@@ -117,7 +117,7 @@ func TestCreateConcept(t *testing.T) {
 	}
 
 	concept0Bytes, _ := json.Marshal(concept0)
-	err0 := conceptService.StoreConcept(context.TODO(), concept0Bytes)
+	err0 := conceptService.StoreConcept(context.TODO(), concept0Bytes, 100)
 	assert.Nil(t, err0)
 
 	concept1 := TestConcept{
@@ -138,7 +138,7 @@ func TestCreateConcept(t *testing.T) {
 	}
 
 	concept1Bytes, _ := json.Marshal(concept1)
-	err1 := conceptService.StoreConcept(context.TODO(), concept1Bytes)
+	err1 := conceptService.StoreConcept(context.TODO(), concept1Bytes, 101)
 	assert.Nil(t, err1)
 
 	app := router.SetupRouter()
