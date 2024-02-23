@@ -7,10 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/Informasjonsforvaltning/fdk-resource-service/kafka"
-	"github.com/Informasjonsforvaltning/fdk-resource-service/repository"
 )
-
-var informationModelRepository = repository.InitInformationModelRepository()
 
 func TestInformationModelErrorReturnsError(t *testing.T) {
 	err := kafka.ConsumeInfoModelMessage(MockInformationModelError{})

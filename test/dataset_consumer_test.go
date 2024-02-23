@@ -7,10 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/Informasjonsforvaltning/fdk-resource-service/kafka"
-	"github.com/Informasjonsforvaltning/fdk-resource-service/repository"
 )
-
-var datasetRepository = repository.InitDatasetRepository()
 
 func TestDatasetErrorReturnsError(t *testing.T) {
 	err := kafka.ConsumeDatasetMessage(MockDatasetError{})

@@ -2,6 +2,7 @@ package test
 
 import (
 	"context"
+	"github.com/Informasjonsforvaltning/fdk-resource-service/repository"
 	"log"
 	"os"
 	"testing"
@@ -12,6 +13,13 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
+
+var conceptRepository = repository.InitConceptRepository()
+var dataServiceRepository = repository.InitDataServiceRepository()
+var datasetRepository = repository.InitDatasetRepository()
+var eventRepository = repository.InitEventRepository()
+var informationModelRepository = repository.InitInformationModelRepository()
+var serviceRepository = repository.InitServiceRepository()
 
 var dbClient *mongo.Client
 

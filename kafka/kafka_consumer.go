@@ -27,6 +27,8 @@ func consumeMessage(message *kafka.Message, deserializer *avro.SpecificDeseriali
 		ConsumeEventMessage(EventInput{message: message, deserializer: deserializer})
 	case env.KafkaValues.InfoModelTopic:
 		ConsumeInfoModelMessage(InfoModelInput{message: message, deserializer: deserializer})
+	case env.KafkaValues.RdfParseTopic:
+		ConsumeParseMessage(ParseInput{message: message, deserializer: deserializer})
 	case env.KafkaValues.ServiceTopic:
 		ConsumeServiceMessage(ServiceInput{message: message, deserializer: deserializer})
 	default:
