@@ -71,6 +71,7 @@ var ConsumeKafkaEvents = func() {
 		env.KafkaValues.DatasetTopic,
 		env.KafkaValues.EventTopic,
 		env.KafkaValues.InfoModelTopic,
+		env.KafkaValues.RdfParseTopic,
 		env.KafkaValues.ServiceTopic,
 	}
 	err = consumer.SubscribeTopics(topics, nil)
