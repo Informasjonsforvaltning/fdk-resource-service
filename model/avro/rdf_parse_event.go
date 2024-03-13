@@ -83,7 +83,7 @@ func (r RdfParseEvent) Serialize(w io.Writer) error {
 }
 
 func (r RdfParseEvent) Schema() string {
-	return "{\"fields\":[{\"name\":\"resourceType\",\"type\":{\"name\":\"RdfParseResourceType\",\"symbols\":[\"DATASET\",\"DATASERVICE\",\"CONCEPT\",\"INFORMATIONMODEL\",\"SERVICE\",\"EVENT\"],\"type\":\"enum\"}},{\"name\":\"fdkId\",\"type\":\"string\"},{\"name\":\"data\",\"type\":\"string\"},{\"logicalType\":\"timestamp-millis\",\"name\":\"timestamp\",\"type\":\"long\"}],\"name\":\"no.fdk.rdf.parse.RdfParseEvent\",\"type\":\"record\"}"
+	return "{\"fields\":[{\"name\":\"resourceType\",\"type\":{\"name\":\"RdfParseResourceType\",\"symbols\":[\"DATASET\",\"DATA_SERVICE\",\"CONCEPT\",\"INFORMATION_MODEL\",\"SERVICE\",\"EVENT\"],\"type\":\"enum\"}},{\"name\":\"fdkId\",\"type\":\"string\"},{\"name\":\"data\",\"type\":\"string\"},{\"logicalType\":\"timestamp-millis\",\"name\":\"timestamp\",\"type\":\"long\"}],\"name\":\"no.fdk.rdf.parse.RdfParseEvent\",\"type\":\"record\"}"
 }
 
 func (r RdfParseEvent) SchemaName() string {
