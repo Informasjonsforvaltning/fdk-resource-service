@@ -8,7 +8,7 @@
             "type": {
                 "type": "enum",
                 "name": "RdfParseResourceType",
-                "symbols": ["DATASET", "DATASERVICE", "CONCEPT", "INFORMATIONMODEL", "SERVICE", "EVENT"]
+                "symbols": ["DATASET", "DATA_SERVICE", "CONCEPT", "INFORMATION_MODEL", "SERVICE", "EVENT"]
             }
         },
         {"name": "fdkId", "type": "string"},

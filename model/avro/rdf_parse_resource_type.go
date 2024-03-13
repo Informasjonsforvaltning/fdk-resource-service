@@ -32,11 +32,11 @@ func (e RdfParseResourceType) String() string {
 	case RdfParseResourceTypeDATASET:
 		return "DATASET"
 	case RdfParseResourceTypeDATASERVICE:
-		return "DATASERVICE"
+		return "DATA_SERVICE"
 	case RdfParseResourceTypeCONCEPT:
 		return "CONCEPT"
 	case RdfParseResourceTypeINFORMATIONMODEL:
-		return "INFORMATIONMODEL"
+		return "INFORMATION_MODEL"
 	case RdfParseResourceTypeSERVICE:
 		return "SERVICE"
 	case RdfParseResourceTypeEVENT:
@@ -53,11 +53,11 @@ func NewRdfParseResourceTypeValue(raw string) (r RdfParseResourceType, err error
 	switch raw {
 	case "DATASET":
 		return RdfParseResourceTypeDATASET, nil
-	case "DATASERVICE":
+	case "DATA_SERVICE":
 		return RdfParseResourceTypeDATASERVICE, nil
 	case "CONCEPT":
 		return RdfParseResourceTypeCONCEPT, nil
-	case "INFORMATIONMODEL":
+	case "INFORMATION_MODEL":
 		return RdfParseResourceTypeINFORMATIONMODEL, nil
 	case "SERVICE":
 		return RdfParseResourceTypeSERVICE, nil
