@@ -64,31 +64,11 @@ func (service DataServiceService) StoreDataService(ctx context.Context, bytes []
 		return err
 	}
 
-	id := dataService["id"].(string)
-	dbo, _ := service.DataServiceRepository.GetResource(ctx, id)
 	updated := model.DBO{
-		ID:       id,
-		Resource: dataService,
-	}
-	if dbo.Timestamp < timestamp {
-		updated.Removed = false
-		updated.Timestamp = timestamp
-	} else {
-		updated.Removed = dbo.Removed
-		updated.Timestamp = dbo.Timestamp
+		ID:        dataService["id"].(string),
+		Resource:  dataService,
+		Timestamp: timestamp,
 	}
 
 	return service.DataServiceRepository.StoreResource(ctx, updated)
-}
-
-func (service DataServiceService) RemoveDataService(ctx context.Context, id string, timestamp int64) error {
-	logrus.Infof("Tagging data service %s as removed", id)
-	dataService, err := service.DataServiceRepository.GetResource(ctx, id)
-	if err == nil && dataService.Timestamp < timestamp {
-		dataService.Removed = true
-		dataService.Timestamp = timestamp
-		err = service.DataServiceRepository.StoreResource(ctx, dataService)
-	}
-
-	return err
 }

@@ -64,31 +64,11 @@ func (service DatasetService) StoreDataset(ctx context.Context, bytes []byte, ti
 		return err
 	}
 
-	id := dataset["id"].(string)
-	dbo, _ := service.DatasetRepository.GetResource(ctx, id)
 	updated := model.DBO{
-		ID:       id,
-		Resource: dataset,
-	}
-	if dbo.Timestamp < timestamp {
-		updated.Removed = false
-		updated.Timestamp = timestamp
-	} else {
-		updated.Removed = dbo.Removed
-		updated.Timestamp = dbo.Timestamp
+		ID:        dataset["id"].(string),
+		Resource:  dataset,
+		Timestamp: timestamp,
 	}
 
 	return service.DatasetRepository.StoreResource(ctx, updated)
-}
-
-func (service DatasetService) RemoveDataset(ctx context.Context, id string, timestamp int64) error {
-	logrus.Infof("Tagging dataset %s as removed", id)
-	dataset, err := service.DatasetRepository.GetResource(ctx, id)
-	if err == nil && dataset.Timestamp < timestamp {
-		dataset.Removed = true
-		dataset.Timestamp = timestamp
-		err = service.DatasetRepository.StoreResource(ctx, dataset)
-	}
-
-	return err
 }
