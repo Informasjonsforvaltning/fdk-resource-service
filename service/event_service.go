@@ -64,31 +64,11 @@ func (service EventService) StoreEvent(ctx context.Context, bytes []byte, timest
 		return err
 	}
 
-	id := event["id"].(string)
-	dbo, _ := service.EventRepository.GetResource(ctx, id)
 	updated := model.DBO{
-		ID:       id,
-		Resource: event,
-	}
-	if dbo.Timestamp < timestamp {
-		updated.Removed = false
-		updated.Timestamp = timestamp
-	} else {
-		updated.Removed = dbo.Removed
-		updated.Timestamp = dbo.Timestamp
+		ID:        event["id"].(string),
+		Resource:  event,
+		Timestamp: timestamp,
 	}
 
 	return service.EventRepository.StoreResource(ctx, updated)
-}
-
-func (service EventService) RemoveEvent(ctx context.Context, id string, timestamp int64) error {
-	logrus.Infof("Tagging event %s as removed", id)
-	event, err := service.EventRepository.GetResource(ctx, id)
-	if err == nil && event.Timestamp < timestamp {
-		event.Removed = true
-		event.Timestamp = timestamp
-		err = service.EventRepository.StoreResource(ctx, event)
-	}
-
-	return err
 }

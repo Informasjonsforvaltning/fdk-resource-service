@@ -17,20 +17,8 @@ import (
 
 func consumeMessage(message *kafka.Message, deserializer *avro.SpecificDeserializer) {
 	switch *message.TopicPartition.Topic {
-	case env.KafkaValues.ConceptTopic:
-		ConsumeConceptMessage(ConceptInput{message: message, deserializer: deserializer})
-	case env.KafkaValues.DataServiceTopic:
-		ConsumeDataServiceMessage(DataServiceInput{message: message, deserializer: deserializer})
-	case env.KafkaValues.DatasetTopic:
-		ConsumeDatasetMessage(DatasetInput{message: message, deserializer: deserializer})
-	case env.KafkaValues.EventTopic:
-		ConsumeEventMessage(EventInput{message: message, deserializer: deserializer})
-	case env.KafkaValues.InfoModelTopic:
-		ConsumeInfoModelMessage(InfoModelInput{message: message, deserializer: deserializer})
 	case env.KafkaValues.RdfParseTopic:
 		ConsumeParseMessage(ParseInput{message: message, deserializer: deserializer})
-	case env.KafkaValues.ServiceTopic:
-		ConsumeServiceMessage(ServiceInput{message: message, deserializer: deserializer})
 	default:
 		// ignoring other topics
 	}
@@ -66,13 +54,7 @@ var ConsumeKafkaEvents = func() {
 	}
 
 	topics := []string{
-		env.KafkaValues.ConceptTopic,
-		env.KafkaValues.DataServiceTopic,
-		env.KafkaValues.DatasetTopic,
-		env.KafkaValues.EventTopic,
-		env.KafkaValues.InfoModelTopic,
 		env.KafkaValues.RdfParseTopic,
-		env.KafkaValues.ServiceTopic,
 	}
 	err = consumer.SubscribeTopics(topics, nil)
 	if err != nil {

@@ -64,31 +64,11 @@ func (service ConceptService) StoreConcept(ctx context.Context, bytes []byte, ti
 		return err
 	}
 
-	id := concept["id"].(string)
-	dbo, _ := service.ConceptRepository.GetResource(ctx, id)
 	updated := model.DBO{
-		ID:       id,
-		Resource: concept,
-	}
-	if dbo.Timestamp < timestamp {
-		updated.Removed = false
-		updated.Timestamp = timestamp
-	} else {
-		updated.Removed = dbo.Removed
-		updated.Timestamp = dbo.Timestamp
+		ID:        concept["id"].(string),
+		Resource:  concept,
+		Timestamp: timestamp,
 	}
 
 	return service.ConceptRepository.StoreResource(ctx, updated)
-}
-
-func (service ConceptService) RemoveConcept(ctx context.Context, id string, timestamp int64) error {
-	logrus.Infof("Tagging concept %s as removed", id)
-	concept, err := service.ConceptRepository.GetResource(ctx, id)
-	if err == nil && concept.Timestamp < timestamp {
-		concept.Removed = true
-		concept.Timestamp = timestamp
-		err = service.ConceptRepository.StoreResource(ctx, concept)
-	}
-
-	return err
 }

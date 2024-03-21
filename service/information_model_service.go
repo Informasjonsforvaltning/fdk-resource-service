@@ -64,31 +64,11 @@ func (service InformationModelService) StoreInformationModel(ctx context.Context
 		return err
 	}
 
-	id := informationModel["id"].(string)
-	dbo, _ := service.InformationModelRepository.GetResource(ctx, id)
 	updated := model.DBO{
-		ID:       id,
-		Resource: informationModel,
-	}
-	if dbo.Timestamp < timestamp {
-		updated.Removed = false
-		updated.Timestamp = timestamp
-	} else {
-		updated.Removed = dbo.Removed
-		updated.Timestamp = dbo.Timestamp
+		ID:        informationModel["id"].(string),
+		Resource:  informationModel,
+		Timestamp: timestamp,
 	}
 
 	return service.InformationModelRepository.StoreResource(ctx, updated)
-}
-
-func (service InformationModelService) RemoveInformationModel(ctx context.Context, id string, timestamp int64) error {
-	logrus.Infof("Tagging information model %s as removed", id)
-	informationModel, err := service.InformationModelRepository.GetResource(ctx, id)
-	if err == nil && informationModel.Timestamp < timestamp {
-		informationModel.Removed = true
-		informationModel.Timestamp = timestamp
-		err = service.InformationModelRepository.StoreResource(ctx, informationModel)
-	}
-
-	return err
 }
