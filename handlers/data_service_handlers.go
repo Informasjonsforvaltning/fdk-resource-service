@@ -11,7 +11,7 @@ import (
 func GetDataServices() func(c *gin.Context) {
 	dataServiceService := service.InitDataServiceService()
 	return func(c *gin.Context) {
-		dataServices, status := dataServiceService.GetDataServices(c.Request.Context(), c.Query("includeRemoved"))
+		dataServices, status := dataServiceService.GetDataServices(c.Request.Context())
 		if status == http.StatusOK {
 			c.JSON(status, dataServices)
 		} else {

@@ -20,14 +20,6 @@ paths:
   /concepts:
     get:
       description: Returns all concepts
-      parameters:
-        - in: query
-          name: includeRemoved
-          description: indicate if removed concepts should be included in response, defaults to false
-          required: false
-          schema:
-            type: boolean
-            default: false
       responses:
         '200':
           description: OK
@@ -58,14 +50,6 @@ paths:
   /data-services:
     get:
       description: Returns all data services
-      parameters:
-        - in: query
-          name: includeRemoved
-          description: indicate if removed data services should be included in response, defaults to false
-          required: false
-          schema:
-            type: boolean
-            default: false
       responses:
         '200':
           description: OK
@@ -95,14 +79,6 @@ paths:
   /datasets:
     get:
       description: Returns all datasets
-      parameters:
-        - in: query
-          name: includeRemoved
-          description: indicate if removed datasets should be included in response, defaults to false
-          required: false
-          schema:
-            type: boolean
-            default: false
       responses:
         '200':
           description: OK
@@ -132,14 +108,6 @@ paths:
   /events:
     get:
       description: Returns all events
-      parameters:
-        - in: query
-          name: includeRemoved
-          description: indicate if removed events should be included in response, defaults to false
-          required: false
-          schema:
-            type: boolean
-            default: false
       responses:
         '200':
           description: OK
@@ -169,14 +137,6 @@ paths:
   /information-models:
     get:
       description: Returns all information models
-      parameters:
-        - in: query
-          name: includeRemoved
-          description: indicate if removed information models should be included in response, defaults to false
-          required: false
-          schema:
-            type: boolean
-            default: false
       responses:
         '200':
           description: OK
@@ -206,14 +166,6 @@ paths:
   /services:
     get:
       description: Returns all services
-      parameters:
-        - in: query
-          name: includeRemoved
-          description: indicate if removed services should be included in response, defaults to false
-          required: false
-          schema:
-            type: boolean
-            default: false
       responses:
         '200':
           description: OK

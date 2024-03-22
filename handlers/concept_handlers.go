@@ -10,7 +10,7 @@ import (
 func GetConcepts() func(c *gin.Context) {
 	conceptService := service.InitConceptService()
 	return func(c *gin.Context) {
-		concepts, status := conceptService.GetConcepts(c.Request.Context(), c.Query("includeRemoved"))
+		concepts, status := conceptService.GetConcepts(c.Request.Context())
 		if status == http.StatusOK {
 			c.JSON(status, concepts)
 		} else {

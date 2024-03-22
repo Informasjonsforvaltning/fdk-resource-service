@@ -5,12 +5,10 @@ import (
 	"encoding/json"
 	"github.com/Informasjonsforvaltning/fdk-resource-service/model"
 	"github.com/Informasjonsforvaltning/fdk-resource-service/utils/mappers"
-	"net/http"
-	"strings"
-
 	"github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
+	"net/http"
 
 	"github.com/Informasjonsforvaltning/fdk-resource-service/config/logger"
 	"github.com/Informasjonsforvaltning/fdk-resource-service/repository"
@@ -27,11 +25,8 @@ func InitServiceService() *ServiceService {
 	return &serviceService
 }
 
-func (s ServiceService) GetServices(ctx context.Context, includeRemoved string) ([]map[string]interface{}, int) {
+func (s ServiceService) GetServices(ctx context.Context) ([]map[string]interface{}, int) {
 	query := bson.D{}
-	if strings.ToLower(includeRemoved) != "true" {
-		query = bson.D{{Key: "removed", Value: false}}
-	}
 	services, err := s.ServiceRepository.GetResources(ctx, query)
 	if err != nil {
 		logrus.Error("Get services failed ")
