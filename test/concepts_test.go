@@ -72,27 +72,6 @@ func TestGetConcepts(t *testing.T) {
 		ids = append(ids, concept.ID)
 	}
 	assert.True(t, slices.Contains(ids, "111"))
-	assert.False(t, slices.Contains(ids, "222"))
-}
-
-func TestGetConceptsIncludeRemoved(t *testing.T) {
-	app := router.SetupRouter()
-
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "/concepts?includeRemoved=true", nil)
-	app.ServeHTTP(w, req)
-	assert.Equal(t, http.StatusOK, w.Code)
-
-	var actualResponse []TestConcept
-	err := json.Unmarshal(w.Body.Bytes(), &actualResponse)
-
-	assert.Nil(t, err)
-	assert.True(t, len(actualResponse) > 1)
-
-	var ids []string
-	for _, concept := range actualResponse {
-		ids = append(ids, concept.ID)
-	}
 	assert.True(t, slices.Contains(ids, "222"))
 }
 

@@ -10,7 +10,7 @@ import (
 func GetInformationModels() func(c *gin.Context) {
 	informationModelService := service.InitInformationModelService()
 	return func(c *gin.Context) {
-		informationModels, status := informationModelService.GetInformationModels(c.Request.Context(), c.Query("includeRemoved"))
+		informationModels, status := informationModelService.GetInformationModels(c.Request.Context())
 		if status == http.StatusOK {
 			c.JSON(status, informationModels)
 		} else {

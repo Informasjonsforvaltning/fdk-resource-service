@@ -72,27 +72,6 @@ func TestGetDataServices(t *testing.T) {
 		ids = append(ids, dataService.ID)
 	}
 	assert.True(t, slices.Contains(ids, "111"))
-	assert.False(t, slices.Contains(ids, "222"))
-}
-
-func TestGetDataServicesIncludeRemoved(t *testing.T) {
-	app := router.SetupRouter()
-
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "/data-services?includeRemoved=true", nil)
-	app.ServeHTTP(w, req)
-	assert.Equal(t, http.StatusOK, w.Code)
-
-	var actualResponse []TestDataService
-	err := json.Unmarshal(w.Body.Bytes(), &actualResponse)
-
-	assert.Nil(t, err)
-	assert.True(t, len(actualResponse) > 1)
-
-	var ids []string
-	for _, dataService := range actualResponse {
-		ids = append(ids, dataService.ID)
-	}
 	assert.True(t, slices.Contains(ids, "222"))
 }
 

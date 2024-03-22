@@ -10,7 +10,7 @@ import (
 func GetServices() func(c *gin.Context) {
 	serviceService := service.InitServiceService()
 	return func(c *gin.Context) {
-		services, status := serviceService.GetServices(c.Request.Context(), c.Query("includeRemoved"))
+		services, status := serviceService.GetServices(c.Request.Context())
 		if status == http.StatusOK {
 			c.JSON(status, services)
 		} else {

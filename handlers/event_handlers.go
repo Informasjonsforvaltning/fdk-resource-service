@@ -10,7 +10,7 @@ import (
 func GetEvents() func(c *gin.Context) {
 	eventService := service.InitEventService()
 	return func(c *gin.Context) {
-		events, status := eventService.GetEvents(c.Request.Context(), c.Query("includeRemoved"))
+		events, status := eventService.GetEvents(c.Request.Context())
 		if status == http.StatusOK {
 			c.JSON(status, events)
 		} else {
