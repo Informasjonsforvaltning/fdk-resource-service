@@ -29,6 +29,22 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Resource'
+    post:
+      description: Returns concepts filtered on IDs from body
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Filters"
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Resource'
   /concepts/{id}:
     get:
       description: Returns single concept
@@ -50,6 +66,22 @@ paths:
   /data-services:
     get:
       description: Returns all data services
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Resource'
+    post:
+      description: Returns data services filtered on IDs from body
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Filters"
       responses:
         '200':
           description: OK
@@ -88,6 +120,22 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Resource'
+    post:
+      description: Returns datasets filtered on IDs from body
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Filters"
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Resource'
   /datasets/{id}:
     get:
       description: Returns single dataset
@@ -108,6 +156,22 @@ paths:
   /events:
     get:
       description: Returns all events
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Resource'
+    post:
+      description: Returns events filtered on IDs from body
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Filters"
       responses:
         '200':
           description: OK
@@ -146,6 +210,22 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Resource'
+    post:
+      description: Returns information models filtered on IDs from body
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Filters"
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Resource'
   /information-models/{id}:
     get:
       description: Returns single information model
@@ -175,6 +255,22 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Resource'
+    post:
+      description: Returns services filtered on IDs from body
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Filters"
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Resource'
   /services/{id}:
     get:
       description: Returns single service
@@ -195,6 +291,15 @@ paths:
 
 components:
   schemas:
+
+    Filters:
+      type: object
+      properties:
+        ids:
+          type: array
+          description: Resource ids
+          items:
+            type: string
 
     Resource:
       type: object

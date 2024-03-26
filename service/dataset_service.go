@@ -4,10 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/Informasjonsforvaltning/fdk-resource-service/model"
+	"net/http"
+
 	"github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
-	"net/http"
 
 	"github.com/Informasjonsforvaltning/fdk-resource-service/config/logger"
 	"github.com/Informasjonsforvaltning/fdk-resource-service/repository"
@@ -25,8 +26,11 @@ func InitDatasetService() *DatasetService {
 	return &service
 }
 
-func (service DatasetService) GetDatasets(ctx context.Context) ([]map[string]interface{}, int) {
+func (service DatasetService) GetDatasets(ctx context.Context, filters *model.Filters) ([]map[string]interface{}, int) {
 	query := bson.D{}
+	if filters != nil {
+		query = bson.D{{Key: "_id", Value: bson.D{{Key: "$in", Value: filters.IDs}}}}
+	}
 	datasets, err := service.DatasetRepository.GetResources(ctx, query)
 	if err != nil {
 		logrus.Error("Get datasets failed ")

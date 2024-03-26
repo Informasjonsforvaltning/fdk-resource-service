@@ -1,9 +1,11 @@
 package test
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"github.com/Informasjonsforvaltning/fdk-resource-service/config/router"
+	"github.com/Informasjonsforvaltning/fdk-resource-service/model"
 	"github.com/Informasjonsforvaltning/fdk-resource-service/service"
 	"github.com/stretchr/testify/assert"
 	"net/http"
@@ -66,6 +68,51 @@ func TestGetEvents(t *testing.T) {
 
 	assert.Nil(t, err)
 	assert.True(t, len(actualResponse) > 0)
+
+	var ids []string
+	for _, event := range actualResponse {
+		ids = append(ids, event.ID)
+	}
+	assert.True(t, slices.Contains(ids, "111"))
+	assert.True(t, slices.Contains(ids, "222"))
+}
+
+func TestFilterEventsIncludeOne(t *testing.T) {
+	app := router.SetupRouter()
+	body, _ := json.Marshal(model.Filters{IDs: []string{"111"}})
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/events", bytes.NewBuffer(body))
+	app.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	var actualResponse []TestEvent
+	err := json.Unmarshal(w.Body.Bytes(), &actualResponse)
+
+	assert.Nil(t, err)
+	assert.Equal(t, len(actualResponse), 1)
+
+	var ids []string
+	for _, event := range actualResponse {
+		ids = append(ids, event.ID)
+	}
+	assert.True(t, slices.Contains(ids, "111"))
+}
+
+func TestFilterEventsIncludeTwo(t *testing.T) {
+	app := router.SetupRouter()
+	body, _ := json.Marshal(model.Filters{IDs: []string{"111", "222"}})
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/events", bytes.NewBuffer(body))
+	app.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	var actualResponse []TestEvent
+	err := json.Unmarshal(w.Body.Bytes(), &actualResponse)
+
+	assert.Nil(t, err)
+	assert.Equal(t, len(actualResponse), 2)
 
 	var ids []string
 	for _, event := range actualResponse {
