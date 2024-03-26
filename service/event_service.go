@@ -5,10 +5,11 @@ import (
 	"encoding/json"
 	"github.com/Informasjonsforvaltning/fdk-resource-service/model"
 	"github.com/Informasjonsforvaltning/fdk-resource-service/utils/mappers"
+	"net/http"
+
 	"github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
-	"net/http"
 
 	"github.com/Informasjonsforvaltning/fdk-resource-service/config/logger"
 	"github.com/Informasjonsforvaltning/fdk-resource-service/repository"
@@ -25,8 +26,11 @@ func InitEventService() *EventService {
 	return &service
 }
 
-func (service EventService) GetEvents(ctx context.Context) ([]map[string]interface{}, int) {
+func (service EventService) GetEvents(ctx context.Context, filters *model.Filters) ([]map[string]interface{}, int) {
 	query := bson.D{}
+	if filters != nil {
+		query = bson.D{{Key: "_id", Value: bson.D{{Key: "$in", Value: filters.IDs}}}}
+	}
 	events, err := service.EventRepository.GetResources(ctx, query)
 	if err != nil {
 		logrus.Error("Get events failed ")

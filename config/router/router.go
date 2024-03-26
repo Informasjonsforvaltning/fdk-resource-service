@@ -13,21 +13,27 @@ func InitializeRoutes(e *gin.Engine) {
 	e.GET(env.PathValues.Ready, handlers.ReadyHandler())
 
 	e.GET(env.PathValues.Concepts, handlers.GetConcepts())
+	e.POST(env.PathValues.Concepts, handlers.FilterConcepts())
 	e.GET(env.PathValues.Concept, handlers.GetConcept())
 
 	e.GET(env.PathValues.DataServices, handlers.GetDataServices())
+	e.POST(env.PathValues.DataServices, handlers.FilterDataServices())
 	e.GET(env.PathValues.DataService, handlers.GetDataService())
 
 	e.GET(env.PathValues.Datasets, handlers.GetDatasets())
+	e.POST(env.PathValues.Datasets, handlers.FilterDatasets())
 	e.GET(env.PathValues.Dataset, handlers.GetDataset())
 
 	e.GET(env.PathValues.Events, handlers.GetEvents())
+	e.POST(env.PathValues.Events, handlers.FilterEvents())
 	e.GET(env.PathValues.Event, handlers.GetEvent())
 
 	e.GET(env.PathValues.InformationModels, handlers.GetInformationModels())
+	e.POST(env.PathValues.InformationModels, handlers.FilterInformationModels())
 	e.GET(env.PathValues.InformationModel, handlers.GetInformationModel())
 
 	e.GET(env.PathValues.Services, handlers.GetServices())
+	e.POST(env.PathValues.Services, handlers.FilterServices())
 	e.GET(env.PathValues.Service, handlers.GetService())
 }
 

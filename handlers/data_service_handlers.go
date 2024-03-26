@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"github.com/Informasjonsforvaltning/fdk-resource-service/model"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -11,11 +12,29 @@ import (
 func GetDataServices() func(c *gin.Context) {
 	dataServiceService := service.InitDataServiceService()
 	return func(c *gin.Context) {
-		dataServices, status := dataServiceService.GetDataServices(c.Request.Context())
+		dataServices, status := dataServiceService.GetDataServices(c.Request.Context(), nil)
 		if status == http.StatusOK {
 			c.JSON(status, dataServices)
 		} else {
 			c.Status(status)
+		}
+	}
+}
+
+func FilterDataServices() func(c *gin.Context) {
+	dataServiceService := service.InitDataServiceService()
+	return func(c *gin.Context) {
+		var filters model.Filters
+		err := c.BindJSON(&filters)
+		if err != nil {
+			c.Status(http.StatusBadRequest)
+		} else {
+			dataServices, status := dataServiceService.GetDataServices(c.Request.Context(), &filters)
+			if status == http.StatusOK {
+				c.JSON(status, dataServices)
+			} else {
+				c.Status(status)
+			}
 		}
 	}
 }

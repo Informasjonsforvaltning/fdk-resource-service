@@ -25,8 +25,11 @@ func InitConceptService() *ConceptService {
 	return &service
 }
 
-func (service ConceptService) GetConcepts(ctx context.Context) ([]map[string]interface{}, int) {
+func (service ConceptService) GetConcepts(ctx context.Context, filters *model.Filters) ([]map[string]interface{}, int) {
 	query := bson.D{}
+	if filters != nil {
+		query = bson.D{{Key: "_id", Value: bson.D{{Key: "$in", Value: filters.IDs}}}}
+	}
 	concepts, err := service.ConceptRepository.GetResources(ctx, query)
 	if err != nil {
 		logrus.Error("Get concepts failed ")
