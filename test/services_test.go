@@ -1,9 +1,11 @@
 package test
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"github.com/Informasjonsforvaltning/fdk-resource-service/config/router"
+	"github.com/Informasjonsforvaltning/fdk-resource-service/model"
 	"github.com/Informasjonsforvaltning/fdk-resource-service/service"
 	"github.com/stretchr/testify/assert"
 	"net/http"
@@ -72,14 +74,15 @@ func TestGetServices(t *testing.T) {
 		ids = append(ids, service.ID)
 	}
 	assert.True(t, slices.Contains(ids, "111"))
-	assert.False(t, slices.Contains(ids, "222"))
+	assert.True(t, slices.Contains(ids, "222"))
 }
 
-func TestGetServicesIncludeRemoved(t *testing.T) {
+func TestFilterServicesIncludeOne(t *testing.T) {
 	app := router.SetupRouter()
+	body, _ := json.Marshal(model.Filters{IDs: []string{"111"}})
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "/services?includeRemoved=true", nil)
+	req, _ := http.NewRequest("POST", "/services", bytes.NewBuffer(body))
 	app.ServeHTTP(w, req)
 	assert.Equal(t, http.StatusOK, w.Code)
 
@@ -87,12 +90,35 @@ func TestGetServicesIncludeRemoved(t *testing.T) {
 	err := json.Unmarshal(w.Body.Bytes(), &actualResponse)
 
 	assert.Nil(t, err)
-	assert.True(t, len(actualResponse) > 1)
+	assert.Equal(t, len(actualResponse), 1)
 
 	var ids []string
 	for _, service := range actualResponse {
 		ids = append(ids, service.ID)
 	}
+	assert.True(t, slices.Contains(ids, "111"))
+}
+
+func TestFilterServicesIncludeTwo(t *testing.T) {
+	app := router.SetupRouter()
+	body, _ := json.Marshal(model.Filters{IDs: []string{"111", "222"}})
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/services", bytes.NewBuffer(body))
+	app.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	var actualResponse []TestService
+	err := json.Unmarshal(w.Body.Bytes(), &actualResponse)
+
+	assert.Nil(t, err)
+	assert.Equal(t, len(actualResponse), 2)
+
+	var ids []string
+	for _, service := range actualResponse {
+		ids = append(ids, service.ID)
+	}
+	assert.True(t, slices.Contains(ids, "111"))
 	assert.True(t, slices.Contains(ids, "222"))
 }
 

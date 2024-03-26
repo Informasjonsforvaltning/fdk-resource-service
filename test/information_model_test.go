@@ -1,9 +1,11 @@
 package test
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"github.com/Informasjonsforvaltning/fdk-resource-service/config/router"
+	"github.com/Informasjonsforvaltning/fdk-resource-service/model"
 	"github.com/Informasjonsforvaltning/fdk-resource-service/service"
 	"github.com/stretchr/testify/assert"
 	"net/http"
@@ -72,14 +74,15 @@ func TestGetInformationModels(t *testing.T) {
 		ids = append(ids, informationModel.ID)
 	}
 	assert.True(t, slices.Contains(ids, "111"))
-	assert.False(t, slices.Contains(ids, "222"))
+	assert.True(t, slices.Contains(ids, "222"))
 }
 
-func TestGetInformationModelsIncludeRemoved(t *testing.T) {
+func TestFilterInformationModelsIncludeOne(t *testing.T) {
 	app := router.SetupRouter()
+	body, _ := json.Marshal(model.Filters{IDs: []string{"111"}})
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "/information-models?includeRemoved=true", nil)
+	req, _ := http.NewRequest("POST", "/information-models", bytes.NewBuffer(body))
 	app.ServeHTTP(w, req)
 	assert.Equal(t, http.StatusOK, w.Code)
 
@@ -87,12 +90,35 @@ func TestGetInformationModelsIncludeRemoved(t *testing.T) {
 	err := json.Unmarshal(w.Body.Bytes(), &actualResponse)
 
 	assert.Nil(t, err)
-	assert.True(t, len(actualResponse) > 1)
+	assert.Equal(t, len(actualResponse), 1)
 
 	var ids []string
 	for _, informationModel := range actualResponse {
 		ids = append(ids, informationModel.ID)
 	}
+	assert.True(t, slices.Contains(ids, "111"))
+}
+
+func TestFilterInformationModelsIncludeTwo(t *testing.T) {
+	app := router.SetupRouter()
+	body, _ := json.Marshal(model.Filters{IDs: []string{"111", "222"}})
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/information-models", bytes.NewBuffer(body))
+	app.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	var actualResponse []TestInformationModel
+	err := json.Unmarshal(w.Body.Bytes(), &actualResponse)
+
+	assert.Nil(t, err)
+	assert.Equal(t, len(actualResponse), 2)
+
+	var ids []string
+	for _, informationModel := range actualResponse {
+		ids = append(ids, informationModel.ID)
+	}
+	assert.True(t, slices.Contains(ids, "111"))
 	assert.True(t, slices.Contains(ids, "222"))
 }
 
