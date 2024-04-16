@@ -40,6 +40,10 @@ func InitializeRoutes(e *gin.Engine) {
 func Cors() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST")
+		c.Writer.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type")
+		c.Writer.Header().Set("Access-Control-Max-Age", "3600")
+		c.Writer.Header().Set("Access-Control-Allow-Credentials", "false")
 		if c.Request.Method == "OPTIONS" {
 			c.AbortWithStatus(204)
 			return
