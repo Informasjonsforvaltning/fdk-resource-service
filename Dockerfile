@@ -1,4 +1,4 @@
-FROM golang:1.21-bookworm as build-env
+FROM golang:1.22-bookworm as build-env
 
 ENV APP_NAME fdk-resource-service
 ENV CMD_PATH main.go
