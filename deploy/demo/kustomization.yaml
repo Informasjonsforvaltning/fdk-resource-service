@@ -5,3 +5,6 @@ namespace: demo
 resources:
   - ../base
   - ingress.yaml
+
+patchesStrategicMerge:
+  - env.yaml

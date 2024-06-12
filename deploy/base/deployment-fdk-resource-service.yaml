@@ -33,3 +33,6 @@ spec:
             httpGet:
               path: /ready
               port: 8080
+          volumeMounts:
+            - mountPath: /var/secrets/google
+              name: error-reporting-sa
