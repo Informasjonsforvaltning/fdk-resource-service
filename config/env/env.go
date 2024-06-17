@@ -1,6 +1,9 @@
 package env
 
-import "os"
+import (
+	"os"
+	"strings"
+)
 
 func getEnv(key, fallback string) string {
 	if value, ok := os.LookupEnv(key); ok {
@@ -34,7 +37,7 @@ func KafkaBrokers() string {
 }
 
 func SchemaRegistry() string {
-	return getEnv("SCHEMA_REGISTRY", "http://localhost:5050")
+	return strings.Split(getEnv("SCHEMA_REGISTRY", "http://localhost:5050"), ",")[0]
 }
 
 type MongoConstants struct {
