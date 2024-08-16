@@ -189,3 +189,33 @@ func TestCreateResource(t *testing.T) {
 	assert.Nil(t, err1)
 	assert.Equal(t, dataset1, updated)
 }
+
+func TestUpdateDatasetSkippedWhenIncomingTimestampIsLower(t *testing.T) {
+	datasetService := service.InitDatasetService()
+
+	dataset := TestDataset{
+		ID:         "111",
+		Type:       "datasets",
+		Uri:        "https://datasets.digdir.no/654",
+		Identifier: "654",
+		Title: map[string]string{
+			"en": "skipped",
+		},
+	}
+
+	datasetBytes, _ := json.Marshal(dataset)
+	err := datasetService.StoreDataset(context.TODO(), datasetBytes, 5)
+	assert.Nil(t, err)
+
+	app := router.SetupRouter()
+
+	wGet := httptest.NewRecorder()
+	reqGet, _ := http.NewRequest("GET", "/datasets/111", nil)
+	app.ServeHTTP(wGet, reqGet)
+	assert.Equal(t, http.StatusOK, wGet.Code)
+
+	var notUpdated TestDataset
+	err = json.Unmarshal(wGet.Body.Bytes(), &notUpdated)
+	assert.Nil(t, err)
+	assert.NotEqual(t, dataset, notUpdated)
+}

@@ -189,3 +189,33 @@ func TestCreateConcept(t *testing.T) {
 	assert.Nil(t, err1)
 	assert.Equal(t, concept1, updated)
 }
+
+func TestUpdateConceptSkippedWhenIncomingTimestampIsLower(t *testing.T) {
+	conceptService := service.InitConceptService()
+
+	concept := TestConcept{
+		ID:         "111",
+		Type:       "concepts",
+		Uri:        "https://concepts.digdir.no/654",
+		Identifier: "654",
+		Title: map[string]string{
+			"en": "skipped",
+		},
+	}
+
+	conceptBytes, _ := json.Marshal(concept)
+	err := conceptService.StoreConcept(context.TODO(), conceptBytes, 5)
+	assert.Nil(t, err)
+
+	app := router.SetupRouter()
+
+	wGet := httptest.NewRecorder()
+	reqGet, _ := http.NewRequest("GET", "/concepts/111", nil)
+	app.ServeHTTP(wGet, reqGet)
+	assert.Equal(t, http.StatusOK, wGet.Code)
+
+	var notUpdated TestConcept
+	err = json.Unmarshal(wGet.Body.Bytes(), &notUpdated)
+	assert.Nil(t, err)
+	assert.NotEqual(t, concept, notUpdated)
+}

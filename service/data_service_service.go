@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"github.com/Informasjonsforvaltning/fdk-resource-service/model"
 	"github.com/Informasjonsforvaltning/fdk-resource-service/utils/mappers"
 	"net/http"
@@ -45,7 +46,7 @@ func (service DataServiceService) GetDataServices(ctx context.Context, filters *
 
 func (service DataServiceService) GetDataService(ctx context.Context, id string) (map[string]interface{}, int) {
 	dbo, err := service.DataServiceRepository.GetResource(ctx, id)
-	if err == mongo.ErrNoDocuments {
+	if errors.Is(err, mongo.ErrNoDocuments) {
 		return map[string]interface{}{}, http.StatusNotFound
 	} else if err != nil {
 		logrus.Errorf("Get data service with id %s failed, ", id)
@@ -69,5 +70,12 @@ func (service DataServiceService) StoreDataService(ctx context.Context, bytes []
 		Timestamp: timestamp,
 	}
 
-	return service.DataServiceRepository.StoreResource(ctx, updated)
+	dbo, err := service.DataServiceRepository.GetResource(ctx, updated.ID)
+	if err == nil && dbo.Timestamp > updated.Timestamp {
+		return nil // do not update if current timestamp is higher
+	} else if err == nil || errors.Is(err, mongo.ErrNoDocuments) {
+		return service.DataServiceRepository.StoreResource(ctx, updated)
+	} else {
+		return err
+	}
 }
