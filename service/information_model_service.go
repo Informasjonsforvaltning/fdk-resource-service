@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"github.com/Informasjonsforvaltning/fdk-resource-service/model"
 	"github.com/Informasjonsforvaltning/fdk-resource-service/utils/mappers"
 	"net/http"
@@ -45,7 +46,7 @@ func (service InformationModelService) GetInformationModels(ctx context.Context,
 
 func (service InformationModelService) GetInformationModel(ctx context.Context, id string) (map[string]interface{}, int) {
 	dbo, err := service.InformationModelRepository.GetResource(ctx, id)
-	if err == mongo.ErrNoDocuments {
+	if errors.Is(err, mongo.ErrNoDocuments) {
 		return map[string]interface{}{}, http.StatusNotFound
 	} else if err != nil {
 		logrus.Errorf("Get information model with id %s failed, ", id)
@@ -69,5 +70,12 @@ func (service InformationModelService) StoreInformationModel(ctx context.Context
 		Timestamp: timestamp,
 	}
 
-	return service.InformationModelRepository.StoreResource(ctx, updated)
+	dbo, err := service.InformationModelRepository.GetResource(ctx, updated.ID)
+	if err == nil && dbo.Timestamp > updated.Timestamp {
+		return nil // do not update if current timestamp is higher
+	} else if err == nil || errors.Is(err, mongo.ErrNoDocuments) {
+		return service.InformationModelRepository.StoreResource(ctx, updated)
+	} else {
+		return err
+	}
 }

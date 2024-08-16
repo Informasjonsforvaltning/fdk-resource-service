@@ -189,3 +189,33 @@ func TestCreateService(t *testing.T) {
 	assert.Nil(t, err1)
 	assert.Equal(t, service1, updated)
 }
+
+func TestUpdateServiceSkippedWhenIncomingTimestampIsLower(t *testing.T) {
+	serviceService := service.InitServiceService()
+
+	service0 := TestService{
+		ID:         "111",
+		Type:       "services",
+		Uri:        "https://services.digdir.no/654",
+		Identifier: "654",
+		Title: map[string]string{
+			"en": "skipped",
+		},
+	}
+
+	serviceBytes, _ := json.Marshal(service0)
+	err := serviceService.StoreService(context.TODO(), serviceBytes, 5)
+	assert.Nil(t, err)
+
+	app := router.SetupRouter()
+
+	wGet := httptest.NewRecorder()
+	reqGet, _ := http.NewRequest("GET", "/services/111", nil)
+	app.ServeHTTP(wGet, reqGet)
+	assert.Equal(t, http.StatusOK, wGet.Code)
+
+	var notUpdated TestService
+	err = json.Unmarshal(wGet.Body.Bytes(), &notUpdated)
+	assert.Nil(t, err)
+	assert.NotEqual(t, service0, notUpdated)
+}

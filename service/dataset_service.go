@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"github.com/Informasjonsforvaltning/fdk-resource-service/model"
 	"net/http"
 
@@ -45,7 +46,7 @@ func (service DatasetService) GetDatasets(ctx context.Context, filters *model.Fi
 
 func (service DatasetService) GetDataset(ctx context.Context, id string) (map[string]interface{}, int) {
 	dbo, err := service.DatasetRepository.GetResource(ctx, id)
-	if err == mongo.ErrNoDocuments {
+	if errors.Is(err, mongo.ErrNoDocuments) {
 		return map[string]interface{}{}, http.StatusNotFound
 	} else if err != nil {
 		logrus.Errorf("Get dataset with id %s failed, ", id)
@@ -69,5 +70,12 @@ func (service DatasetService) StoreDataset(ctx context.Context, bytes []byte, ti
 		Timestamp: timestamp,
 	}
 
-	return service.DatasetRepository.StoreResource(ctx, updated)
+	dbo, err := service.DatasetRepository.GetResource(ctx, updated.ID)
+	if err == nil && dbo.Timestamp > updated.Timestamp {
+		return nil // do not update if current timestamp is higher
+	} else if err == nil || errors.Is(err, mongo.ErrNoDocuments) {
+		return service.DatasetRepository.StoreResource(ctx, updated)
+	} else {
+		return err
+	}
 }

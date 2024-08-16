@@ -189,3 +189,33 @@ func TestCreateEvent(t *testing.T) {
 	assert.Nil(t, err1)
 	assert.Equal(t, event1, updated)
 }
+
+func TestUpdateEventSkippedWhenIncomingTimestampIsLower(t *testing.T) {
+	eventService := service.InitEventService()
+
+	event := TestEvent{
+		ID:         "111",
+		Type:       "events",
+		Uri:        "https://events.digdir.no/654",
+		Identifier: "654",
+		Title: map[string]string{
+			"en": "skipped",
+		},
+	}
+
+	eventBytes, _ := json.Marshal(event)
+	err := eventService.StoreEvent(context.TODO(), eventBytes, 5)
+	assert.Nil(t, err)
+
+	app := router.SetupRouter()
+
+	wGet := httptest.NewRecorder()
+	reqGet, _ := http.NewRequest("GET", "/events/111", nil)
+	app.ServeHTTP(wGet, reqGet)
+	assert.Equal(t, http.StatusOK, wGet.Code)
+
+	var notUpdated TestEvent
+	err = json.Unmarshal(wGet.Body.Bytes(), &notUpdated)
+	assert.Nil(t, err)
+	assert.NotEqual(t, event, notUpdated)
+}

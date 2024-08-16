@@ -189,3 +189,33 @@ func TestCreateInformationModel(t *testing.T) {
 	assert.Nil(t, err1)
 	assert.Equal(t, informationModel1, updated)
 }
+
+func TestUpdateInformationModelSkippedWhenIncomingTimestampIsLower(t *testing.T) {
+	informationModelService := service.InitInformationModelService()
+
+	informationModel := TestInformationModel{
+		ID:         "111",
+		Type:       "informationModels",
+		Uri:        "https://information-models.digdir.no/654",
+		Identifier: "654",
+		Title: map[string]string{
+			"en": "skipped",
+		},
+	}
+
+	informationModelBytes, _ := json.Marshal(informationModel)
+	err := informationModelService.StoreInformationModel(context.TODO(), informationModelBytes, 5)
+	assert.Nil(t, err)
+
+	app := router.SetupRouter()
+
+	wGet := httptest.NewRecorder()
+	reqGet, _ := http.NewRequest("GET", "/information-models/111", nil)
+	app.ServeHTTP(wGet, reqGet)
+	assert.Equal(t, http.StatusOK, wGet.Code)
+
+	var notUpdated TestInformationModel
+	err = json.Unmarshal(wGet.Body.Bytes(), &notUpdated)
+	assert.Nil(t, err)
+	assert.NotEqual(t, informationModel, notUpdated)
+}
