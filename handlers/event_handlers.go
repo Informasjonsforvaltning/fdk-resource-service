@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"github.com/Informasjonsforvaltning/fdk-resource-service/model"
+	"github.com/Informasjonsforvaltning/fdk-resource-service/utils/validate"
 	"net/http"
 
 	"github.com/Informasjonsforvaltning/fdk-resource-service/service"
@@ -42,7 +43,7 @@ func GetEvent() func(c *gin.Context) {
 	eventService := service.InitEventService()
 	return func(c *gin.Context) {
 		id := c.Param("id")
-		event, status := eventService.GetEvent(c.Request.Context(), id)
+		event, status := eventService.GetEvent(c.Request.Context(), validate.SanitizeID(id))
 		if status == http.StatusOK {
 			c.JSON(status, event)
 		} else {

@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"github.com/Informasjonsforvaltning/fdk-resource-service/model"
+	"github.com/Informasjonsforvaltning/fdk-resource-service/utils/validate"
 	"net/http"
 
 	"github.com/Informasjonsforvaltning/fdk-resource-service/service"
@@ -42,7 +43,7 @@ func GetDataset() func(c *gin.Context) {
 	datasetService := service.InitDatasetService()
 	return func(c *gin.Context) {
 		id := c.Param("id")
-		dataset, status := datasetService.GetDataset(c.Request.Context(), id)
+		dataset, status := datasetService.GetDataset(c.Request.Context(), validate.SanitizeID(id))
 		if status == http.StatusOK {
 			c.JSON(status, dataset)
 		} else {

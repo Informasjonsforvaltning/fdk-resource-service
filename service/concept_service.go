@@ -6,6 +6,7 @@ import (
 	"errors"
 	"github.com/Informasjonsforvaltning/fdk-resource-service/model"
 	"github.com/Informasjonsforvaltning/fdk-resource-service/utils/mappers"
+	"github.com/Informasjonsforvaltning/fdk-resource-service/utils/validate"
 	"github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -29,7 +30,11 @@ func InitConceptService() *ConceptService {
 func (service ConceptService) GetConcepts(ctx context.Context, filters *model.Filters) ([]map[string]interface{}, int) {
 	query := bson.D{}
 	if filters != nil {
-		query = bson.D{{Key: "_id", Value: bson.D{{Key: "$in", Value: filters.IDs}}}}
+		var ids []string
+		for _, id := range filters.IDs {
+			ids = append(ids, validate.SanitizeID(id))
+		}
+		query = bson.D{{Key: "_id", Value: bson.D{{Key: "$in", Value: ids}}}}
 	}
 	concepts, err := service.ConceptRepository.GetResources(ctx, query)
 	if err != nil {
