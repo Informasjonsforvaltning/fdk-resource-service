@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"github.com/Informasjonsforvaltning/fdk-resource-service/model"
+	"github.com/Informasjonsforvaltning/fdk-resource-service/utils/validate"
 	"net/http"
 
 	"github.com/Informasjonsforvaltning/fdk-resource-service/service"
@@ -42,9 +43,9 @@ func GetService() func(c *gin.Context) {
 	serviceService := service.InitServiceService()
 	return func(c *gin.Context) {
 		id := c.Param("id")
-		service, status := serviceService.GetService(c.Request.Context(), id)
+		serv, status := serviceService.GetService(c.Request.Context(), validate.SanitizeID(id))
 		if status == http.StatusOK {
-			c.JSON(status, service)
+			c.JSON(status, serv)
 		} else {
 			c.Status(status)
 		}

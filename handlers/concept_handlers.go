@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"github.com/Informasjonsforvaltning/fdk-resource-service/model"
+	"github.com/Informasjonsforvaltning/fdk-resource-service/utils/validate"
 	"net/http"
 
 	"github.com/Informasjonsforvaltning/fdk-resource-service/service"
@@ -42,7 +43,7 @@ func GetConcept() func(c *gin.Context) {
 	conceptService := service.InitConceptService()
 	return func(c *gin.Context) {
 		id := c.Param("id")
-		concept, status := conceptService.GetConcept(c.Request.Context(), id)
+		concept, status := conceptService.GetConcept(c.Request.Context(), validate.SanitizeID(id))
 		if status == http.StatusOK {
 			c.JSON(status, concept)
 		} else {
