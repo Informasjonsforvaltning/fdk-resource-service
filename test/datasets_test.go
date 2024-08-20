@@ -241,13 +241,26 @@ func TestDeleteDatasetUnauthorized(t *testing.T) {
 	assert.Equal(t, http.StatusUnauthorized, w.Code)
 }
 
-func TestDeleteDatasetForbidden(t *testing.T) {
+func TestDeleteDatasetForbiddenWithWrongAuth(t *testing.T) {
 	app := router.SetupRouter()
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("DELETE", "/datasets/444", nil)
 	orgAdminAuth := OrgAdminAuth("987654321")
 	jwt := CreateMockJwt(time.Now().Add(time.Hour).Unix(), &orgAdminAuth, &TestValues.Audience)
+	req.Header.Set("Authorization", *jwt)
+	app.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusForbidden, w.Code)
+}
+
+func TestDeleteDatasetForbiddenWithWrongAudience(t *testing.T) {
+	app := router.SetupRouter()
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("DELETE", "/datasets/444", nil)
+	wrongAudience := []string{"invalid-audience"}
+	jwt := CreateMockJwt(time.Now().Add(time.Hour).Unix(), &TestValues.SysAdminAuth, &wrongAudience)
 	req.Header.Set("Authorization", *jwt)
 	app.ServeHTTP(w, req)
 
