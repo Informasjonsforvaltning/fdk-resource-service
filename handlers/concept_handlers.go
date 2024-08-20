@@ -3,6 +3,7 @@ package handlers
 import (
 	"github.com/Informasjonsforvaltning/fdk-resource-service/model"
 	"github.com/Informasjonsforvaltning/fdk-resource-service/utils/validate"
+	"github.com/sirupsen/logrus"
 	"net/http"
 
 	"github.com/Informasjonsforvaltning/fdk-resource-service/service"
@@ -49,5 +50,16 @@ func GetConcept() func(c *gin.Context) {
 		} else {
 			c.Status(status)
 		}
+	}
+}
+
+func DeleteConcept() func(c *gin.Context) {
+	conceptService := service.InitConceptService()
+	return func(c *gin.Context) {
+		id := c.Param("id")
+		logrus.Infof("Deleting concept with id %s", id)
+
+		status := conceptService.DeleteConcept(c.Request.Context(), validate.SanitizeID(id))
+		c.Status(status)
 	}
 }

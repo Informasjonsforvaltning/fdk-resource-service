@@ -3,6 +3,7 @@ package handlers
 import (
 	"github.com/Informasjonsforvaltning/fdk-resource-service/model"
 	"github.com/Informasjonsforvaltning/fdk-resource-service/utils/validate"
+	"github.com/sirupsen/logrus"
 	"net/http"
 
 	"github.com/Informasjonsforvaltning/fdk-resource-service/service"
@@ -49,5 +50,16 @@ func GetEvent() func(c *gin.Context) {
 		} else {
 			c.Status(status)
 		}
+	}
+}
+
+func DeleteEvent() func(c *gin.Context) {
+	eventService := service.InitEventService()
+	return func(c *gin.Context) {
+		id := c.Param("id")
+		logrus.Infof("Deleting event with id %s", id)
+
+		status := eventService.DeleteEvent(c.Request.Context(), validate.SanitizeID(id))
+		c.Status(status)
 	}
 }

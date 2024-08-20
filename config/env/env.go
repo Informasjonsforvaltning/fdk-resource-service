@@ -36,6 +36,10 @@ func KafkaBrokers() string {
 	return getEnv("KAFKA_BROKERS", "localhost:9092")
 }
 
+func KeycloakHost() string {
+	return getEnv("SSO_AUTH_URI", "https://sso.staging.fellesdatakatalog.digdir.no/auth")
+}
+
 func SchemaRegistry() string {
 	return strings.Split(getEnv("SCHEMA_REGISTRY", "http://localhost:5050"), ",")[0]
 }
@@ -71,6 +75,11 @@ type Paths struct {
 	Service           string
 }
 
+type Security struct {
+	TokenAudience string
+	SysAdminAuth  string
+}
+
 var MongoValues = MongoConstants{
 	ConceptsCollection:          "concepts",
 	DataServicesCollection:      "dataServices",
@@ -100,4 +109,9 @@ var PathValues = Paths{
 	InformationModel:  "/information-models/:id",
 	Services:          "/services",
 	Service:           "/services/:id",
+}
+
+var SecurityValues = Security{
+	TokenAudience: "fdk-harvest-admin",
+	SysAdminAuth:  "system:root:admin",
 }

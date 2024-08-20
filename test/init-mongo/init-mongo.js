@@ -18,7 +18,6 @@ db.createCollection('datasets', {
 db.datasets.insert(
     {
         "_id": "123",
-        "removed": false,
         "timestamp": 10,
         "resource": {
             "id": "123",
@@ -41,7 +40,7 @@ db.datasets.insert(
 db.datasets.insert(
     {
         "_id": "111",
-        "removed": false,
+        "deleted": false,
         "timestamp": 10,
         "resource": {
             "id": "111",
@@ -64,7 +63,7 @@ db.datasets.insert(
 db.datasets.insert(
     {
         "_id": "222",
-        "removed": true,
+        "deleted": true,
         "timestamp": 10,
         "resource": {
             "id": "222",
@@ -72,14 +71,14 @@ db.datasets.insert(
             "uri": "https://datasets.digdir.no/777",
             "identifier": "777",
             "title": {
-                "nb": "removed dataset nb",
-                "nn": "removed dataset nn",
-                "en": "removed dataset en"
+                "nb": "deleted dataset nb",
+                "nn": "deleted dataset nn",
+                "en": "deleted dataset en"
             },
             "description": {
-                "nb": "removed dataset desc nb",
-                "nn": "removed dataset desc nn",
-                "en": "removed dataset desc en"
+                "nb": "deleted dataset desc nb",
+                "nn": "deleted dataset desc nn",
+                "en": "deleted dataset desc en"
             }
         }
     }
@@ -87,7 +86,7 @@ db.datasets.insert(
 db.datasets.insert(
     {
         "_id": "333",
-        "removed": true,
+        "deleted": true,
         "timestamp": 10,
         "resource": {
             "id": "333"
@@ -97,7 +96,7 @@ db.datasets.insert(
 db.datasets.insert(
     {
         "_id": "444",
-        "removed": true,
+        "deleted": false,
         "timestamp": 10,
         "resource": {
             "id": "444"
@@ -124,7 +123,6 @@ db.createCollection('services', {
 db.services.insert(
     {
         "_id": "123",
-        "removed": false,
         "timestamp": 10,
         "resource": {
             "id": "123",
@@ -147,7 +145,7 @@ db.services.insert(
 db.services.insert(
     {
         "_id": "111",
-        "removed": false,
+        "deleted": false,
         "timestamp": 10,
         "resource": {
             "id": "111",
@@ -170,7 +168,7 @@ db.services.insert(
 db.services.insert(
     {
         "_id": "222",
-        "removed": true,
+        "deleted": true,
         "timestamp": 10,
         "resource": {
             "id": "222",
@@ -178,14 +176,14 @@ db.services.insert(
             "uri": "https://services.digdir.no/777",
             "identifier": "777",
             "title": {
-                "nb": "removed service nb",
-                "nn": "removed service nn",
-                "en": "removed service en"
+                "nb": "deleted service nb",
+                "nn": "deleted service nn",
+                "en": "deleted service en"
             },
             "description": {
-                "nb": "removed service desc nb",
-                "nn": "removed service desc nn",
-                "en": "removed service desc en"
+                "nb": "deleted service desc nb",
+                "nn": "deleted service desc nn",
+                "en": "deleted service desc en"
             }
         }
     }
@@ -193,7 +191,7 @@ db.services.insert(
 db.services.insert(
     {
         "_id": "333",
-        "removed": true,
+        "deleted": true,
         "timestamp": 10,
         "resource": {
             "id": "333"
@@ -203,7 +201,7 @@ db.services.insert(
 db.services.insert(
     {
         "_id": "444",
-        "removed": true,
+        "deleted": false,
         "timestamp": 10,
         "resource": {
             "id": "444"
@@ -230,7 +228,6 @@ db.createCollection('events', {
 db.events.insert(
     {
         "_id": "123",
-        "removed": false,
         "timestamp": 10,
         "resource": {
             "id": "123",
@@ -253,7 +250,7 @@ db.events.insert(
 db.events.insert(
     {
         "_id": "111",
-        "removed": false,
+        "deleted": false,
         "timestamp": 10,
         "resource": {
             "id": "111",
@@ -276,7 +273,7 @@ db.events.insert(
 db.events.insert(
     {
         "_id": "222",
-        "removed": true,
+        "deleted": true,
         "timestamp": 10,
         "resource": {
             "id": "222",
@@ -284,14 +281,14 @@ db.events.insert(
             "uri": "https://events.digdir.no/777",
             "identifier": "777",
             "title": {
-                "nb": "removed event nb",
-                "nn": "removed event nn",
-                "en": "removed event en"
+                "nb": "deleted event nb",
+                "nn": "deleted event nn",
+                "en": "deleted event en"
             },
             "description": {
-                "nb": "removed event desc nb",
-                "nn": "removed event desc nn",
-                "en": "removed event desc en"
+                "nb": "deleted event desc nb",
+                "nn": "deleted event desc nn",
+                "en": "deleted event desc en"
             }
         }
     }
@@ -299,7 +296,7 @@ db.events.insert(
 db.events.insert(
     {
         "_id": "333",
-        "removed": true,
+        "deleted": true,
         "timestamp": 10,
         "resource": {
             "id": "333"
@@ -309,7 +306,7 @@ db.events.insert(
 db.events.insert(
     {
         "_id": "444",
-        "removed": true,
+        "deleted": false,
         "timestamp": 10,
         "resource": {
             "id": "444"
@@ -336,7 +333,6 @@ db.createCollection('informationModels', {
 db.informationModels.insert(
     {
         "_id": "123",
-        "removed": false,
         "timestamp": 10,
         "resource": {
             "id": "123",
@@ -359,7 +355,7 @@ db.informationModels.insert(
 db.informationModels.insert(
     {
         "_id": "111",
-        "removed": false,
+        "deleted": false,
         "timestamp": 10,
         "resource": {
             "id": "111",
@@ -382,7 +378,7 @@ db.informationModels.insert(
 db.informationModels.insert(
     {
         "_id": "222",
-        "removed": true,
+        "deleted": true,
         "timestamp": 10,
         "resource": {
             "id": "222",
@@ -390,14 +386,14 @@ db.informationModels.insert(
             "uri": "https://information-models.digdir.no/777",
             "identifier": "777",
             "title": {
-                "nb": "removed information model nb",
-                "nn": "removed information model nn",
-                "en": "removed information model en"
+                "nb": "deleted information model nb",
+                "nn": "deleted information model nn",
+                "en": "deleted information model en"
             },
             "description": {
-                "nb": "removed information model desc nb",
-                "nn": "removed information model desc nn",
-                "en": "removed information model desc en"
+                "nb": "deleted information model desc nb",
+                "nn": "deleted information model desc nn",
+                "en": "deleted information model desc en"
             }
         }
     }
@@ -405,7 +401,7 @@ db.informationModels.insert(
 db.informationModels.insert(
     {
         "_id": "333",
-        "removed": true,
+        "deleted": true,
         "timestamp": 10,
         "resource": {
             "id": "333"
@@ -415,7 +411,7 @@ db.informationModels.insert(
 db.informationModels.insert(
     {
         "_id": "444",
-        "removed": true,
+        "deleted": false,
         "timestamp": 10,
         "resource": {
             "id": "444"
@@ -442,7 +438,6 @@ db.createCollection('dataServices', {
 db.dataServices.insert(
     {
         "_id": "123",
-        "removed": false,
         "timestamp": 10,
         "resource": {
             "id": "123",
@@ -465,7 +460,7 @@ db.dataServices.insert(
 db.dataServices.insert(
     {
         "_id": "111",
-        "removed": false,
+        "deleted": false,
         "timestamp": 10,
         "resource": {
             "id": "111",
@@ -488,7 +483,7 @@ db.dataServices.insert(
 db.dataServices.insert(
     {
         "_id": "222",
-        "removed": true,
+        "deleted": true,
         "timestamp": 10,
         "resource": {
             "id": "222",
@@ -496,14 +491,14 @@ db.dataServices.insert(
             "uri": "https://data-services.digdir.no/777",
             "identifier": "777",
             "title": {
-                "nb": "removed data service nb",
-                "nn": "removed data service nn",
-                "en": "removed data service en"
+                "nb": "deleted data service nb",
+                "nn": "deleted data service nn",
+                "en": "deleted data service en"
             },
             "description": {
-                "nb": "removed data service desc nb",
-                "nn": "removed data service desc nn",
-                "en": "removed data service desc en"
+                "nb": "deleted data service desc nb",
+                "nn": "deleted data service desc nn",
+                "en": "deleted data service desc en"
             }
         }
     }
@@ -511,7 +506,7 @@ db.dataServices.insert(
 db.dataServices.insert(
     {
         "_id": "333",
-        "removed": true,
+        "deleted": true,
         "timestamp": 10,
         "resource": {
             "id": "333"
@@ -521,7 +516,7 @@ db.dataServices.insert(
 db.dataServices.insert(
     {
         "_id": "444",
-        "removed": true,
+        "deleted": false,
         "timestamp": 10,
         "resource": {
             "id": "444"
@@ -548,7 +543,6 @@ db.createCollection('concepts', {
 db.concepts.insert(
     {
         "_id": "123",
-        "removed": false,
         "timestamp": 10,
         "resource": {
             "id": "123",
@@ -571,7 +565,7 @@ db.concepts.insert(
 db.concepts.insert(
     {
         "_id": "111",
-        "removed": false,
+        "deleted": false,
         "timestamp": 10,
         "resource": {
             "id": "111",
@@ -594,7 +588,7 @@ db.concepts.insert(
 db.concepts.insert(
     {
         "_id": "222",
-        "removed": true,
+        "deleted": true,
         "timestamp": 10,
         "resource": {
             "id": "222",
@@ -602,14 +596,14 @@ db.concepts.insert(
             "uri": "https://concepts.digdir.no/777",
             "identifier": "777",
             "title": {
-                "nb": "removed concept nb",
-                "nn": "removed concept nn",
-                "en": "removed concept en"
+                "nb": "deleted concept nb",
+                "nn": "deleted concept nn",
+                "en": "deleted concept en"
             },
             "description": {
-                "nb": "removed concept desc nb",
-                "nn": "removed concept desc nn",
-                "en": "removed concept desc en"
+                "nb": "deleted concept desc nb",
+                "nn": "deleted concept desc nn",
+                "en": "deleted concept desc en"
             }
         }
     }
@@ -617,7 +611,7 @@ db.concepts.insert(
 db.concepts.insert(
     {
         "_id": "333",
-        "removed": true,
+        "deleted": true,
         "timestamp": 10,
         "resource": {
             "id": "333"
@@ -627,7 +621,7 @@ db.concepts.insert(
 db.concepts.insert(
     {
         "_id": "444",
-        "removed": true,
+        "deleted": false,
         "timestamp": 10,
         "resource": {
             "id": "444"

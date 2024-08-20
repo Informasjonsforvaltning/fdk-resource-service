@@ -1,6 +1,7 @@
 package router
 
 import (
+	"github.com/Informasjonsforvaltning/fdk-resource-service/config/security"
 	"github.com/gin-gonic/gin"
 
 	"github.com/Informasjonsforvaltning/fdk-resource-service/config/env"
@@ -15,26 +16,32 @@ func InitializeRoutes(e *gin.Engine) {
 	e.GET(env.PathValues.Concepts, handlers.GetConcepts())
 	e.POST(env.PathValues.Concepts, handlers.FilterConcepts())
 	e.GET(env.PathValues.Concept, handlers.GetConcept())
+	e.DELETE(env.PathValues.Concept, security.AuthenticateSysAdmin(), handlers.DeleteConcept())
 
 	e.GET(env.PathValues.DataServices, handlers.GetDataServices())
 	e.POST(env.PathValues.DataServices, handlers.FilterDataServices())
 	e.GET(env.PathValues.DataService, handlers.GetDataService())
+	e.DELETE(env.PathValues.DataService, security.AuthenticateSysAdmin(), handlers.DeleteDataService())
 
 	e.GET(env.PathValues.Datasets, handlers.GetDatasets())
 	e.POST(env.PathValues.Datasets, handlers.FilterDatasets())
 	e.GET(env.PathValues.Dataset, handlers.GetDataset())
+	e.DELETE(env.PathValues.Dataset, security.AuthenticateSysAdmin(), handlers.DeleteDataset())
 
 	e.GET(env.PathValues.Events, handlers.GetEvents())
 	e.POST(env.PathValues.Events, handlers.FilterEvents())
 	e.GET(env.PathValues.Event, handlers.GetEvent())
+	e.DELETE(env.PathValues.Event, security.AuthenticateSysAdmin(), handlers.DeleteEvent())
 
 	e.GET(env.PathValues.InformationModels, handlers.GetInformationModels())
 	e.POST(env.PathValues.InformationModels, handlers.FilterInformationModels())
 	e.GET(env.PathValues.InformationModel, handlers.GetInformationModel())
+	e.DELETE(env.PathValues.InformationModel, security.AuthenticateSysAdmin(), handlers.DeleteInformationModel())
 
 	e.GET(env.PathValues.Services, handlers.GetServices())
 	e.POST(env.PathValues.Services, handlers.FilterServices())
 	e.GET(env.PathValues.Service, handlers.GetService())
+	e.DELETE(env.PathValues.Service, security.AuthenticateSysAdmin(), handlers.DeleteService())
 }
 
 func Cors() gin.HandlerFunc {

@@ -12,6 +12,7 @@ import (
 	"net/http/httptest"
 	"slices"
 	"testing"
+	"time"
 )
 
 type TestDataset struct {
@@ -55,6 +56,15 @@ func TestGetDataset(t *testing.T) {
 	assert.Equal(t, expectedResponse, actualResponse)
 }
 
+func TestUnableToGetDeletedDataset(t *testing.T) {
+	app := router.SetupRouter()
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "/datasets/222", nil)
+	app.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusNotFound, w.Code)
+}
+
 func TestGetDatasets(t *testing.T) {
 	app := router.SetupRouter()
 
@@ -73,8 +83,9 @@ func TestGetDatasets(t *testing.T) {
 	for _, dataset := range actualResponse {
 		ids = append(ids, dataset.ID)
 	}
+	assert.True(t, slices.Contains(ids, "123"))
 	assert.True(t, slices.Contains(ids, "111"))
-	assert.True(t, slices.Contains(ids, "222"))
+	assert.False(t, slices.Contains(ids, "222"))
 }
 
 func TestFilterDatasetsIncludeOne(t *testing.T) {
@@ -101,7 +112,7 @@ func TestFilterDatasetsIncludeOne(t *testing.T) {
 
 func TestFilterDatasetsIncludeTwo(t *testing.T) {
 	app := router.SetupRouter()
-	body, _ := json.Marshal(model.Filters{IDs: []string{"111", "222"}})
+	body, _ := json.Marshal(model.Filters{IDs: []string{"111", "222", "123"}})
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("POST", "/datasets", bytes.NewBuffer(body))
@@ -119,7 +130,7 @@ func TestFilterDatasetsIncludeTwo(t *testing.T) {
 		ids = append(ids, dataset.ID)
 	}
 	assert.True(t, slices.Contains(ids, "111"))
-	assert.True(t, slices.Contains(ids, "222"))
+	assert.True(t, slices.Contains(ids, "123"))
 }
 
 func TestCreateResource(t *testing.T) {
@@ -218,4 +229,56 @@ func TestUpdateDatasetSkippedWhenIncomingTimestampIsLower(t *testing.T) {
 	err = json.Unmarshal(wGet.Body.Bytes(), &notUpdated)
 	assert.Nil(t, err)
 	assert.NotEqual(t, dataset, notUpdated)
+}
+
+func TestDeleteDatasetUnauthorized(t *testing.T) {
+	app := router.SetupRouter()
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("DELETE", "/datasets/444", nil)
+	app.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusUnauthorized, w.Code)
+}
+
+func TestDeleteDatasetForbidden(t *testing.T) {
+	app := router.SetupRouter()
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("DELETE", "/datasets/444", nil)
+	orgAdminAuth := OrgAdminAuth("987654321")
+	jwt := CreateMockJwt(time.Now().Add(time.Hour).Unix(), &orgAdminAuth, &TestValues.Audience)
+	req.Header.Set("Authorization", *jwt)
+	app.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusForbidden, w.Code)
+}
+
+func TestDeleteDatasetNotFound(t *testing.T) {
+	app := router.SetupRouter()
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("DELETE", "/datasets/not-found", nil)
+	jwt := CreateMockJwt(time.Now().Add(time.Hour).Unix(), &TestValues.SysAdminAuth, &TestValues.Audience)
+	req.Header.Set("Authorization", *jwt)
+	app.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusNotFound, w.Code)
+}
+
+func TestDeleteDataset(t *testing.T) {
+	app := router.SetupRouter()
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("DELETE", "/datasets/444", nil)
+	jwt := CreateMockJwt(time.Now().Add(time.Hour).Unix(), &TestValues.SysAdminAuth, &TestValues.Audience)
+	req.Header.Set("Authorization", *jwt)
+	app.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusNoContent, w.Code)
+
+	wGet := httptest.NewRecorder()
+	reqGet, _ := http.NewRequest("GET", "/datasets/444", nil)
+	app.ServeHTTP(wGet, reqGet)
+	assert.Equal(t, http.StatusNotFound, wGet.Code)
 }
