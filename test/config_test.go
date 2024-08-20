@@ -2,6 +2,7 @@ package test
 
 import (
 	"context"
+	"fmt"
 	"github.com/Informasjonsforvaltning/fdk-resource-service/repository"
 	"log"
 	"os"
@@ -23,11 +24,28 @@ var serviceRepository = repository.InitServiceRepository()
 
 var dbClient *mongo.Client
 
+type TestConstants struct {
+	Audience     []string
+	SysAdminAuth string
+}
+
+var TestValues = TestConstants{
+	Audience:     []string{"fdk-harvest-admin"},
+	SysAdminAuth: "system:root:admin",
+}
+
+func OrgAdminAuth(org string) string {
+	return fmt.Sprintf("organization:%s:admin", org)
+}
+
 func TestMain(m *testing.M) {
 	MongoContainerRunner(m)
 }
 
 func MongoContainerRunner(m *testing.M) {
+	mockJwkStore := MockJwkStore()
+	os.Setenv("SSO_AUTH_URI", mockJwkStore.URL)
+
 	pool, err := dockertest.NewPool("")
 	if err != nil {
 		log.Fatalf("Could not connect to docker: %s", err)

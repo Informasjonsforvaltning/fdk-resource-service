@@ -12,6 +12,7 @@ import (
 	"net/http/httptest"
 	"slices"
 	"testing"
+	"time"
 )
 
 type TestDataService struct {
@@ -55,6 +56,15 @@ func TestGetDataService(t *testing.T) {
 	assert.Equal(t, expectedResponse, actualResponse)
 }
 
+func TestUnableToGetDeletedDataService(t *testing.T) {
+	app := router.SetupRouter()
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "/data-services/222", nil)
+	app.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusNotFound, w.Code)
+}
+
 func TestGetDataServices(t *testing.T) {
 	app := router.SetupRouter()
 
@@ -73,8 +83,9 @@ func TestGetDataServices(t *testing.T) {
 	for _, dataService := range actualResponse {
 		ids = append(ids, dataService.ID)
 	}
+	assert.True(t, slices.Contains(ids, "123"))
 	assert.True(t, slices.Contains(ids, "111"))
-	assert.True(t, slices.Contains(ids, "222"))
+	assert.False(t, slices.Contains(ids, "222"))
 }
 
 func TestFilterDataServicesIncludeOne(t *testing.T) {
@@ -101,7 +112,7 @@ func TestFilterDataServicesIncludeOne(t *testing.T) {
 
 func TestFilterDataServicesIncludeTwo(t *testing.T) {
 	app := router.SetupRouter()
-	body, _ := json.Marshal(model.Filters{IDs: []string{"111", "222"}})
+	body, _ := json.Marshal(model.Filters{IDs: []string{"111", "222", "123"}})
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("POST", "/data-services", bytes.NewBuffer(body))
@@ -119,7 +130,7 @@ func TestFilterDataServicesIncludeTwo(t *testing.T) {
 		ids = append(ids, dataService.ID)
 	}
 	assert.True(t, slices.Contains(ids, "111"))
-	assert.True(t, slices.Contains(ids, "222"))
+	assert.True(t, slices.Contains(ids, "123"))
 }
 
 func TestCreateDataService(t *testing.T) {
@@ -218,4 +229,56 @@ func TestUpdateDataServiceSkippedWhenIncomingTimestampIsLower(t *testing.T) {
 	err = json.Unmarshal(wGet.Body.Bytes(), &notUpdated)
 	assert.Nil(t, err)
 	assert.NotEqual(t, dataService, notUpdated)
+}
+
+func TestDeleteDataServiceUnauthorized(t *testing.T) {
+	app := router.SetupRouter()
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("DELETE", "/data-services/444", nil)
+	app.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusUnauthorized, w.Code)
+}
+
+func TestDeleteDataServiceForbidden(t *testing.T) {
+	app := router.SetupRouter()
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("DELETE", "/data-services/444", nil)
+	orgAdminAuth := OrgAdminAuth("987654321")
+	jwt := CreateMockJwt(time.Now().Add(time.Hour).Unix(), &orgAdminAuth, &TestValues.Audience)
+	req.Header.Set("Authorization", *jwt)
+	app.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusForbidden, w.Code)
+}
+
+func TestDeleteDataServiceNotFound(t *testing.T) {
+	app := router.SetupRouter()
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("DELETE", "/data-services/not-found", nil)
+	jwt := CreateMockJwt(time.Now().Add(time.Hour).Unix(), &TestValues.SysAdminAuth, &TestValues.Audience)
+	req.Header.Set("Authorization", *jwt)
+	app.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusNotFound, w.Code)
+}
+
+func TestDeleteDataService(t *testing.T) {
+	app := router.SetupRouter()
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("DELETE", "/data-services/444", nil)
+	jwt := CreateMockJwt(time.Now().Add(time.Hour).Unix(), &TestValues.SysAdminAuth, &TestValues.Audience)
+	req.Header.Set("Authorization", *jwt)
+	app.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusNoContent, w.Code)
+
+	wGet := httptest.NewRecorder()
+	reqGet, _ := http.NewRequest("GET", "/data-services/444", nil)
+	app.ServeHTTP(wGet, reqGet)
+	assert.Equal(t, http.StatusNotFound, wGet.Code)
 }

@@ -3,6 +3,7 @@ package handlers
 import (
 	"github.com/Informasjonsforvaltning/fdk-resource-service/model"
 	"github.com/Informasjonsforvaltning/fdk-resource-service/utils/validate"
+	"github.com/sirupsen/logrus"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -50,5 +51,16 @@ func GetDataService() func(c *gin.Context) {
 		} else {
 			c.Status(status)
 		}
+	}
+}
+
+func DeleteDataService() func(c *gin.Context) {
+	dataServiceService := service.InitDataServiceService()
+	return func(c *gin.Context) {
+		id := c.Param("id")
+		logrus.Infof("Deleting data service with id %s", id)
+
+		status := dataServiceService.DeleteDataService(c.Request.Context(), validate.SanitizeID(id))
+		c.Status(status)
 	}
 }

@@ -12,6 +12,7 @@ import (
 	"net/http/httptest"
 	"slices"
 	"testing"
+	"time"
 )
 
 type TestInformationModel struct {
@@ -55,6 +56,15 @@ func TestGetInformationModel(t *testing.T) {
 	assert.Equal(t, expectedResponse, actualResponse)
 }
 
+func TestUnableToGetDeletedInformationModel(t *testing.T) {
+	app := router.SetupRouter()
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "/information-models/222", nil)
+	app.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusNotFound, w.Code)
+}
+
 func TestGetInformationModels(t *testing.T) {
 	app := router.SetupRouter()
 
@@ -73,8 +83,9 @@ func TestGetInformationModels(t *testing.T) {
 	for _, informationModel := range actualResponse {
 		ids = append(ids, informationModel.ID)
 	}
+	assert.True(t, slices.Contains(ids, "123"))
 	assert.True(t, slices.Contains(ids, "111"))
-	assert.True(t, slices.Contains(ids, "222"))
+	assert.False(t, slices.Contains(ids, "222"))
 }
 
 func TestFilterInformationModelsIncludeOne(t *testing.T) {
@@ -101,7 +112,7 @@ func TestFilterInformationModelsIncludeOne(t *testing.T) {
 
 func TestFilterInformationModelsIncludeTwo(t *testing.T) {
 	app := router.SetupRouter()
-	body, _ := json.Marshal(model.Filters{IDs: []string{"111", "222"}})
+	body, _ := json.Marshal(model.Filters{IDs: []string{"111", "222", "123"}})
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("POST", "/information-models", bytes.NewBuffer(body))
@@ -119,7 +130,7 @@ func TestFilterInformationModelsIncludeTwo(t *testing.T) {
 		ids = append(ids, informationModel.ID)
 	}
 	assert.True(t, slices.Contains(ids, "111"))
-	assert.True(t, slices.Contains(ids, "222"))
+	assert.True(t, slices.Contains(ids, "123"))
 }
 
 func TestCreateInformationModel(t *testing.T) {
@@ -218,4 +229,56 @@ func TestUpdateInformationModelSkippedWhenIncomingTimestampIsLower(t *testing.T)
 	err = json.Unmarshal(wGet.Body.Bytes(), &notUpdated)
 	assert.Nil(t, err)
 	assert.NotEqual(t, informationModel, notUpdated)
+}
+
+func TestDeleteInformationModelUnauthorized(t *testing.T) {
+	app := router.SetupRouter()
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("DELETE", "/information-models/444", nil)
+	app.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusUnauthorized, w.Code)
+}
+
+func TestDeleteInformationModelForbidden(t *testing.T) {
+	app := router.SetupRouter()
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("DELETE", "/information-models/444", nil)
+	orgAdminAuth := OrgAdminAuth("987654321")
+	jwt := CreateMockJwt(time.Now().Add(time.Hour).Unix(), &orgAdminAuth, &TestValues.Audience)
+	req.Header.Set("Authorization", *jwt)
+	app.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusForbidden, w.Code)
+}
+
+func TestDeleteInformationModelNotFound(t *testing.T) {
+	app := router.SetupRouter()
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("DELETE", "/information-models/not-found", nil)
+	jwt := CreateMockJwt(time.Now().Add(time.Hour).Unix(), &TestValues.SysAdminAuth, &TestValues.Audience)
+	req.Header.Set("Authorization", *jwt)
+	app.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusNotFound, w.Code)
+}
+
+func TestDeleteInformationModel(t *testing.T) {
+	app := router.SetupRouter()
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("DELETE", "/information-models/444", nil)
+	jwt := CreateMockJwt(time.Now().Add(time.Hour).Unix(), &TestValues.SysAdminAuth, &TestValues.Audience)
+	req.Header.Set("Authorization", *jwt)
+	app.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusNoContent, w.Code)
+
+	wGet := httptest.NewRecorder()
+	reqGet, _ := http.NewRequest("GET", "/information-models/444", nil)
+	app.ServeHTTP(wGet, reqGet)
+	assert.Equal(t, http.StatusNotFound, wGet.Code)
 }
