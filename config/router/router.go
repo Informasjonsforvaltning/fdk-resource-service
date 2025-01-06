@@ -2,7 +2,9 @@ package router
 
 import (
 	"github.com/Informasjonsforvaltning/fdk-resource-service/config/security"
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"time"
 
 	"github.com/Informasjonsforvaltning/fdk-resource-service/config/env"
 	"github.com/Informasjonsforvaltning/fdk-resource-service/handlers"
@@ -62,7 +64,16 @@ func Cors() gin.HandlerFunc {
 func SetupRouter() *gin.Engine {
 	router := gin.New()
 	router.Use(gin.Recovery())
-	router.Use(Cors())
+	router.Use(cors.New(cors.Config{
+		AllowOrigins:     env.CorsOriginPatterns(),
+		AllowMethods:     []string{"OPTIONS", "GET", "POST"},
+		AllowHeaders:     []string{"*"},
+		AllowWildcard:    true,
+		AllowAllOrigins:  false,
+		AllowCredentials: false,
+		AllowFiles:       false,
+		MaxAge:           1 * time.Hour,
+	}))
 
 	InitializeRoutes(router)
 

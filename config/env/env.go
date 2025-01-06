@@ -12,6 +12,10 @@ func getEnv(key, fallback string) string {
 	return fallback
 }
 
+func CorsOriginPatterns() []string {
+	return strings.Split(getEnv("CORS_ORIGIN_PATTERNS", "*"), ",")
+}
+
 func MongoHost() string {
 	return getEnv("MONGO_HOST", "localhost:27017")
 }
