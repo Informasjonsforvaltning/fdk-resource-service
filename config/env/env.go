@@ -45,7 +45,7 @@ func KeycloakHost() string {
 }
 
 func SchemaRegistry() string {
-	return strings.Split(getEnv("SCHEMA_REGISTRY", "http://localhost:5050"), ",")[0]
+	return strings.Split(getEnv("SCHEMA_REGISTRY", "http://localhost:8081"), ",")[0]
 }
 
 type MongoConstants struct {

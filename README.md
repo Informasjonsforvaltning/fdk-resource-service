@@ -1,20 +1,74 @@
-# fdk-resource-service
-Service for accessing FDK data
+# FDK Resource Service
 
-The only mandatory field for any resource is the unique id field, which can be used to GET the resource. See the [openapi specification](https://raw.githubusercontent.com/Informasjonsforvaltning/fdk-resource-service/main/openapi.yaml) for the list of supported resources and associated endpoints.
+This application provides an API for retrieving all resources (datasets, concepts etc.).
 
-## Testing the project
+For a broader understanding of the system’s context, refer to
+the [architecture documentation](https://github.com/Informasjonsforvaltning/architecture-documentation) wiki. For more
+specific context on this application, see the **Portal** subsystem section.
+
+## Getting Started
+
+These instructions will give you a copy of the project up and running on your local machine for development and testing
+purposes.
+
+### Prerequisites
+
+Ensure you have the following installed:
+
+- Go
+- Docker
+
+Clone the repository.
+
+```sh
+git clone https://github.com/Informasjonsforvaltning/fdk-resource-service.git
+cd fdk-resource-service
 ```
-// Run all tests
-go test ./test
-// Run tests with coverage report
-go test -v -race -coverpkg=./... -coverprofile=coverage.txt -covermode=atomic ./test
-```
 
-## Running the project
+#### Start MongoDB database, Kafka cluster and setup topics/schemas
+
+Topics and schemas are set up automatically when starting the Kafka cluster. Docker compose uses the scripts
+```create-topics.sh``` and ```create-schemas.sh``` to set up topics and schemas.
 
 ```
+docker-compose up -d
+```
+
+If you have problems starting kafka, check if all health checks are ok. Make sure number at the end (after 'grep')
+matches desired topics.
+
+#### Install required dependencies
+
+```shell
+go get
+```
+
+#### Start application
+
+```sh
 go run main.go
 ```
 
-This will start an HTTP server on localhost:8080.
+#### Produce messages
+
+Check if schema id is correct in the script. This should be 1 if there is only one schema in your registry.
+
+```
+sh ./kafka/produce-messages.sh
+```
+
+### API Documentation (OpenAPI)
+
+The API documentation is available at ```openapi.yaml```.
+
+### Running tests
+
+```shell
+go test ./test
+```
+
+To generate a test coverage report, use the following command:
+
+```shell
+go test -v -race -coverpkg=./... -coverprofile=coverage.txt -covermode=atomic ./test
+```
