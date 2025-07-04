@@ -20,6 +20,8 @@ spec:
         prometheus.io/scrape: "false"
     spec:
       serviceAccountName: error-reporting-sa
+      nodeSelector:
+        workload-identity: enabled
       tolerations:
         - key: "workload-identity"
           operator: "Equal"
