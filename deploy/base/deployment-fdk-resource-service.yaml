@@ -19,6 +19,14 @@ spec:
       annotations:
         prometheus.io/scrape: "false"
     spec:
+      serviceAccountName: error-reporting-sa
+      nodeSelector:
+        workload-identity: enabled
+      tolerations:
+        - key: "workload-identity"
+          operator: "Equal"
+          value: "only"
+          effect: "NoSchedule"
       containers:
         - name: fdk-resource-service
           image: fdk-resource-service
@@ -33,6 +41,3 @@ spec:
             httpGet:
               path: /ready
               port: 8080
-          volumeMounts:
-            - mountPath: /var/secrets/google
-              name: error-reporting-sa
