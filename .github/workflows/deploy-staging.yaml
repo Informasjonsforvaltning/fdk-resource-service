@@ -1,5 +1,7 @@
 name: Deploy to staging
-
+permissions:
+  contents: read
+  packages: write
 on:
   pull_request:
     types: [ready_for_review, opened, reopened, synchronize]
@@ -12,7 +14,7 @@ jobs:
     uses: Informasjonsforvaltning/workflows/.github/workflows/coverage-go.yaml@main
     with:
       coverage_file_path: ./coverage.txt
-      go_version: 1.22.7
+      go_version: 1.25.0
       test_path: ./test
     secrets:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
