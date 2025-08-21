@@ -9,15 +9,15 @@ import (
 	"net/http/httptest"
 	"time"
 
-	"github.com/lestrrat-go/jwx/jwa"
-	"github.com/lestrrat-go/jwx/jwk"
-	"github.com/lestrrat-go/jwx/jwt"
+	"github.com/lestrrat-go/jwx/v3/jwa"
+	"github.com/lestrrat-go/jwx/v3/jwk"
+	"github.com/lestrrat-go/jwx/v3/jwt"
 )
 
 var MockRsaKey, _ = rsa.GenerateKey(rand.Reader, 2048)
 
 func MockJwkStore() *httptest.Server {
-	key, err := jwk.New(MockRsaKey)
+	key, err := jwk.Import(MockRsaKey)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -55,11 +55,11 @@ func CreateMockJwt(expiresAt int64, auth *string, audience *[]string) *string {
 		t.Set(jwt.AudienceKey, *audience)
 	}
 
-	jwk_key, _ := jwk.New(MockRsaKey)
+	jwk_key, _ := jwk.Import(MockRsaKey)
 
 	jwk_key.Set(jwk.KeyIDKey, "testkid")
 
-	signed, _ := jwt.Sign(t, jwa.RS256, jwk_key)
+	signed, _ := jwt.Sign(t, jwt.WithKey(jwa.RS256(), jwk_key))
 
 	signed_string := string(signed)
 
