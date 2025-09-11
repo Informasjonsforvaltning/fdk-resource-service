@@ -22,6 +22,62 @@ spec:
       serviceAccountName: error-reporting-sa
       containers:
         - name: fdk-resource-service
+          env:
+            - name: PROJECT_ID_GCP
+              valueFrom:
+                secretKeyRef:
+                  name: common
+                  key: PROJECT_ID
+            - name: API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: fdk-resource-service
+                  key: API_KEY
+            - name: CORS_ORIGIN_PATTERNS
+              valueFrom:
+                secretKeyRef:
+                  name: fdk-resource-service
+                  key: CORS_ORIGIN_PATTERNS
+            - name: MONGO_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: mongodb
+                  key: MONGODB_HOST
+            - name: MONGODB_AUTH
+              valueFrom:
+                secretKeyRef:
+                  name: mongodb
+                  key: MONGODB_AUTH
+            - name: MONGODB_REPLICASET
+              valueFrom:
+                secretKeyRef:
+                  name: mongodb
+                  key: MONGODB_REPLICASET
+            - name: MONGO_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: fdk-resource-service
+                  key: MONGODB_USER
+            - name: MONGO_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: fdk-resource-service
+                  key: MONGODB_PASSWORD
+            - name: SSO_AUTH_URI
+              valueFrom:
+                secretKeyRef:
+                  name: commonurl
+                  key: SSO_AUTH_URI
+            - name: KAFKA_BROKERS
+              valueFrom:
+                secretKeyRef:
+                  name: kafka
+                  key: BROKERS
+            - name: SCHEMA_REGISTRY
+              valueFrom:
+                secretKeyRef:
+                  name: kafka
+                  key: SCHEMA_REGISTRY
           image: fdk-resource-service
           imagePullPolicy: Always
           ports:

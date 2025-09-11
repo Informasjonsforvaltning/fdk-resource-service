@@ -5,7 +5,3 @@ namespace: prod
 resources:
   - ../base
   - ingress.yaml
-
-patches:
-  - path:
-      env.yaml
