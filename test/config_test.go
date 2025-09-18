@@ -3,10 +3,11 @@ package test
 import (
 	"context"
 	"fmt"
-	"github.com/Informasjonsforvaltning/fdk-resource-service/repository"
 	"log"
 	"os"
 	"testing"
+
+	"github.com/Informasjonsforvaltning/fdk-resource-service/repository"
 
 	"github.com/ory/dockertest/v3"
 	"github.com/ory/dockertest/v3/docker"
@@ -57,13 +58,11 @@ func MongoContainerRunner(m *testing.M) {
 	}
 
 	resource, err := pool.RunWithOptions(&dockertest.RunOptions{
-		Repository: "bitnami/mongodb",
-		Tag:        "latest",
+		Repository: "mongo",
+		Tag:        "7.0",
 		Env: []string{
-			"MONGODB_ROOT_PASSWORD=admin",
-			"MONGODB_ADVERTISED_HOSTNAME=localhost",
-			"MONGODB_REPLICA_SET_MODE=primary",
-			"MONGODB_REPLICA_SET_KEY=replicaset",
+			"MONGO_INITDB_ROOT_USERNAME=admin",
+			"MONGO_INITDB_ROOT_PASSWORD=admin",
 		},
 		ExposedPorts: []string{"27017"},
 		PortBindings: map[docker.Port][]docker.PortBinding{
@@ -93,7 +92,7 @@ func MongoContainerRunner(m *testing.M) {
 		dbClient, err = mongo.Connect(
 			context.TODO(),
 			options.Client().ApplyURI(
-				"mongodb://root:admin@localhost:27017",
+				"mongodb://admin:admin@localhost:27017/admin",
 			),
 		)
 		if err != nil {
