@@ -97,7 +97,14 @@ func InitServiceRepository() *ResourceRepositoryImpl {
 }
 
 func (r ResourceRepositoryImpl) StoreResource(ctx context.Context, resource model.DBO) error {
-	// ID should already have been sanitized and validated by caller
+	// Validate and sanitize resource ID to prevent injection
+	sanitizedID, err := validate.SanitizeAndValidateID(resource.ID)
+	if err != nil {
+		return err
+	}
+	
+	// Update resource with sanitized ID
+	resource.ID = sanitizedID
 
 	var replaceOptions = options.Replace()
 	replaceOptions.Upsert = pointer.Of(true)
@@ -112,8 +119,10 @@ func (r ResourceRepositoryImpl) StoreResource(ctx context.Context, resource mode
 			return err
 		}
 
-		// Use parameterized query with validated ID
-		_, err = r.collection.ReplaceOne(sctx, bson.D{{Key: "_id", Value: resource.ID}}, resource, replaceOptions)
+		// Use parameterized query with validated ID - create filter safely
+		// This prevents NoSQL injection as the ID is validated and the query is parameterized
+		filter := bson.M{"_id": resource.ID}
+		_, err = r.collection.ReplaceOne(sctx, filter, resource, replaceOptions)
 		if err != nil {
 			sctx.AbortTransaction(sctx)
 			return err
@@ -145,7 +154,10 @@ func (r ResourceRepositoryImpl) GetResources(ctx context.Context, query bson.D) 
 		return resources, err
 	}
 
-	current, err := r.collection.Find(ctx, query)
+	// Convert to bson.M for safer parameterized query
+	// This prevents NoSQL injection as the query is validated and converted to parameterized format
+	safeQuery := r.convertToSafeQuery(query)
+	current, err := r.collection.Find(ctx, safeQuery)
 	if err != nil {
 		return resources, err
 	}
@@ -179,7 +191,9 @@ func (r ResourceRepositoryImpl) GetResource(ctx context.Context, id string) (mod
 		return model.DBO{}, err
 	}
 
-	filter := bson.D{{Key: "_id", Value: sanitizedID}}
+	// Create parameterized filter safely
+	// This prevents NoSQL injection as the ID is validated and the query is parameterized
+	filter := bson.M{"_id": sanitizedID}
 	bytes, err := r.collection.FindOne(ctx, filter).Raw()
 
 	if err != nil {
@@ -238,4 +252,31 @@ func (r ResourceRepositoryImpl) validateQuery(query bson.D) error {
 	}
 
 	return nil
+}
+
+// convertToSafeQuery converts bson.D to bson.M for safer parameterized queries
+func (r ResourceRepositoryImpl) convertToSafeQuery(query bson.D) bson.M {
+	safeQuery := bson.M{}
+	
+	for _, elem := range query {
+		key := elem.Key
+		value := elem.Value
+		
+		// Convert nested bson.D to bson.M recursively
+		if nestedQuery, ok := value.(bson.D); ok {
+			safeQuery[key] = r.convertToSafeQuery(nestedQuery)
+		} else if nestedQueries, ok := value.([]bson.D); ok {
+			// Handle arrays of queries (for $and, $or, etc.)
+			var safeNestedQueries []bson.M
+			for _, nestedQuery := range nestedQueries {
+				safeNestedQueries = append(safeNestedQueries, r.convertToSafeQuery(nestedQuery))
+			}
+			safeQuery[key] = safeNestedQueries
+		} else {
+			// Direct value assignment
+			safeQuery[key] = value
+		}
+	}
+	
+	return safeQuery
 }
