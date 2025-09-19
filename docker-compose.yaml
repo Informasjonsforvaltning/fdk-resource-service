@@ -61,10 +61,12 @@ services:
         condition: service_healthy
 
   mongodb:
-    image: mongo:7.0
+    image: bitnamilegacy/mongodb:latest
     environment:
-      - MONGO_INITDB_ROOT_USERNAME=admin
-      - MONGO_INITDB_ROOT_PASSWORD=admin
+      - MONGODB_ROOT_PASSWORD=admin
+      - MONGODB_ADVERTISED_HOSTNAME=localhost
+      - MONGODB_REPLICA_SET_MODE=primary
+      - MONGODB_REPLICA_SET_KEY=replicaset
     ports:
       - "27017:27017"
     volumes:
