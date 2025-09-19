@@ -94,7 +94,7 @@ func MongoContainerRunner(m *testing.M) {
 		dbClient, err = mongo.Connect(
 			context.TODO(),
 			options.Client().ApplyURI(
-				"mongodb://admin:admin@localhost:27017/admin",
+				"mongodb://root:admin@localhost:27017",
 			),
 		)
 		if err != nil {
