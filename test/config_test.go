@@ -58,11 +58,13 @@ func MongoContainerRunner(m *testing.M) {
 	}
 
 	resource, err := pool.RunWithOptions(&dockertest.RunOptions{
-		Repository: "mongo",
-		Tag:        "7.0",
+		Repository: "bitnamilegacy/mongodb",
+		Tag:        "latest",
 		Env: []string{
-			"MONGO_INITDB_ROOT_USERNAME=admin",
-			"MONGO_INITDB_ROOT_PASSWORD=admin",
+			"MONGODB_ROOT_PASSWORD=admin",
+			"MONGODB_ADVERTISED_HOSTNAME=localhost",
+			"MONGODB_REPLICA_SET_MODE=primary",
+			"MONGODB_REPLICA_SET_KEY=replicaset",
 		},
 		ExposedPorts: []string{"27017"},
 		PortBindings: map[docker.Port][]docker.PortBinding{
