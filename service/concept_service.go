@@ -93,20 +93,25 @@ func (service ConceptService) StoreConcept(ctx context.Context, bytes []byte, ti
 }
 
 func (service ConceptService) DeleteConcept(ctx context.Context, id string) int {
+	sanitizedID, err := validate.SanitizeAndValidateID(id)
+	if err != nil {
+		logrus.Warnf("Invalid concept id for deletion: %s", id)
+		return http.StatusBadRequest
+	}
 	concept := map[string]interface{}{}
 
 	deleted := model.DBO{
-		ID:        id,
+		ID:        sanitizedID,
 		Resource:  concept,
 		Timestamp: time.Now().UnixMilli(),
 		Deleted:   true,
 	}
 
-	_, err := service.ConceptRepository.GetResource(ctx, id)
+	_, err = service.ConceptRepository.GetResource(ctx, sanitizedID)
 	if errors.Is(err, mongo.ErrNoDocuments) {
 		return http.StatusNotFound
 	} else if err != nil {
-		logrus.Errorf("Failed to get concept with id %s for deletion", id)
+		logrus.Errorf("Failed to get concept with id %s for deletion", sanitizedID)
 		logger.LogAndPrintError(err)
 		return http.StatusInternalServerError
 	}
@@ -114,7 +119,7 @@ func (service ConceptService) DeleteConcept(ctx context.Context, id string) int 
 	err = service.ConceptRepository.StoreResource(ctx, deleted)
 
 	if err != nil {
-		logrus.Errorf("Failed to concept dataset with id %s", id)
+		logrus.Errorf("Failed to concept dataset with id %s", sanitizedID)
 		logger.LogAndPrintError(err)
 		return http.StatusInternalServerError
 	} else {
