@@ -1,0 +1,49 @@
+spring:
+  # Database properties will be set by TestContainers via @DynamicPropertySource
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  flyway:
+    enabled: false
+
+  # Kafka properties will be set by TestContainers via @DynamicPropertySource
+
+  # Disable auto-configurations for tests
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration
+      - org.springframework.boot.autoconfigure.security.oauth2.resourceserver.OAuth2ResourceServerAutoConfiguration
+
+  # Exclude Kafka consumer from component scanning
+  main:
+    lazy-initialization: true
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: https://login.microsoftonline.com/your-tenant-id/discovery/v2.0/keys
+
+logging:
+  level:
+    no.fdk.resourceservice: DEBUG
+    org.springframework.kafka: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+
+app:
+  kafka:
+    topics:
+      rdf-parse: rdf-parse-events
+      concept: concept-events
+      dataset: dataset-events
+      data-service: data-service-events
+      information-model: information-model-events
+      service: service-events
+      event: event-events
