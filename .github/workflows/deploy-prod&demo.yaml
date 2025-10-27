@@ -9,31 +9,20 @@ on:
   workflow_dispatch:
 
 jobs:
-  run-tests:
-    name: Run tests
-    uses: Informasjonsforvaltning/workflows/.github/workflows/coverage-java.yaml@main
-    with:
-      coverage_file_path: ./target/site/jacoco/jacoco.xml
-      java_version: 21
-      test_path: ./src/test
-    secrets:
-      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-
-  build-production:
-    name: Build for prod on merge to main branch
+  build-fdk-resource-service:
+    name: Build on merge to main branch
     uses: Informasjonsforvaltning/workflows/.github/workflows/build-push.yaml@main
     with:
       app_name: fdk-resource-service
       environment: prod
-      build_env: true
-      build_env_name: JAVA_VERSION
-      build_env_value: 21
+      gh_environment: prod
+      java_version: '21'
+      coverage_file_path: ./target/site/jacoco/jacoco.xml
     secrets:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   deploy-to-prod:
-    needs: [run-tests, build-production]
+    needs: build-fdk-resource-service
     name: Deploy to prod if build is successful
     uses: Informasjonsforvaltning/workflows/.github/workflows/kustomize-deploy.yaml@main
     with:
