@@ -11,11 +11,11 @@ on:
 jobs:
   run-tests:
     name: Run tests
-    uses: Informasjonsforvaltning/workflows/.github/workflows/coverage-go.yaml@main
+    uses: Informasjonsforvaltning/workflows/.github/workflows/coverage-java.yaml@main
     with:
-      coverage_file_path: ./coverage.txt
-      go_version: 1.25.0
-      test_path: ./test
+      coverage_file_path: ./target/site/jacoco/jacoco.xml
+      java_version: 21
+      test_path: ./src/test
     secrets:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
@@ -28,15 +28,15 @@ jobs:
       app_name: fdk-resource-service
       environment: staging
       build_env: true
-      build_env_name: BINARY
-      build_env_value: fdk-resource-service
+      build_env_name: JAVA_VERSION
+      build_env_value: 21
     secrets:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   deploy:
     name: Deploy to staging environment with reusable workflow
     if: github.event.pull_request.draft == false
-    needs: [ run-tests, build-fdk-resource-service ]
+    needs: [run-tests, build-fdk-resource-service]
     uses: Informasjonsforvaltning/workflows/.github/workflows/kustomize-deploy.yaml@main
     with:
       app_name: fdk-resource-service
