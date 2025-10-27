@@ -1,23 +1,19 @@
-FROM golang:1.25-bookworm AS build-env
+FROM eclipse-temurin:21-jre-alpine
 
-ARG APP_NAME=fdk-resource-service
-ARG CMD_PATH=main.go
+ARG USER=default
+ENV HOME=/home/$USER
 
-COPY . $GOPATH/src/$APP_NAME
-WORKDIR $GOPATH/src/$APP_NAME
+ENV TZ=Europe/Oslo
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
-RUN CGO_ENABLED=1 go build -v -o /$APP_NAME $GOPATH/src/$APP_NAME/$CMD_PATH
+# install sudo as root
+RUN apk update && apk add --no-cache sudo
+RUN adduser -D $USER && \
+      echo "$USER ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/$USER && \
+      chmod 0440 /etc/sudoers.d/$USER
 
-FROM debian:bookworm-slim
+USER $USER
+WORKDIR $HOME
 
-# Install the ca-certificates package
-RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
-
-ENV APP_NAME=fdk-resource-service
-ENV GIN_MODE=release
-
-COPY --from=build-env /$APP_NAME /$APP_NAME
-
-EXPOSE 8080
-
-CMD ["/fdk-resource-service"]
+COPY --chown=$USER:$USER /target/fdk-resource-service-*.jar app.jar
+CMD ["sh", "-c", "java -jar $JAVA_OPTS app.jar"]

@@ -23,70 +23,50 @@ spec:
       containers:
         - name: fdk-resource-service
           env:
-            - name: PROJECT_ID_GCP
+            - name: POSTGRES_HOST
               valueFrom:
                 secretKeyRef:
-                  name: common
-                  key: PROJECT_ID
-            - name: API_KEY
+                  name: postgres
+                  key: HOST
+            - name: POSTGRES_PORT
               valueFrom:
                 secretKeyRef:
-                  name: fdk-resource-service
-                  key: API_KEY
-            - name: CORS_ORIGIN_PATTERNS
-              valueFrom:
-                secretKeyRef:
-                  name: fdk-resource-service
-                  key: CORS_ORIGIN_PATTERNS
-            - name: MONGO_HOST
-              valueFrom:
-                secretKeyRef:
-                  name: mongodb
-                  key: MONGODB_HOST
-            - name: MONGODB_AUTH
-              valueFrom:
-                secretKeyRef:
-                  name: mongodb
-                  key: MONGODB_AUTH
-            - name: MONGODB_REPLICASET
-              valueFrom:
-                secretKeyRef:
-                  name: mongodb
-                  key: MONGODB_REPLICASET
-            - name: MONGO_USERNAME
+                  name: postgres
+                  key: PORT
+            - name: POSTGRES_DB
               valueFrom:
                 secretKeyRef:
                   name: fdk-resource-service
-                  key: MONGODB_USER
-            - name: MONGO_PASSWORD
+                  key: POSTGRESQL_DB
+            - name: POSTGRES_USERNAME
               valueFrom:
                 secretKeyRef:
                   name: fdk-resource-service
-                  key: MONGODB_PASSWORD
-            - name: SSO_AUTH_URI
+                  key: POSTGRESQL_USER
+            - name: POSTGRES_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: commonurl
-                  key: SSO_AUTH_URI
-            - name: KAFKA_BROKERS
+                  name: fdk-resource-service
+                  key: POSTGRESQL_PASSWORD
+            - name: KAFKA_BOOTSTRAP_SERVERS
               valueFrom:
                 secretKeyRef:
                   name: kafka
                   key: BROKERS
-            - name: SCHEMA_REGISTRY
+            - name: SCHEMA_REGISTRY_URL
               valueFrom:
                 secretKeyRef:
                   name: kafka
-                  key: SCHEMA_REGISTRY
+                  key: SCHEMA_REGISTRY            
           image: fdk-resource-service
           imagePullPolicy: Always
           ports:
             - containerPort: 8080
           livenessProbe:
             httpGet:
-              path: /ping
+              path: /actuator/health/liveness
               port: 8080
           readinessProbe:
             httpGet:
-              path: /ready
+              path: /actuator/health/readiness
               port: 8080

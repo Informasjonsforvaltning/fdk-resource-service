@@ -1,73 +1,87 @@
+version: "3.8"
+
 services:
-  # Kafka in KRaft mode (no ZooKeeper needed)
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: fdk_resource
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   kafka:
-    image: confluentinc/cp-kafka
+    image: confluentinc/cp-kafka:7.4.0
     ports:
       - "9092:9092"
     environment:
-      CLUSTER_ID: "1qHVXKIpRMGuDvstsHfpJA"
-      KAFKA_BROKER_ID: 1
-      KAFKA_PROCESS_ROLES: "broker,controller"
-      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka:29093"
-      KAFKA_LISTENERS: "PLAINTEXT://kafka:29092,PLAINTEXT_HOST://0.0.0.0:9092,CONTROLLER://kafka:29093"
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT,CONTROLLER:PLAINTEXT"
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
-      KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
-      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093,PLAINTEXT_HOST://0.0.0.0:29092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
-      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 100
-      KAFKA_OPENTELEMETRY_ENABLED: "false"
-      KAFKA_OPENTELEMETRY_METRICS_EXPORTERS: "none"
-    volumes:
-      - ./kafka:/kafka
-    command:
-      - sh
-      - -c
-      - (sh /kafka/create_topics.sh) & /etc/confluent/docker/run
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_LOG_DIRS: /tmp/kraft-combined-logs
+      CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
     healthcheck:
-      test: /bin/kafka-topics --bootstrap-server 127.0.0.1:9092 --list
-      interval: 3s
+      test:
+        [
+          "CMD",
+          "kafka-broker-api-versions",
+          "--bootstrap-server",
+          "localhost:9092",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   schema-registry:
-    image: confluentinc/cp-schema-registry
-    container_name: schema-registry
-    ports:
-      - "8081:8081"
+    image: confluentinc/cp-schema-registry:7.4.0
     depends_on:
       kafka:
         condition: service_healthy
+    ports:
+      - "8081:8081"
     environment:
-      SCHEMA_REGISTRY_HOST_NAME: localhost
+      SCHEMA_REGISTRY_HOST_NAME: schema-registry
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: kafka:9092
       SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
-      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: PLAINTEXT://kafka:29092
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8081"]
-      interval: 3s
-      retries: 10
+      test: ["CMD", "curl", "-f", "http://localhost:8081/subjects"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
-  # Registers schemas once schema-registry is up.
-  schema-registrer:
-    image: dwdraju/alpine-curl-jq
-    volumes:
-      - ./kafka:/kafka
-    command: sh /kafka/create_schemas.sh
-    environment:
-      - SCHEMA_REGISTRY_URL=http://schema-registry:8081
+  fdk-resource-service:
+    build: .
     depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
       schema-registry:
         condition: service_healthy
-
-  mongodb:
-    image: bitnamilegacy/mongodb:latest
-    environment:
-      - MONGODB_ROOT_PASSWORD=admin
-      - MONGODB_ADVERTISED_HOSTNAME=localhost
-      - MONGODB_REPLICA_SET_MODE=primary
-      - MONGODB_REPLICA_SET_KEY=replicaset
     ports:
-      - "27017:27017"
-    volumes:
-      - ./test/init-mongo/init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
+      - "8080:8080"
+    environment:
+      DATABASE_URL: jdbc:postgresql://postgres:5432/fdk_resource
+      DATABASE_USERNAME: postgres
+      DATABASE_PASSWORD: postgres
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      SCHEMA_REGISTRY_URL: http://schema-registry:8081
+
+volumes:
+  postgres_data:
