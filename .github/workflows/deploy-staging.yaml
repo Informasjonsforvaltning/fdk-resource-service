@@ -9,34 +9,23 @@ on:
       - main
 
 jobs:
-  run-tests:
-    name: Run tests
-    uses: Informasjonsforvaltning/workflows/.github/workflows/coverage-java.yaml@main
-    with:
-      coverage_file_path: ./target/site/jacoco/jacoco.xml
-      java_version: 21
-      test_path: ./src/test
-    secrets:
-      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-
   build-fdk-resource-service:
-    name: Build fdk-resource-service when pull request is created
+    name: Build when pull request is created
     if: github.event.pull_request.draft == false
     uses: Informasjonsforvaltning/workflows/.github/workflows/build-push.yaml@main
     with:
       app_name: fdk-resource-service
       environment: staging
-      build_env: true
-      build_env_name: JAVA_VERSION
-      build_env_value: 21
+      gh_environment: staging
+      java_version: '21'
+      coverage_file_path: ./target/site/jacoco/jacoco.xml
     secrets:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   deploy:
     name: Deploy to staging environment with reusable workflow
     if: github.event.pull_request.draft == false
-    needs: [run-tests, build-fdk-resource-service]
+    needs: build-fdk-resource-service
     uses: Informasjonsforvaltning/workflows/.github/workflows/kustomize-deploy.yaml@main
     with:
       app_name: fdk-resource-service
