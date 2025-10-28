@@ -6,6 +6,7 @@ import no.fdk.resourceservice.service.RdfService
 import no.fdk.resourceservice.service.RdfService.RdfFormatStyle
 import org.slf4j.LoggerFactory
 import org.springframework.http.HttpHeaders
+import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.RequestHeader
 
@@ -38,7 +39,9 @@ abstract class BaseController(
         
         val resource = resourceService.getResourceJson(id, resourceType)
         return if (resource != null) {
-            ResponseEntity.ok(resource)
+            ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(resource)
         } else {
             ResponseEntity.notFound().build()
         }
@@ -59,7 +62,9 @@ abstract class BaseController(
         
         val resource = resourceService.getResourceJsonByUri(uri, resourceType)
         return if (resource != null) {
-            ResponseEntity.ok(resource)
+            ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(resource)
         } else {
             ResponseEntity.notFound().build()
         }

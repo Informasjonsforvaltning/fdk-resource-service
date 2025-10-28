@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.*
 
 @RestController
 @RequestMapping("/v1/concepts")
-@Tag(name = "Concepts", description = "API for managing FDK concepts")
+@Tag(name = "Concepts", description = "API for retrieving concepts")
 class ConceptController(
     resourceService: ResourceService,
     rdfService: RdfService
@@ -35,7 +35,8 @@ class ConceptController(
         value = [
             ApiResponse(
                 responseCode = "200",
-                description = "Successfully retrieved concept"
+                description = "Successfully retrieved concept",
+                content = [Content(mediaType = "application/json")]
             ),
             ApiResponse(
                 responseCode = "404",
@@ -59,7 +60,8 @@ class ConceptController(
         value = [
             ApiResponse(
                 responseCode = "200",
-                description = "Successfully retrieved concept"
+                description = "Successfully retrieved concept",
+                content = [Content(mediaType = "application/json")]
             ),
             ApiResponse(
                 responseCode = "404",
@@ -105,9 +107,9 @@ class ConceptController(
     fun getConceptGraph(
         @Parameter(description = "Unique identifier of the concept")
         @PathVariable id: String,
-        @Parameter(description = "Accept header for content negotiation")
+        @Parameter(description = "Accept header for content negotiation", schema = Schema(implementation = RdfService.RdfFormat::class))
         @RequestHeader(HttpHeaders.ACCEPT, required = false) acceptHeader: String?,
-        @Parameter(description = "RDF format style: 'pretty' (with namespace prefixes, human-readable) or 'standard' (with namespace prefixes, compact)")
+        @Parameter(description = "RDF format style: 'pretty' (with namespace prefixes, human-readable) or 'standard' (with namespace prefixes, compact)", schema = Schema(implementation = RdfService.RdfFormatStyle::class))
         @RequestParam(name = "style", required = false, defaultValue = "pretty") style: String?,
         @Parameter(description = "Whether to expand URIs (clear namespace prefixes, default: false)")
         @RequestParam(name = "expandUris", required = false, defaultValue = "false") expandUris: Boolean?
@@ -153,9 +155,9 @@ class ConceptController(
     fun getConceptGraphByUri(
         @Parameter(description = "URI of the concept")
         @RequestParam uri: String,
-        @Parameter(description = "Accept header for content negotiation")
+        @Parameter(description = "Accept header for content negotiation", schema = Schema(implementation = RdfService.RdfFormat::class))
         @RequestHeader(HttpHeaders.ACCEPT, required = false) acceptHeader: String?,
-        @Parameter(description = "RDF format style: 'pretty' (with namespace prefixes, human-readable) or 'standard' (with namespace prefixes, compact)")
+        @Parameter(description = "RDF format style: 'pretty' (with namespace prefixes, human-readable) or 'standard' (with namespace prefixes, compact)", schema = Schema(implementation = RdfService.RdfFormatStyle::class))
         @RequestParam(name = "style", required = false, defaultValue = "pretty") style: String?,
         @Parameter(description = "Whether to expand URIs (clear namespace prefixes, default: false)")
         @RequestParam(name = "expandUris", required = false, defaultValue = "false") expandUris: Boolean?
