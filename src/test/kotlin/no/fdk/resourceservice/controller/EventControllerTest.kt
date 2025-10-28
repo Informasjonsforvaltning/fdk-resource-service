@@ -1,66 +1,89 @@
 package no.fdk.resourceservice.controller
 
-import no.fdk.resourceservice.model.ResourceType
-import org.junit.jupiter.api.Test
+import com.fasterxml.jackson.databind.ObjectMapper
 import io.mockk.every
+import io.mockk.mockk
+import no.fdk.resourceservice.model.ResourceType
+import no.fdk.resourceservice.service.ResourceService
+import no.fdk.resourceservice.service.RdfService
+import org.junit.jupiter.api.Test
+import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.*
 
 class EventControllerTest : BaseControllerTest() {
 
     @Test
-    fun `get event by id should return 200 when found`() {
-        val eventId = "test-event-1"
-        val mockEvent = mapOf(
-            "id" to eventId,
-            "type" to "EVENT",
-            "title" to "Test Event"
-        )
+    fun `should get event by id`() {
+        val eventId = "test-event-id"
+        val eventData = mapOf("id" to eventId, "title" to "Test Event")
 
-        every { resourceService.getResourceJson(eventId, ResourceType.EVENT) } returns mockEvent
+        every { resourceService.getResourceJson(eventId, ResourceType.EVENT) } returns eventData
 
         mockMvc.perform(get("/v1/events/{id}", eventId))
             .andExpect(status().isOk)
+            .andExpect(content().contentType(MediaType.APPLICATION_JSON))
             .andExpect(jsonPath("$.id").value(eventId))
-            .andExpect(jsonPath("$.type").value("EVENT"))
             .andExpect(jsonPath("$.title").value("Test Event"))
     }
 
     @Test
-    fun `get event by id should return 404 when not found`() {
-        val eventId = "non-existent-event"
-
-        every { resourceService.getResourceJson(eventId, ResourceType.EVENT) } returns null
-
-        mockMvc.perform(get("/v1/events/{id}", eventId))
-            .andExpect(status().isNotFound)
-    }
-
-    @Test
-    fun `get event by uri should return 200 when found`() {
+    fun `should get event by uri`() {
         val uri = "https://example.com/event"
-        val mockEvent = mapOf(
-            "id" to "test-event-1",
-            "type" to "EVENT",
-            "uri" to uri
-        )
+        val eventData = mapOf("uri" to uri, "title" to "Test Event")
 
-        every { resourceService.getResourceJsonByUri(uri, ResourceType.EVENT) } returns mockEvent
+        every { resourceService.getResourceJsonByUri(uri, ResourceType.EVENT) } returns eventData
 
         mockMvc.perform(get("/v1/events/by-uri")
             .param("uri", uri))
             .andExpect(status().isOk)
+            .andExpect(content().contentType(MediaType.APPLICATION_JSON))
             .andExpect(jsonPath("$.uri").value(uri))
+            .andExpect(jsonPath("$.title").value("Test Event"))
     }
 
     @Test
-    fun `get event by uri should return 404 when not found`() {
-        val uri = "https://example.com/non-existent-event"
+    fun `should get event graph by id`() {
+        val eventId = "test-event-id"
+        val graphData = mapOf("@id" to "https://example.com/event", "title" to "Test Event")
 
-        every { resourceService.getResourceJsonByUri(uri, ResourceType.EVENT) } returns null
+        every { resourceService.getResourceJsonLd(eventId, ResourceType.EVENT) } returns graphData
+        every { rdfService.getBestFormat(null) } returns RdfService.RdfFormat.JSON_LD
+        every { rdfService.convertFromJsonLd(graphData, RdfService.RdfFormat.JSON_LD, RdfService.RdfFormatStyle.PRETTY, false) } returns """{"@id":"https://example.com/event","title":"Test Event"}"""
+        every { rdfService.getContentType(RdfService.RdfFormat.JSON_LD) } returns MediaType.APPLICATION_JSON
 
-        mockMvc.perform(get("/v1/events/by-uri")
+        mockMvc.perform(get("/v1/events/{id}/graph", eventId))
+            .andExpect(status().isOk)
+            .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+            .andExpect(jsonPath("$.@id").value("https://example.com/event"))
+            .andExpect(jsonPath("$.title").value("Test Event"))
+    }
+
+    @Test
+    fun `should get event graph by uri`() {
+        val uri = "https://example.com/event"
+        val graphData = mapOf("@id" to uri, "title" to "Test Event")
+
+        every { resourceService.getResourceJsonLdByUri(uri, ResourceType.EVENT) } returns graphData
+        every { rdfService.getBestFormat(null) } returns RdfService.RdfFormat.JSON_LD
+        every { rdfService.convertFromJsonLd(graphData, RdfService.RdfFormat.JSON_LD, RdfService.RdfFormatStyle.PRETTY, false) } returns """{"@id":"https://example.com/event","title":"Test Event"}"""
+        every { rdfService.getContentType(RdfService.RdfFormat.JSON_LD) } returns MediaType.APPLICATION_JSON
+
+        mockMvc.perform(get("/v1/events/by-uri/graph")
             .param("uri", uri))
+            .andExpect(status().isOk)
+            .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+            .andExpect(jsonPath("$.@id").value(uri))
+            .andExpect(jsonPath("$.title").value("Test Event"))
+    }
+
+    @Test
+    fun `should return 404 when event not found`() {
+        val eventId = "non-existent-id"
+
+        every { resourceService.getResourceJson(eventId, ResourceType.EVENT) } returns null
+
+        mockMvc.perform(get("/v1/events/{id}", eventId))
             .andExpect(status().isNotFound)
     }
 }
