@@ -10,6 +10,7 @@ import io.swagger.v3.oas.annotations.tags.Tag
 import no.fdk.resourceservice.model.ResourceType
 import no.fdk.resourceservice.service.ResourceService
 import no.fdk.resourceservice.service.RdfService
+import no.fdk.resourceservice.service.RdfService.RdfFormatStyle
 import org.slf4j.LoggerFactory
 import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
@@ -18,7 +19,7 @@ import org.springframework.web.bind.annotation.*
 
 @RestController
 @RequestMapping("/v1/information-models")
-@Tag(name = "Information Models", description = "API for managing FDK information models")
+@Tag(name = "Information Models", description = "API for retrieving information models")
 class InformationModelController(
     resourceService: ResourceService,
     rdfService: RdfService
@@ -35,6 +36,7 @@ class InformationModelController(
             ApiResponse(
                 responseCode = "200",
                 description = "Successfully retrieved information model",
+                content = [Content(mediaType = "application/json")],
             ),
             ApiResponse(
                 responseCode = "404",
@@ -58,7 +60,8 @@ class InformationModelController(
         value = [
             ApiResponse(
                 responseCode = "200",
-                description = "Successfully retrieved information model"
+                description = "Successfully retrieved information model",
+                content = [Content(mediaType = "application/json")]
             ),
             ApiResponse(
                 responseCode = "404",
@@ -104,10 +107,21 @@ class InformationModelController(
     fun getInformationModelGraph(
         @Parameter(description = "Unique identifier of the information model")
         @PathVariable id: String,
-        @Parameter(description = "Accept header for content negotiation")
-        @RequestHeader(HttpHeaders.ACCEPT, required = false) acceptHeader: String?
+        @Parameter(description = "Accept header for content negotiation", schema = Schema(implementation = RdfService.RdfFormat::class))
+        @RequestHeader(HttpHeaders.ACCEPT, required = false) acceptHeader: String?,
+        @Parameter(description = "RDF format style: 'pretty' (with namespace prefixes, human-readable) or 'standard' (with namespace prefixes, compact)", schema = Schema(implementation = RdfService.RdfFormatStyle::class))
+        @RequestParam(name = "style", required = false, defaultValue = "pretty") style: String?,
+        @Parameter(description = "Whether to expand URIs (clear namespace prefixes, default: false)")
+        @RequestParam(name = "expandUris", required = false, defaultValue = "false") expandUris: Boolean?
     ): ResponseEntity<Any> {
-        return handleGraphRequest(id, ResourceType.INFORMATION_MODEL, acceptHeader)
+        val rdfFormatStyle = try {
+            RdfFormatStyle.valueOf(style?.uppercase() ?: "PRETTY")
+        } catch (e: IllegalArgumentException) {
+            logger.warn("Invalid style parameter: $style, using default: PRETTY")
+            RdfFormatStyle.PRETTY
+        }
+        
+        return handleGraphRequest(id, ResourceType.INFORMATION_MODEL, acceptHeader, rdfFormatStyle, expandUris ?: false)
     }
 
     @GetMapping("/by-uri/graph")
@@ -141,10 +155,21 @@ class InformationModelController(
     fun getInformationModelGraphByUri(
         @Parameter(description = "URI of the information model")
         @RequestParam uri: String,
-        @Parameter(description = "Accept header for content negotiation")
-        @RequestHeader(HttpHeaders.ACCEPT, required = false) acceptHeader: String?
+        @Parameter(description = "Accept header for content negotiation", schema = Schema(implementation = RdfService.RdfFormat::class))
+        @RequestHeader(HttpHeaders.ACCEPT, required = false) acceptHeader: String?,
+        @Parameter(description = "RDF format style: 'pretty' (with namespace prefixes, human-readable) or 'standard' (with namespace prefixes, compact)", schema = Schema(implementation = RdfService.RdfFormatStyle::class))
+        @RequestParam(name = "style", required = false, defaultValue = "pretty") style: String?,
+        @Parameter(description = "Whether to expand URIs (clear namespace prefixes, default: false)")
+        @RequestParam(name = "expandUris", required = false, defaultValue = "false") expandUris: Boolean?
     ): ResponseEntity<Any> {
-        return handleGraphRequestByUri(uri, ResourceType.INFORMATION_MODEL, acceptHeader)
+        val rdfFormatStyle = try {
+            RdfFormatStyle.valueOf(style?.uppercase() ?: "PRETTY")
+        } catch (e: IllegalArgumentException) {
+            logger.warn("Invalid style parameter: $style, using default: PRETTY")
+            RdfFormatStyle.PRETTY
+        }
+        
+        return handleGraphRequestByUri(uri, ResourceType.INFORMATION_MODEL, acceptHeader, rdfFormatStyle, expandUris ?: false)
     }
 
 }
