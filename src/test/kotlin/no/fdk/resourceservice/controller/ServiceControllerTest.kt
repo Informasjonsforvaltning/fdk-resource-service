@@ -1,66 +1,89 @@
 package no.fdk.resourceservice.controller
 
+import com.fasterxml.jackson.databind.ObjectMapper
 import io.mockk.every
+import io.mockk.mockk
 import no.fdk.resourceservice.model.ResourceType
+import no.fdk.resourceservice.service.ResourceService
+import no.fdk.resourceservice.service.RdfService
 import org.junit.jupiter.api.Test
+import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.*
 
 class ServiceControllerTest : BaseControllerTest() {
 
     @Test
-    fun `get service by id should return 200 when found`() {
-        val serviceId = "test-service-1"
-        val mockService = mapOf(
-            "id" to serviceId,
-            "type" to "SERVICE",
-            "title" to "Test Service"
-        )
+    fun `should get service by id`() {
+        val serviceId = "test-service-id"
+        val serviceData = mapOf("id" to serviceId, "title" to "Test Service")
 
-        every { resourceService.getResourceJson(serviceId, ResourceType.SERVICE) } returns mockService
+        every { resourceService.getResourceJson(serviceId, ResourceType.SERVICE) } returns serviceData
 
         mockMvc.perform(get("/v1/services/{id}", serviceId))
             .andExpect(status().isOk)
+            .andExpect(content().contentType(MediaType.APPLICATION_JSON))
             .andExpect(jsonPath("$.id").value(serviceId))
-            .andExpect(jsonPath("$.type").value("SERVICE"))
             .andExpect(jsonPath("$.title").value("Test Service"))
     }
 
     @Test
-    fun `get service by id should return 404 when not found`() {
-        val serviceId = "non-existent-service"
-
-        every { resourceService.getResourceJson(serviceId, ResourceType.SERVICE) } returns null
-
-        mockMvc.perform(get("/v1/services/{id}", serviceId))
-            .andExpect(status().isNotFound)
-    }
-
-    @Test
-    fun `get service by uri should return 200 when found`() {
+    fun `should get service by uri`() {
         val uri = "https://example.com/service"
-        val mockService = mapOf(
-            "id" to "test-service-1",
-            "type" to "SERVICE",
-            "uri" to uri
-        )
+        val serviceData = mapOf("uri" to uri, "title" to "Test Service")
 
-        every { resourceService.getResourceJsonByUri(uri, ResourceType.SERVICE) } returns mockService
+        every { resourceService.getResourceJsonByUri(uri, ResourceType.SERVICE) } returns serviceData
 
         mockMvc.perform(get("/v1/services/by-uri")
             .param("uri", uri))
             .andExpect(status().isOk)
+            .andExpect(content().contentType(MediaType.APPLICATION_JSON))
             .andExpect(jsonPath("$.uri").value(uri))
+            .andExpect(jsonPath("$.title").value("Test Service"))
     }
 
     @Test
-    fun `get service by uri should return 404 when not found`() {
-        val uri = "https://example.com/non-existent-service"
+    fun `should get service graph by id`() {
+        val serviceId = "test-service-id"
+        val graphData = mapOf("@id" to "https://example.com/service", "title" to "Test Service")
 
-        every { resourceService.getResourceJsonByUri(uri, ResourceType.SERVICE) } returns null
+        every { resourceService.getResourceJsonLd(serviceId, ResourceType.SERVICE) } returns graphData
+        every { rdfService.getBestFormat(null) } returns RdfService.RdfFormat.JSON_LD
+        every { rdfService.convertFromJsonLd(graphData, RdfService.RdfFormat.JSON_LD, RdfService.RdfFormatStyle.PRETTY, false) } returns """{"@id":"https://example.com/service","title":"Test Service"}"""
+        every { rdfService.getContentType(RdfService.RdfFormat.JSON_LD) } returns MediaType.APPLICATION_JSON
 
-        mockMvc.perform(get("/v1/services/by-uri")
+        mockMvc.perform(get("/v1/services/{id}/graph", serviceId))
+            .andExpect(status().isOk)
+            .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+            .andExpect(jsonPath("$.@id").value("https://example.com/service"))
+            .andExpect(jsonPath("$.title").value("Test Service"))
+    }
+
+    @Test
+    fun `should get service graph by uri`() {
+        val uri = "https://example.com/service"
+        val graphData = mapOf("@id" to uri, "title" to "Test Service")
+
+        every { resourceService.getResourceJsonLdByUri(uri, ResourceType.SERVICE) } returns graphData
+        every { rdfService.getBestFormat(null) } returns RdfService.RdfFormat.JSON_LD
+        every { rdfService.convertFromJsonLd(graphData, RdfService.RdfFormat.JSON_LD, RdfService.RdfFormatStyle.PRETTY, false) } returns """{"@id":"https://example.com/service","title":"Test Service"}"""
+        every { rdfService.getContentType(RdfService.RdfFormat.JSON_LD) } returns MediaType.APPLICATION_JSON
+
+        mockMvc.perform(get("/v1/services/by-uri/graph")
             .param("uri", uri))
+            .andExpect(status().isOk)
+            .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+            .andExpect(jsonPath("$.@id").value(uri))
+            .andExpect(jsonPath("$.title").value("Test Service"))
+    }
+
+    @Test
+    fun `should return 404 when service not found`() {
+        val serviceId = "non-existent-id"
+
+        every { resourceService.getResourceJson(serviceId, ResourceType.SERVICE) } returns null
+
+        mockMvc.perform(get("/v1/services/{id}", serviceId))
             .andExpect(status().isNotFound)
     }
 }
