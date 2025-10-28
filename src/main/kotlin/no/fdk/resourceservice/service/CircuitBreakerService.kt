@@ -1,5 +1,6 @@
 package no.fdk.resourceservice.service
 
+import com.fasterxml.jackson.databind.ObjectMapper
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker
 import no.fdk.concept.ConceptEvent
 import no.fdk.dataset.DatasetEvent
@@ -33,17 +34,26 @@ class CircuitBreakerService(
     private val rdfService: RdfService
 ) {
     private val logger = LoggerFactory.getLogger(CircuitBreakerService::class.java)
+    private val objectMapper = ObjectMapper()
 
     @CircuitBreaker(name = "rdfParseConsumer", fallbackMethod = "handleRdfParseEventFallback")
     fun handleRdfParseEvent(event: RdfParseEvent) {
         logger.debug("Processing RDF parse event with circuit breaker: $event")
+        
+        // Parse the JSON string data into a Map
+        val resourceJson = try {
+            objectMapper.readValue(event.data, Map::class.java) as Map<String, Any>
+        } catch (e: Exception) {
+            logger.error("Failed to parse JSON data from RDF parse event: ${e.message}")
+            return
+        }
         
         when (event.resourceType) {
             RdfParseResourceType.CONCEPT -> {
                 resourceService.storeResourceJson(
                     id = event.fdkId,
                     resourceType = ResourceType.CONCEPT,
-                    resourceJson = mapOf("graph" to event.data),
+                    resourceJson = resourceJson,
                     timestamp = event.timestamp
                 )
             }
@@ -51,7 +61,7 @@ class CircuitBreakerService(
                 resourceService.storeResourceJson(
                     id = event.fdkId,
                     resourceType = ResourceType.DATASET,
-                    resourceJson = mapOf("graph" to event.data),
+                    resourceJson = resourceJson,
                     timestamp = event.timestamp
                 )
             }
@@ -59,7 +69,7 @@ class CircuitBreakerService(
                 resourceService.storeResourceJson(
                     id = event.fdkId,
                     resourceType = ResourceType.DATA_SERVICE,
-                    resourceJson = mapOf("graph" to event.data),
+                    resourceJson = resourceJson,
                     timestamp = event.timestamp
                 )
             }
@@ -67,7 +77,7 @@ class CircuitBreakerService(
                 resourceService.storeResourceJson(
                     id = event.fdkId,
                     resourceType = ResourceType.INFORMATION_MODEL,
-                    resourceJson = mapOf("graph" to event.data),
+                    resourceJson = resourceJson,
                     timestamp = event.timestamp
                 )
             }
@@ -75,7 +85,7 @@ class CircuitBreakerService(
                 resourceService.storeResourceJson(
                     id = event.fdkId,
                     resourceType = ResourceType.SERVICE,
-                    resourceJson = mapOf("graph" to event.data),
+                    resourceJson = resourceJson,
                     timestamp = event.timestamp
                 )
             }
@@ -83,7 +93,7 @@ class CircuitBreakerService(
                 resourceService.storeResourceJson(
                     id = event.fdkId,
                     resourceType = ResourceType.EVENT,
-                    resourceJson = mapOf("graph" to event.data),
+                    resourceJson = resourceJson,
                     timestamp = event.timestamp
                 )
             }
