@@ -52,10 +52,10 @@ management:
 
 logging:
   level:
-    no.fdk.resourceservice: DEBUG
-    org.springframework.kafka: INFO
-    org.hibernate.SQL: DEBUG
-    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+    no.fdk.resourceservice: INFO
+    org.springframework.kafka: WARN
+    org.hibernate.SQL: WARN
+    org.hibernate.type.descriptor.sql.BasicBinder: WARN
 
 # Application specific configuration
 app:
