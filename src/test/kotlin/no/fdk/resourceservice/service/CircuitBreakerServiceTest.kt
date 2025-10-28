@@ -44,7 +44,7 @@ class CircuitBreakerServiceTest {
         val event = RdfParseEvent().apply {
             setFdkId("test-id")
             setResourceType(RdfParseResourceType.CONCEPT)
-            setData("test-graph")
+            setData("""{"id": "test-id", "title": "Test Concept"}""")
             setTimestamp(System.currentTimeMillis())
         }
 
@@ -187,7 +187,7 @@ class CircuitBreakerServiceTest {
         val event = RdfParseEvent().apply {
             setFdkId("test-id")
             setResourceType(RdfParseResourceType.CONCEPT)
-            setData("test-graph")
+            setData("""{"id": "test-id", "title": "Test Concept"}""")
             setTimestamp(System.currentTimeMillis())
         }
 
