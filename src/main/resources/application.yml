@@ -52,7 +52,7 @@ management:
 
 logging:
   level:
-    no.fdk.resourceservice: INFO
+    no.fdk.resourceservice: WARN
     org.springframework.kafka: WARN
     org.hibernate.SQL: WARN
     org.hibernate.type.descriptor.sql.BasicBinder: WARN
