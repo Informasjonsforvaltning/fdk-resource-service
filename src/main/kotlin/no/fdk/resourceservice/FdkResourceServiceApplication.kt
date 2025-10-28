@@ -11,8 +11,3 @@ class FdkResourceServiceApplication
 fun main(args: Array<String>) {
     runApplication<no.fdk.resourceservice.FdkResourceServiceApplication>(*args)
 }
-
-
-
-
-

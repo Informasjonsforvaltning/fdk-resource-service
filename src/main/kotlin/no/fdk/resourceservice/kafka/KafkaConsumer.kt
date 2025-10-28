@@ -267,26 +267,22 @@ class KafkaConsumer(
         @Header(KafkaHeaders.RECEIVED_PARTITION) partition: Int,
         @Header(KafkaHeaders.OFFSET) offset: Long
     ) {
-        logger.info("🎯 CONCEPT LISTENER: Received concept event from topic: $topic, partition: $partition, offset: $offset")
+        logger.debug("Received concept event from topic: $topic, partition: $partition, offset: $offset")
         
         try {
             val conceptEvent = extractConceptEvent(record)
             
             if (conceptEvent != null) {
-                logger.info("🎯 CONCEPT LISTENER: Calling circuitBreakerService.handleConceptEvent")
                 circuitBreakerService.handleConceptEvent(conceptEvent)
-                logger.info("🎯 CONCEPT LISTENER: Successfully processed, acknowledging message")
                 acknowledgment.acknowledge()
-                logger.info("🎯 CONCEPT LISTENER: Message acknowledged successfully")
+                logger.debug("Successfully processed concept event, acknowledged")
             } else {
-                logger.warn("🎯 CONCEPT LISTENER: Could not extract ConceptEvent from message, acknowledging to skip")
+                logger.warn("Could not extract ConceptEvent from message, acknowledging to skip")
                 acknowledgment.acknowledge()
             }
         } catch (e: Exception) {
-            logger.error("🎯 CONCEPT LISTENER: Failed to process concept event", e)
-            // Kafka will handle retries automatically, so we acknowledge the message
-            // The circuit breaker will handle the failure and pause listeners if needed
-            acknowledgment.acknowledge()
+            logger.error("Failed to process concept event", e)
+            acknowledgment.nack(Duration.ZERO)
         }
     }
 
@@ -313,8 +309,7 @@ class KafkaConsumer(
             }
         } catch (e: Exception) {
             logger.error("Failed to process dataset event", e)
-            // Kafka will handle retries automatically, so we acknowledge the message
-            acknowledgment.acknowledge()
+            acknowledgment.nack(Duration.ZERO)
         }
     }
 
@@ -341,8 +336,7 @@ class KafkaConsumer(
             }
         } catch (e: Exception) {
             logger.error("Failed to process data service event", e)
-            // Kafka will handle retries automatically, so we acknowledge the message
-            acknowledgment.acknowledge()
+            acknowledgment.nack(Duration.ZERO)
         }
     }
 
@@ -369,8 +363,7 @@ class KafkaConsumer(
             }
         } catch (e: Exception) {
             logger.error("Failed to process information model event", e)
-            // Kafka will handle retries automatically, so we acknowledge the message
-            acknowledgment.acknowledge()
+            acknowledgment.nack(Duration.ZERO)
         }
     }
 
@@ -397,8 +390,7 @@ class KafkaConsumer(
             }
         } catch (e: Exception) {
             logger.error("Failed to process service event", e)
-            // Kafka will handle retries automatically, so we acknowledge the message
-            acknowledgment.acknowledge()
+            acknowledgment.nack(Duration.ZERO)
         }
     }
 
@@ -425,8 +417,7 @@ class KafkaConsumer(
             }
         } catch (e: Exception) {
             logger.error("Failed to process event event", e)
-            // Kafka will handle retries automatically, so we acknowledge the message
-            acknowledgment.acknowledge()
+            acknowledgment.nack(Duration.ZERO)
         }
     }
 

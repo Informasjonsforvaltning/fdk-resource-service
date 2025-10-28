@@ -77,7 +77,7 @@ abstract class BaseController(
      * @param resourceType The type of resource
      * @param acceptHeader The Accept header for content negotiation
      * @param style The RDF format style (optional, defaults to PRETTY)
-     * @param expandUris Whether to expand URIs (clear namespace prefixes, optional, defaults to false)
+     * @param expandUris Whether to expand URIs (clear namespace prefixes, optional, defaults to true)
      * @return ResponseEntity with the graph data in the requested format
      */
     protected fun handleGraphRequest(
@@ -85,7 +85,7 @@ abstract class BaseController(
         resourceType: ResourceType,
         @RequestHeader(HttpHeaders.ACCEPT, required = false) acceptHeader: String?,
         style: RdfFormatStyle = RdfFormatStyle.PRETTY,
-        expandUris: Boolean = false
+        expandUris: Boolean = true
     ): ResponseEntity<Any> {
         logger.debug(
             "Getting graph for {} with id: {}, Accept: {}, style: {}, expandUris: {}",
@@ -103,7 +103,8 @@ abstract class BaseController(
                 jsonLdData,
                 format,
                 style,
-                expandUris
+                expandUris,
+                resourceType
             )
             
             if (convertedData != null) {
@@ -126,7 +127,7 @@ abstract class BaseController(
      * @param resourceType The type of resource
      * @param acceptHeader The Accept header for content negotiation
      * @param style The RDF format style (optional, defaults to PRETTY)
-     * @param expandUris Whether to expand URIs (clear namespace prefixes, optional, defaults to false)
+     * @param expandUris Whether to expand URIs (clear namespace prefixes, optional, defaults to true)
      * @return ResponseEntity with the graph data in the requested format
      */
     protected fun handleGraphRequestByUri(
@@ -134,7 +135,7 @@ abstract class BaseController(
         resourceType: ResourceType,
         @RequestHeader(HttpHeaders.ACCEPT, required = false) acceptHeader: String?,
         style: RdfFormatStyle = RdfFormatStyle.PRETTY,
-        expandUris: Boolean = false
+        expandUris: Boolean = true
     ): ResponseEntity<Any> {
         logger.debug("Getting graph for ${resourceType.name.lowercase()} with uri: $uri, Accept: $acceptHeader, style: $style, expandUris: $expandUris")
         
@@ -145,7 +146,8 @@ abstract class BaseController(
                 jsonLdData,
                 format,
                 style,
-                expandUris
+                expandUris,
+                resourceType
             )
             
             if (convertedData != null) {

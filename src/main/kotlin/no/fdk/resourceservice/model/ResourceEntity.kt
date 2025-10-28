@@ -69,6 +69,18 @@ data class ResourceEntity(
     @Column(name = "resource_json_ld", columnDefinition = "jsonb")
     val resourceJsonLd: Map<String, Any>? = null,
     
+    /**
+     * The URI of the resource extracted from the JSON-LD graph.
+     * 
+     * This field stores the URI (@id) extracted from the JSON-LD representation,
+     * supporting both single node format and @graph format with multiple root nodes.
+     * The URI is extracted based on the resource type and RDF type matching.
+     * 
+     * This allows efficient querying by URI without parsing JSONB.
+     */
+    @Column(name = "uri", length = 1000)
+    val uri: String? = null,
+    
     @Column(name = "timestamp", nullable = false)
     val timestamp: Long = 0L,
     

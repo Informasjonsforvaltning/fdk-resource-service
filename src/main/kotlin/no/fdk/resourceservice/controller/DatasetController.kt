@@ -24,8 +24,6 @@ class DatasetController(
     resourceService: ResourceService,
     rdfService: RdfService
 ) : BaseController(resourceService, rdfService) {
-
-
     @GetMapping("/{id}")
     @Operation(
         summary = "Get dataset by ID",
@@ -76,7 +74,13 @@ class DatasetController(
         return handleJsonResourceRequestByUri(uri, ResourceType.DATASET)
     }
 
-    @GetMapping("/{id}/graph")
+    @GetMapping("/{id}/graph", produces = [
+        "application/ld+json",
+        "text/turtle",
+        "application/rdf+xml",
+        "application/n-triples",
+        "application/n-quads"
+    ])
     @Operation(
         summary = "Get dataset graph by ID",
         description = "Retrieve the RDF graph representation of a specific dataset by its unique identifier. Supports content negotiation for multiple RDF formats (JSON-LD, Turtle, RDF/XML, N-Triples, N-Quads)."
@@ -107,24 +111,30 @@ class DatasetController(
     fun getDatasetGraph(
         @Parameter(description = "Unique identifier of the dataset")
         @PathVariable id: String,
-        @Parameter(description = "Accept header for content negotiation", schema = Schema(implementation = RdfService.RdfFormat::class))
+        @Parameter(description = "Accept header for content negotiation: application/ld+json, text/turtle, application/rdf+xml, application/n-triples, application/n-quads", hidden = true)
         @RequestHeader(HttpHeaders.ACCEPT, required = false) acceptHeader: String?,
-        @Parameter(description = "RDF format style: 'pretty' (with namespace prefixes, human-readable) or 'standard' (with namespace prefixes, compact)", schema = Schema(implementation = RdfService.RdfFormatStyle::class))
+        @Parameter(description = "RDF format style: 'pretty' (human-readable) or 'standard' (compact). Default: pretty", schema = Schema(type = "string", allowableValues = ["pretty", "standard"]), example = "pretty")
         @RequestParam(name = "style", required = false, defaultValue = "pretty") style: String?,
-        @Parameter(description = "Whether to expand URIs (clear namespace prefixes, default: false)")
-        @RequestParam(name = "expandUris", required = false, defaultValue = "false") expandUris: Boolean?
+        @Parameter(description = "Whether to expand URIs (clear namespace prefixes). Default: true")
+        @RequestParam(name = "expandUris", required = false, defaultValue = "true") expandUris: Boolean?
     ): ResponseEntity<Any> {
         val rdfFormatStyle = try {
-            RdfFormatStyle.valueOf(style?.uppercase() ?: "PRETTY")
+            RdfFormatStyle.valueOf((style ?: "pretty").uppercase())
         } catch (e: IllegalArgumentException) {
-            logger.warn("Invalid style parameter: $style, using default: PRETTY")
+            logger.warn("Invalid style parameter: $style, using default: pretty")
             RdfFormatStyle.PRETTY
         }
         
-        return handleGraphRequest(id, ResourceType.DATASET, acceptHeader, rdfFormatStyle, expandUris ?: false)
+        return handleGraphRequest(id, ResourceType.DATASET, acceptHeader, rdfFormatStyle, expandUris ?: true)
     }
 
-    @GetMapping("/by-uri/graph")
+    @GetMapping("/by-uri/graph", produces = [
+        "application/ld+json",
+        "text/turtle",
+        "application/rdf+xml",
+        "application/n-triples",
+        "application/n-quads"
+    ])
     @Operation(
         summary = "Get dataset graph by URI",
         description = "Retrieve the RDF graph representation of a specific dataset by its URI. Supports content negotiation for multiple RDF formats (JSON-LD, Turtle, RDF/XML, N-Triples, N-Quads)."
@@ -155,21 +165,21 @@ class DatasetController(
     fun getDatasetGraphByUri(
         @Parameter(description = "URI of the dataset")
         @RequestParam uri: String,
-        @Parameter(description = "Accept header for content negotiation", schema = Schema(implementation = RdfService.RdfFormat::class))
+        @Parameter(description = "Accept header for content negotiation: application/ld+json, text/turtle, application/rdf+xml, application/n-triples, application/n-quads", hidden = true)
         @RequestHeader(HttpHeaders.ACCEPT, required = false) acceptHeader: String?,
-        @Parameter(description = "RDF format style: 'pretty' (with namespace prefixes, human-readable) or 'standard' (with namespace prefixes, compact)", schema = Schema(implementation = RdfService.RdfFormatStyle::class))
+        @Parameter(description = "RDF format style: 'pretty' (human-readable) or 'standard' (compact). Default: pretty", schema = Schema(type = "string", allowableValues = ["pretty", "standard"]), example = "pretty")
         @RequestParam(name = "style", required = false, defaultValue = "pretty") style: String?,
-        @Parameter(description = "Whether to expand URIs (clear namespace prefixes, default: false)")
-        @RequestParam(name = "expandUris", required = false, defaultValue = "false") expandUris: Boolean?
+        @Parameter(description = "Whether to expand URIs (clear namespace prefixes). Default: true")
+        @RequestParam(name = "expandUris", required = false, defaultValue = "true") expandUris: Boolean?
     ): ResponseEntity<Any> {
         val rdfFormatStyle = try {
-            RdfFormatStyle.valueOf(style?.uppercase() ?: "PRETTY")
+            RdfFormatStyle.valueOf((style ?: "pretty").uppercase())
         } catch (e: IllegalArgumentException) {
-            logger.warn("Invalid style parameter: $style, using default: PRETTY")
+            logger.warn("Invalid style parameter: $style, using default: pretty")
             RdfFormatStyle.PRETTY
         }
         
-        return handleGraphRequestByUri(uri, ResourceType.DATASET, acceptHeader, rdfFormatStyle, expandUris ?: false)
+        return handleGraphRequestByUri(uri, ResourceType.DATASET, acceptHeader, rdfFormatStyle, expandUris ?: true)
     }
 
 }

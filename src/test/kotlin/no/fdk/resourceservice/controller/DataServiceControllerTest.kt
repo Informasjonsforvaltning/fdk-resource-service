@@ -49,7 +49,7 @@ class DataServiceControllerTest : BaseControllerTest() {
 
         every { resourceService.getResourceJsonLd(dataServiceId, ResourceType.DATA_SERVICE) } returns graphData
         every { rdfService.getBestFormat(null) } returns RdfService.RdfFormat.JSON_LD
-        every { rdfService.convertFromJsonLd(graphData, RdfService.RdfFormat.JSON_LD, RdfService.RdfFormatStyle.PRETTY, false) } returns """{"@id":"https://example.com/data-service","title":"Test Data Service"}"""
+        every { rdfService.convertFromJsonLd(graphData, RdfService.RdfFormat.JSON_LD, RdfService.RdfFormatStyle.PRETTY, true, ResourceType.DATA_SERVICE) } returns """{"@id":"https://example.com/data-service","title":"Test Data Service"}"""
         every { rdfService.getContentType(RdfService.RdfFormat.JSON_LD) } returns MediaType.APPLICATION_JSON
 
         mockMvc.perform(get("/v1/data-services/{id}/graph", dataServiceId))
@@ -66,7 +66,7 @@ class DataServiceControllerTest : BaseControllerTest() {
 
         every { resourceService.getResourceJsonLdByUri(uri, ResourceType.DATA_SERVICE) } returns graphData
         every { rdfService.getBestFormat(null) } returns RdfService.RdfFormat.JSON_LD
-        every { rdfService.convertFromJsonLd(graphData, RdfService.RdfFormat.JSON_LD, RdfService.RdfFormatStyle.PRETTY, false) } returns """{"@id":"https://example.com/data-service","title":"Test Data Service"}"""
+        every { rdfService.convertFromJsonLd(graphData, RdfService.RdfFormat.JSON_LD, RdfService.RdfFormatStyle.PRETTY, true, ResourceType.DATA_SERVICE) } returns """{"@id":"https://example.com/data-service","title":"Test Data Service"}"""
         every { rdfService.getContentType(RdfService.RdfFormat.JSON_LD) } returns MediaType.APPLICATION_JSON
 
         mockMvc.perform(get("/v1/data-services/by-uri/graph")
@@ -85,5 +85,42 @@ class DataServiceControllerTest : BaseControllerTest() {
 
         mockMvc.perform(get("/v1/data-services/{id}", dataServiceId))
             .andExpect(status().isNotFound)
+    }
+
+    @Test
+    fun `should get data service graph by id with standard style`() {
+        val dataServiceId = "test-data-service-id"
+        val graphData = mapOf("@id" to "https://example.com/data-service", "title" to "Test Data Service")
+        val standardJsonLd = """{"@id":"https://example.com/data-service","title":"Test Data Service"}"""
+
+        every { resourceService.getResourceJsonLd(dataServiceId, ResourceType.DATA_SERVICE) } returns graphData
+        every { rdfService.getBestFormat(null) } returns RdfService.RdfFormat.JSON_LD
+        every { rdfService.convertFromJsonLd(graphData, RdfService.RdfFormat.JSON_LD, RdfService.RdfFormatStyle.STANDARD, true, ResourceType.DATA_SERVICE) } returns standardJsonLd
+        every { rdfService.getContentType(RdfService.RdfFormat.JSON_LD) } returns MediaType.APPLICATION_JSON
+
+        mockMvc.perform(get("/v1/data-services/{id}/graph", dataServiceId)
+            .param("style", "standard"))
+            .andExpect(status().isOk)
+            .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+            .andExpect(jsonPath("$.@id").value("https://example.com/data-service"))
+    }
+
+    @Test
+    fun `should get data service graph by uri with standard style`() {
+        val uri = "https://example.com/data-service"
+        val graphData = mapOf("@id" to uri, "title" to "Test Data Service")
+        val standardJsonLd = """{"@id":"https://example.com/data-service","title":"Test Data Service"}"""
+
+        every { resourceService.getResourceJsonLdByUri(uri, ResourceType.DATA_SERVICE) } returns graphData
+        every { rdfService.getBestFormat(null) } returns RdfService.RdfFormat.JSON_LD
+        every { rdfService.convertFromJsonLd(graphData, RdfService.RdfFormat.JSON_LD, RdfService.RdfFormatStyle.STANDARD, true, ResourceType.DATA_SERVICE) } returns standardJsonLd
+        every { rdfService.getContentType(RdfService.RdfFormat.JSON_LD) } returns MediaType.APPLICATION_JSON
+
+        mockMvc.perform(get("/v1/data-services/by-uri/graph")
+            .param("uri", uri)
+            .param("style", "standard"))
+            .andExpect(status().isOk)
+            .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+            .andExpect(jsonPath("$.@id").value(uri))
     }
 }

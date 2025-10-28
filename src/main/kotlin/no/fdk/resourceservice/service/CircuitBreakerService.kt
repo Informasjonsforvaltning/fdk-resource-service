@@ -2,6 +2,7 @@ package no.fdk.resourceservice.service
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker
+import io.micrometer.core.instrument.Metrics
 import no.fdk.concept.ConceptEvent
 import no.fdk.dataset.DatasetEvent
 import no.fdk.dataservice.DataServiceEvent
@@ -14,6 +15,9 @@ import no.fdk.resourceservice.service.RdfService.RdfFormat
 import no.fdk.service.ServiceEvent
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
+import kotlin.time.measureTimedValue
+import kotlin.time.toJavaDuration
 
 /**
  * Service that handles Kafka event processing with circuit breaker and retry patterns.
@@ -36,176 +40,207 @@ class CircuitBreakerService(
     private val logger = LoggerFactory.getLogger(CircuitBreakerService::class.java)
     private val objectMapper = ObjectMapper()
 
-    @CircuitBreaker(name = "rdfParseConsumer", fallbackMethod = "handleRdfParseEventFallback")
+    @CircuitBreaker(name = "rdfParseConsumer")
+    @Transactional
     fun handleRdfParseEvent(event: RdfParseEvent) {
-        logger.debug("Processing RDF parse event with circuit breaker: $event")
+        logger.debug("RDF parse event: id=${event.fdkId}, type=${event.resourceType}, dataLen=${event.data.length}")
         
-        // Parse the JSON string data into a Map
-        val resourceJson = try {
-            objectMapper.readValue(event.data, Map::class.java) as Map<String, Any>
+        try {
+            val timeElapsed = measureTimedValue {
+                // Check timestamp early to avoid JSON parsing if not needed
+                val resourceType = when (event.resourceType) {
+                    RdfParseResourceType.CONCEPT -> ResourceType.CONCEPT
+                    RdfParseResourceType.DATASET -> ResourceType.DATASET
+                    RdfParseResourceType.DATA_SERVICE -> ResourceType.DATA_SERVICE
+                    RdfParseResourceType.INFORMATION_MODEL -> ResourceType.INFORMATION_MODEL
+                    RdfParseResourceType.SERVICE -> ResourceType.SERVICE
+                    RdfParseResourceType.EVENT -> ResourceType.EVENT
+                    else -> {
+                        logger.error("Unknown resource type in RDF parse event: ${event.resourceType}")
+                        Metrics.counter("store_resource_json_error", "type", "unknown", "error", "unknown_resource_type").increment()
+                        throw IllegalArgumentException("Unknown resource type: ${event.resourceType}")
+                    }
+                }
+                
+                if (!resourceService.shouldUpdateResource(event.fdkId, event.timestamp)) {
+                    logger.debug("Skipped (older timestamp): id=${event.fdkId}, type=$resourceType")
+                    return@measureTimedValue
+                }
+                
+                val resourceJson = try {
+                    objectMapper.readValue(event.data, Map::class.java) as Map<String, Any>
+                } catch (e: Exception) {
+                    logger.error("JSON parse failed: id=${event.fdkId}, error=${e.message}", e)
+                    Metrics.counter("store_resource_json_error", "type", resourceType.name.lowercase(), "error", "json_parse_failed").increment()
+                    throw e
+                }
+                
+                resourceService.storeResourceJson(
+                    id = event.fdkId,
+                    resourceType = resourceType,
+                    resourceJson = resourceJson,
+                    timestamp = event.timestamp
+                )
+            }
+            Metrics.timer("store_resource_json", "type", event.resourceType.name.lowercase())
+                .record(timeElapsed.duration.toJavaDuration())
         } catch (e: Exception) {
-            logger.error("Failed to parse JSON data from RDF parse event: ${e.message}")
-            return
-        }
-        
-        when (event.resourceType) {
-            RdfParseResourceType.CONCEPT -> {
-                resourceService.storeResourceJson(
-                    id = event.fdkId,
-                    resourceType = ResourceType.CONCEPT,
-                    resourceJson = resourceJson,
-                    timestamp = event.timestamp
-                )
-            }
-            RdfParseResourceType.DATASET -> {
-                resourceService.storeResourceJson(
-                    id = event.fdkId,
-                    resourceType = ResourceType.DATASET,
-                    resourceJson = resourceJson,
-                    timestamp = event.timestamp
-                )
-            }
-            RdfParseResourceType.DATA_SERVICE -> {
-                resourceService.storeResourceJson(
-                    id = event.fdkId,
-                    resourceType = ResourceType.DATA_SERVICE,
-                    resourceJson = resourceJson,
-                    timestamp = event.timestamp
-                )
-            }
-            RdfParseResourceType.INFORMATION_MODEL -> {
-                resourceService.storeResourceJson(
-                    id = event.fdkId,
-                    resourceType = ResourceType.INFORMATION_MODEL,
-                    resourceJson = resourceJson,
-                    timestamp = event.timestamp
-                )
-            }
-            RdfParseResourceType.SERVICE -> {
-                resourceService.storeResourceJson(
-                    id = event.fdkId,
-                    resourceType = ResourceType.SERVICE,
-                    resourceJson = resourceJson,
-                    timestamp = event.timestamp
-                )
-            }
-            RdfParseResourceType.EVENT -> {
-                resourceService.storeResourceJson(
-                    id = event.fdkId,
-                    resourceType = ResourceType.EVENT,
-                    resourceJson = resourceJson,
-                    timestamp = event.timestamp
-                )
-            }
-            else -> {
-                logger.warn("Unknown resource type in RDF parse event: ${event.resourceType}")
-            }
+            logger.error("Error processing RDF parse event: id=${event.fdkId}", e)
+            Metrics.counter("store_resource_json_error", "type", event.resourceType.name.lowercase(), "error", e.javaClass.simpleName).increment()
+            throw e
         }
     }
 
-    @CircuitBreaker(name = "conceptConsumer", fallbackMethod = "handleConceptEventFallback")
+    @CircuitBreaker(name = "conceptConsumer")
+    @Transactional
     fun handleConceptEvent(event: ConceptEvent) {
-        logger.info("Processing concept event with circuit breaker: $event")
-        processResourceEvent(event.fdkId, event.graph, event.timestamp, ResourceType.CONCEPT, event.type.toString())        
+        logger.debug("Concept event: id=${event.fdkId}, type=${event.type}, graphLen=${event.graph.length}")
+        try {
+            val timeElapsed = measureTimedValue {
+                processResourceEvent(event.fdkId, event.graph, event.timestamp, ResourceType.CONCEPT, event.type.toString())
+            }
+            Metrics.timer("store_resource_jsonld", "type", "concept")
+                .record(timeElapsed.duration.toJavaDuration())
+        } catch (e: Exception) {
+            logger.error("Error processing concept event: id=${event.fdkId}", e)
+            Metrics.counter("store_resource_jsonld_error", "type", "concept", "error", e.javaClass.simpleName).increment()
+            throw e
+        }
     }
 
-    @CircuitBreaker(name = "datasetConsumer", fallbackMethod = "handleDatasetEventFallback")
+    @CircuitBreaker(name = "datasetConsumer")
+    @Transactional
     fun handleDatasetEvent(event: DatasetEvent) {
-        logger.debug("Processing dataset event with circuit breaker: $event")
-        processResourceEvent(event.fdkId, event.graph, event.timestamp, ResourceType.DATASET, event.type.toString())
+        logger.debug("Dataset event: id=${event.fdkId}, type=${event.type}, graphLen=${event.graph.length}")
+        try {
+            val timeElapsed = measureTimedValue {
+                processResourceEvent(event.fdkId, event.graph, event.timestamp, ResourceType.DATASET, event.type.toString())
+            }
+            Metrics.timer("store_resource_jsonld", "type", "dataset")
+                .record(timeElapsed.duration.toJavaDuration())
+        } catch (e: Exception) {
+            logger.error("Error processing dataset event: id=${event.fdkId}", e)
+            Metrics.counter("store_resource_jsonld_error", "type", "dataset", "error", e.javaClass.simpleName).increment()
+            throw e
+        }
     }
 
-    @CircuitBreaker(name = "dataServiceConsumer", fallbackMethod = "handleDataServiceEventFallback")
+    @CircuitBreaker(name = "dataServiceConsumer")
+    @Transactional
     fun handleDataServiceEvent(event: DataServiceEvent) {
-        logger.debug("Processing data service event with circuit breaker: $event")
-        processResourceEvent(event.fdkId, event.graph, event.timestamp, ResourceType.DATA_SERVICE, event.type.toString())
+        logger.debug("DataService event: id=${event.fdkId}, type=${event.type}, graphLen=${event.graph.length}")
+        try {
+            val timeElapsed = measureTimedValue {
+                processResourceEvent(event.fdkId, event.graph, event.timestamp, ResourceType.DATA_SERVICE, event.type.toString())
+            }
+            Metrics.timer("store_resource_jsonld", "type", "data_service")
+                .record(timeElapsed.duration.toJavaDuration())
+        } catch (e: Exception) {
+            logger.error("Error processing data service event: id=${event.fdkId}", e)
+            Metrics.counter("store_resource_jsonld_error", "type", "data_service", "error", e.javaClass.simpleName).increment()
+            throw e
+        }
     }
 
-    @CircuitBreaker(name = "informationModelConsumer", fallbackMethod = "handleInformationModelEventFallback")
+    @CircuitBreaker(name = "informationModelConsumer")
+    @Transactional
     fun handleInformationModelEvent(event: InformationModelEvent) {
-        logger.debug("Processing information model event with circuit breaker: $event")
-        processResourceEvent(event.fdkId, event.graph, event.timestamp, ResourceType.INFORMATION_MODEL, event.type.toString())
+        logger.debug("InformationModel event: id=${event.fdkId}, type=${event.type}, graphLen=${event.graph.length}")
+        try {
+            val timeElapsed = measureTimedValue {
+                processResourceEvent(event.fdkId, event.graph, event.timestamp, ResourceType.INFORMATION_MODEL, event.type.toString())
+            }
+            Metrics.timer("store_resource_jsonld", "type", "information_model")
+                .record(timeElapsed.duration.toJavaDuration())
+        } catch (e: Exception) {
+            logger.error("Error processing information model event: id=${event.fdkId}", e)
+            Metrics.counter("store_resource_jsonld_error", "type", "information_model", "error", e.javaClass.simpleName).increment()
+            throw e
+        }
     }
 
-    @CircuitBreaker(name = "serviceConsumer", fallbackMethod = "handleServiceEventFallback")
+    @CircuitBreaker(name = "serviceConsumer")
+    @Transactional
     fun handleServiceEvent(event: ServiceEvent) {
-        logger.debug("Processing service event with circuit breaker: $event")
-        processResourceEvent(event.fdkId, event.graph, event.timestamp, ResourceType.SERVICE, event.type.toString())
+        logger.debug("Service event: id=${event.fdkId}, type=${event.type}, graphLen=${event.graph.length}")
+        try {
+            val timeElapsed = measureTimedValue {
+                processResourceEvent(event.fdkId, event.graph, event.timestamp, ResourceType.SERVICE, event.type.toString())
+            }
+            Metrics.timer("store_resource_jsonld", "type", "service")
+                .record(timeElapsed.duration.toJavaDuration())
+        } catch (e: Exception) {
+            logger.error("Error processing service event: id=${event.fdkId}", e)
+            Metrics.counter("store_resource_jsonld_error", "type", "service", "error", e.javaClass.simpleName).increment()
+            throw e
+        }
     }
 
-    @CircuitBreaker(name = "eventConsumer", fallbackMethod = "handleEventEventFallback")
+    @CircuitBreaker(name = "eventConsumer")
+    @Transactional
     fun handleEventEvent(event: EventEvent) {
-        logger.debug("Processing event event with circuit breaker: $event")
-        processResourceEvent(event.fdkId, event.graph, event.timestamp, ResourceType.EVENT, event.type.toString())
+        logger.debug("Event event: id=${event.fdkId}, type=${event.type}, graphLen=${event.graph.length}")
+        try {
+            val timeElapsed = measureTimedValue {
+                processResourceEvent(event.fdkId, event.graph, event.timestamp, ResourceType.EVENT, event.type.toString())
+            }
+            Metrics.timer("store_resource_jsonld", "type", "event")
+                .record(timeElapsed.duration.toJavaDuration())
+        } catch (e: Exception) {
+            logger.error("Error processing event event: id=${event.fdkId}", e)
+            Metrics.counter("store_resource_jsonld_error", "type", "event", "error", e.javaClass.simpleName).increment()
+            throw e
+        }
     }
 
     private fun processResourceEvent(fdkId: String, graph: String, timestamp: Long, resourceType: ResourceType, eventType: String) {
-        logger.info("📝 PROCESS RESOURCE: Processing resource event - fdkId=$fdkId, resourceType=$resourceType, eventType=$eventType")
+        logger.debug("Processing event: id=$fdkId, type=$resourceType, event=$eventType, graphLen=${graph.length}")
         val action = when {
             eventType.endsWith("_HARVESTED") -> "HARVESTED"
             eventType.endsWith("_REMOVED") -> "REMOVED"
             else -> eventType.substringAfter("_")
         }
-        logger.info("📝 PROCESS RESOURCE: Action extracted: $action")
         
         when (action) {
             "HARVESTED" -> {
-                logger.info("📝 PROCESS RESOURCE: Processing HARVESTED event")
-                // For HARVESTED events, convert Turtle to JSON-LD Map and store
-                val jsonLdMap = rdfService.convertTurtleToJsonLdMap(graph, true)
-                logger.info("📝 PROCESS RESOURCE: Converted to JSON-LD Map, calling resourceService.storeResource")
+                // Check timestamp early to avoid expensive conversion
+                if (!resourceService.shouldUpdateResource(fdkId, timestamp)) {
+                    logger.debug("Skipped (older timestamp): id=$fdkId, type=$resourceType")
+                    return
+                }
                 
-                // Store JSON-LD
+                val jsonLdMap = rdfService.convertTurtleToJsonLdMap(graph, true)
+                val mapSize = jsonLdMap.size
+                val isEmpty = jsonLdMap.isEmpty()
+                
+                if (isEmpty) {
+                    logger.error("JSON-LD conversion returned empty map: id=$fdkId, type=$resourceType, graphLen=${graph.length}")
+                    Metrics.counter("store_resource_jsonld_error", "type", resourceType.name.lowercase(), "error", "empty_conversion").increment()
+                    throw IllegalStateException("JSON-LD conversion returned empty map for id=$fdkId")
+                } else {
+                    logger.debug("JSON-LD converted: id=$fdkId, mapSize=$mapSize")
+                }
+                
                 resourceService.storeResourceJsonLd(
                     id = fdkId,
                     resourceType = resourceType,
                     resourceJsonLd = jsonLdMap,
                     timestamp = timestamp
                 )
-                logger.info("📝 PROCESS RESOURCE: Successfully stored HARVESTED resource")
+                logger.debug("Storage called: id=$fdkId, type=$resourceType")
             }
             "REMOVED" -> {
-                logger.info("📝 PROCESS RESOURCE: Processing REMOVED event")
-                // For REMOVED events, mark the resource as deleted
                 resourceService.markResourceAsDeleted(
                     id = fdkId,
                     resourceType = resourceType,
                     timestamp = timestamp
                 )
-                logger.info("📝 PROCESS RESOURCE: Successfully marked resource as deleted")
+                logger.debug("Marked deleted: id=$fdkId, type=$resourceType")
             }
             else -> {
-                logger.warn("Unknown action in event type: $eventType")
+                logger.warn("Unknown action: id=$fdkId, event=$eventType")
             }
         }
     }
 
-    // Fallback methods for circuit breaker
-    fun handleRdfParseEventFallback(event: RdfParseEvent, ex: Exception) {
-        logger.warn("Circuit breaker fallback triggered for RDF parse event: $event", ex)
-    }
-
-    fun handleConceptEventFallback(event: ConceptEvent, ex: Exception) {
-        logger.warn("Circuit breaker fallback triggered for concept event: $event", ex)
-    }
-
-    fun handleDatasetEventFallback(event: DatasetEvent, ex: Exception) {
-        logger.warn("Circuit breaker fallback triggered for dataset event: $event", ex)
-    }
-
-    fun handleDataServiceEventFallback(event: DataServiceEvent, ex: Exception) {
-        logger.warn("Circuit breaker fallback triggered for data service event: $event", ex)
-    }
-
-    fun handleInformationModelEventFallback(event: InformationModelEvent, ex: Exception) {
-        logger.warn("Circuit breaker fallback triggered for information model event: $event", ex)
-    }
-
-    fun handleServiceEventFallback(event: ServiceEvent, ex: Exception) {
-        logger.warn("Circuit breaker fallback triggered for service event: $event", ex)
-    }
-
-    fun handleEventEventFallback(event: EventEvent, ex: Exception) {
-        logger.warn("Circuit breaker fallback triggered for event event: $event", ex)
-    }
 }

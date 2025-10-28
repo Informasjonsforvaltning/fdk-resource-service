@@ -28,8 +28,3 @@ class WebConfig : WebMvcConfigurer {
         }
     }
 }
-
-
-
-
-

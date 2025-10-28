@@ -20,7 +20,9 @@ interface ResourceRepository : JpaRepository<ResourceEntity, String> {
     @Query(value = """
         SELECT * FROM resources 
         WHERE resource_type = :resourceType 
-        AND resource_json->>'uri' = :uri
+        AND uri = :uri
+        ORDER BY timestamp DESC
+        LIMIT 1
     """, nativeQuery = true)
     fun findByResourceTypeAndUri(
         @Param("resourceType") resourceType: String,
@@ -31,7 +33,9 @@ interface ResourceRepository : JpaRepository<ResourceEntity, String> {
         SELECT * FROM resources 
         WHERE resource_type = :resourceType 
         AND deleted = false 
-        AND resource_json->>'uri' = :uri
+        AND uri = :uri
+        ORDER BY timestamp DESC
+        LIMIT 1
     """, nativeQuery = true)
     fun findByResourceTypeAndUriAndDeletedFalse(
         @Param("resourceType") resourceType: String,
@@ -42,12 +46,13 @@ interface ResourceRepository : JpaRepository<ResourceEntity, String> {
     @Transactional
     @Query(value = """
         UPDATE resources 
-        SET resource_json = CAST(:resourceJson AS jsonb), timestamp = :timestamp, updated_at = CURRENT_TIMESTAMP
+        SET resource_json = CAST(:resourceJson AS jsonb), uri = :uri, timestamp = :timestamp, updated_at = CURRENT_TIMESTAMP
         WHERE id = :id
     """, nativeQuery = true)
     fun updateResourceJson(
         @Param("id") id: String,
         @Param("resourceJson") resourceJson: String,
+        @Param("uri") uri: String?,
         @Param("timestamp") timestamp: Long
     ): Int
     
@@ -90,6 +95,31 @@ interface ResourceRepository : JpaRepository<ResourceEntity, String> {
     ): Int
     
     
+    @Query(value = """
+        SELECT * FROM resources 
+        WHERE uri = :uri
+        ORDER BY timestamp DESC
+        LIMIT 1
+    """, nativeQuery = true)
+    fun findByUri(@Param("uri") uri: String): ResourceEntity?
+    
+    @Query(value = """
+        SELECT * FROM resources 
+        WHERE resource_json->>'uri' = :uri
+        ORDER BY timestamp DESC
+        LIMIT 1
+    """, nativeQuery = true)
+    fun findByUriInJson(@Param("uri") uri: String): ResourceEntity?
+    
+    @Query(value = """
+        SELECT * FROM resources 
+        WHERE uri = :uri
+        AND deleted = false
+        ORDER BY timestamp DESC
+        LIMIT 1
+    """, nativeQuery = true)
+    fun findByUriAndDeletedFalse(@Param("uri") uri: String): ResourceEntity?
+    
     @Query("""
         SELECT r FROM ResourceEntity r 
         WHERE r.resourceType = :resourceType 
@@ -100,4 +130,11 @@ interface ResourceRepository : JpaRepository<ResourceEntity, String> {
         @Param("resourceType") resourceType: String,
         @Param("since") since: Long
     ): List<ResourceEntity>
+    
+    @Query(value = """
+        SELECT timestamp FROM resources 
+        WHERE id = :id
+        LIMIT 1
+    """, nativeQuery = true)
+    fun findTimestampById(@Param("id") id: String): Long?
 }

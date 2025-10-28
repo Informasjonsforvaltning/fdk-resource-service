@@ -1,6 +1,8 @@
 package no.fdk.resourceservice.service
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import no.fdk.resourceservice.model.ResourceType
+import org.apache.jena.rdf.model.Model
 import org.apache.jena.rdf.model.ModelFactory
 import org.apache.jena.riot.Lang
 import org.apache.jena.riot.RDFDataMgr
@@ -108,10 +110,22 @@ class RdfService(
 
     /**
      * Converts from JSON-LD format to any target format.
+     * 
+     * @param jsonLdData The JSON-LD data to convert
+     * @param toFormat The target RDF format
+     * @param style The format style (PRETTY or STANDARD)
+     * @param expandUris Whether to expand URIs (clear namespace prefixes, default: false)
+     * @param resourceType Optional resource type to use resource-specific namespace prefixes
      */
-    fun convertFromJsonLd(jsonLdData: Map<String, Any>, toFormat: RdfFormat, style: RdfFormatStyle, expandUris: Boolean = false): String? {
+    fun convertFromJsonLd(
+        jsonLdData: Map<String, Any>, 
+        toFormat: RdfFormat, 
+        style: RdfFormatStyle, 
+        expandUris: Boolean = false,
+        resourceType: ResourceType? = null
+    ): String? {
         // Handle JSON-LD pretty printing (no RDF conversion needed)
-        if (toFormat == RdfFormat.JSON_LD && style == RdfFormatStyle.PRETTY) {
+        if (toFormat == RdfFormat.JSON_LD && style == RdfFormatStyle.PRETTY && expandUris) {
             return objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(jsonLdData)
         }
 
@@ -123,6 +137,9 @@ class RdfService(
 
         if(expandUris) {
             model.clearNsPrefixMap()
+        } else {
+            // Add resource-specific prefixes when expandUris is false
+            addPrefixesForResourceType(model, resourceType)
         }
 
         val rdfFormat = getRdfFormat(toFormat, style)
@@ -176,6 +193,215 @@ class RdfService(
             logger.error("Failed to convert Turtle to JSON-LD Map", e)
             emptyMap<String, Any>()
         }
+    }
+
+    /**
+     * Adds resource-type-specific prefixes to the model.
+     * If no resource type is provided, adds common prefixes.
+     * 
+     * @param model The RDF model to add prefixes to
+     * @param resourceType The resource type, or null for common prefixes
+     */
+    private fun addPrefixesForResourceType(model: Model, resourceType: ResourceType?) {
+        when (resourceType) {
+            ResourceType.DATASET -> addDatasetPrefixes(model)
+            ResourceType.DATA_SERVICE -> addDataServicePrefixes(model)
+            ResourceType.CONCEPT -> addConceptPrefixes(model)
+            ResourceType.INFORMATION_MODEL -> addInformationModelPrefixes(model)
+            ResourceType.SERVICE -> addServicePrefixes(model)
+            ResourceType.EVENT -> addEventPrefixes(model)
+            null -> addCommonPrefixes(model)
+        }
+    }
+
+    /**
+     * Adds prefixes for Dataset resources according to DCAT-AP-NO specification.
+     * 
+     * Namespaces are based on:
+     * https://data.norge.no/specification/dcat-ap-no#URIer-i-bruk
+     */
+    private fun addDatasetPrefixes(model: Model) {
+        // Core RDF vocabularies
+        model.setNsPrefix("rdf", "http://www.w3.org/1999/02/22-rdf-syntax-ns#")
+        model.setNsPrefix("rdfs", "http://www.w3.org/2000/01/rdf-schema#")
+        model.setNsPrefix("owl", "http://www.w3.org/2002/07/owl#")
+        model.setNsPrefix("xsd", "http://www.w3.org/2001/XMLSchema#")
+        
+        // DCAT-AP-NO core vocabularies
+        model.setNsPrefix("dcat", "http://www.w3.org/ns/dcat#")
+        model.setNsPrefix("dcatap", "http://data.europa.eu/r5r/")
+        model.setNsPrefix("dcatno", "https://data.norge.no/vocabulary/dcatno#")
+        model.setNsPrefix("dct", "http://purl.org/dc/terms/")
+        
+        // Additional DCAT-AP-NO vocabularies
+        model.setNsPrefix("adms", "http://www.w3.org/ns/adms#")
+        model.setNsPrefix("cv", "http://data.europa.eu/m8g/")
+        model.setNsPrefix("cpsv", "http://purl.org/vocab/cpsv#")
+        model.setNsPrefix("dqv", "http://www.w3.org/ns/dqv#")
+        model.setNsPrefix("eli", "http://data.europa.eu/eli/ontology#")
+        model.setNsPrefix("foaf", "http://xmlns.com/foaf/0.1/")
+        model.setNsPrefix("locn", "http://www.w3.org/ns/locn#")
+        model.setNsPrefix("odrl", "http://www.w3.org/ns/odrl/2/")
+        model.setNsPrefix("odrs", "http://schema.theodi.org/odrs#")
+        model.setNsPrefix("prov", "http://www.w3.org/ns/prov#")
+        model.setNsPrefix("skos", "http://www.w3.org/2004/02/skos/core#")
+        model.setNsPrefix("spdx", "http://spdx.org/rdf/terms#")
+        model.setNsPrefix("time", "http://www.w3.org/2006/time#")
+        model.setNsPrefix("vcard", "http://www.w3.org/2006/vcard/ns#")
+    }
+
+    /**
+     * Adds prefixes for Data Service resources.
+     * Uses similar prefixes to Dataset as they are related DCAT resources.
+     */
+    private fun addDataServicePrefixes(model: Model) {
+        addDatasetPrefixes(model) // Data services use similar vocabularies
+    }
+
+    /**
+     * Adds prefixes for Concept resources according to SKOS-AP-NO-Begrep specification.
+     * 
+     * Namespaces are based on:
+     * https://data.norge.no/specification/skos-ap-no-begrep#Navnerom-brukt-i-standarden
+     */
+    private fun addConceptPrefixes(model: Model) {
+        // Core RDF vocabularies
+        model.setNsPrefix("rdf", "http://www.w3.org/1999/02/22-rdf-syntax-ns#")
+        model.setNsPrefix("rdfs", "http://www.w3.org/2000/01/rdf-schema#")
+        model.setNsPrefix("owl", "http://www.w3.org/2002/07/owl#")
+        model.setNsPrefix("xsd", "http://www.w3.org/2001/XMLSchema#")
+        
+        // SKOS-AP-NO-Begrep core vocabularies
+        model.setNsPrefix("adms", "http://www.w3.org/ns/adms#")
+        model.setNsPrefix("dcat", "http://www.w3.org/ns/dcat#")
+        model.setNsPrefix("dct", "http://purl.org/dc/terms/")
+        model.setNsPrefix("euvoc", "http://publications.europa.eu/ontology/euvoc#")
+        model.setNsPrefix("org", "http://www.w3.org/ns/org#")
+        model.setNsPrefix("skos", "http://www.w3.org/2004/02/skos/core#")
+        model.setNsPrefix("skosno", "https://data.norge.no/vocabulary/skosno#")
+        model.setNsPrefix("vcard", "http://www.w3.org/2006/vcard/ns#")
+        model.setNsPrefix("xkos", "http://rdf-vocabulary.ddialliance.org/xkos#")
+    }
+
+    /**
+     * Adds prefixes for Information Model resources according to ModellDCAT-AP-NO specification.
+     * 
+     * Namespaces are based on:
+     * https://data.norge.no/specification/modelldcat-ap-no#URIer-som-er-i-bruk
+     */
+    private fun addInformationModelPrefixes(model: Model) {
+        // Core RDF vocabularies
+        model.setNsPrefix("rdf", "http://www.w3.org/1999/02/22-rdf-syntax-ns#")
+        model.setNsPrefix("rdfs", "http://www.w3.org/2000/01/rdf-schema#")
+        model.setNsPrefix("owl", "http://www.w3.org/2002/07/owl#")
+        model.setNsPrefix("xsd", "http://www.w3.org/2001/XMLSchema#")
+        
+        // ModellDCAT-AP-NO core vocabularies
+        model.setNsPrefix("adms", "http://www.w3.org/ns/adms#")
+        model.setNsPrefix("dcat", "http://www.w3.org/ns/dcat#")
+        model.setNsPrefix("dct", "http://purl.org/dc/terms/")
+        model.setNsPrefix("foaf", "http://xmlns.com/foaf/0.1/")
+        model.setNsPrefix("locn", "http://www.w3.org/ns/locn#")
+        model.setNsPrefix("modelldcatno", "https://data.norge.no/vocabulary/modelldcatno#")
+        model.setNsPrefix("prof", "https://www.w3.org/ns/dx/prof/")
+        model.setNsPrefix("skos", "http://www.w3.org/2004/02/skos/core#")
+        model.setNsPrefix("vcard", "http://www.w3.org/2006/vcard/ns#")
+        model.setNsPrefix("xkos", "http://rdf-vocabulary.ddialliance.org/xkos#")
+    }
+
+    /**
+     * Adds prefixes for Service resources according to CPSV-AP-NO specification.
+     * 
+     * Namespaces are based on:
+     * https://data.norge.no/specification/cpsv-ap-no#Navnerom
+     */
+    private fun addServicePrefixes(model: Model) {
+        // Core RDF vocabularies
+        model.setNsPrefix("rdf", "http://www.w3.org/1999/02/22-rdf-syntax-ns#")
+        model.setNsPrefix("rdfs", "http://www.w3.org/2000/01/rdf-schema#")
+        model.setNsPrefix("xsd", "http://www.w3.org/2001/XMLSchema#")
+        
+        // CPSV-AP-NO core vocabularies
+        model.setNsPrefix("adms", "http://www.w3.org/ns/adms#")
+        model.setNsPrefix("cpsv", "http://purl.org/vocab/cpsv#")
+        model.setNsPrefix("cpsvno", "https://data.norge.no/vocabulary/cpsvno#")
+        model.setNsPrefix("cv", "http://data.europa.eu/m8g/")
+        model.setNsPrefix("dcat", "http://www.w3.org/ns/dcat#")
+        model.setNsPrefix("dcatno", "https://data.norge.no/vocabulary/dcatno#")
+        model.setNsPrefix("dct", "http://purl.org/dc/terms/")
+        model.setNsPrefix("eli", "http://data.europa.eu/eli/ontology#")
+        model.setNsPrefix("epo", "http://data.europa.eu/a4g/ontology#")
+        model.setNsPrefix("foaf", "http://xmlns.com/foaf/0.1/")
+        model.setNsPrefix("greg", "http://www.w3.org/ns/time/gregorian#")
+        model.setNsPrefix("locn", "http://www.w3.org/ns/locn#")
+        model.setNsPrefix("org", "http://www.w3.org/ns/org#")
+        model.setNsPrefix("schema", "https://schema.org/")
+        model.setNsPrefix("skos", "http://www.w3.org/2004/02/skos/core#")
+        model.setNsPrefix("time", "http://www.w3.org/2006/time#")
+        model.setNsPrefix("vcard", "http://www.w3.org/2006/vcard/ns#")
+        model.setNsPrefix("xkos", "http://rdf-vocabulary.ddialliance.org/xkos#")
+    }
+
+    /**
+     * Adds prefixes for Event resources according to CPSV-AP-NO specification.
+     * 
+     * Namespaces are based on:
+     * https://data.norge.no/specification/cpsv-ap-no#Navnerom
+     */
+    private fun addEventPrefixes(model: Model) {
+        // Core RDF vocabularies
+        model.setNsPrefix("rdf", "http://www.w3.org/1999/02/22-rdf-syntax-ns#")
+        model.setNsPrefix("rdfs", "http://www.w3.org/2000/01/rdf-schema#")
+        model.setNsPrefix("xsd", "http://www.w3.org/2001/XMLSchema#")
+        
+        // CPSV-AP-NO core vocabularies
+        model.setNsPrefix("adms", "http://www.w3.org/ns/adms#")
+        model.setNsPrefix("cpsv", "http://purl.org/vocab/cpsv#")
+        model.setNsPrefix("cpsvno", "https://data.norge.no/vocabulary/cpsvno#")
+        model.setNsPrefix("cv", "http://data.europa.eu/m8g/")
+        model.setNsPrefix("dcat", "http://www.w3.org/ns/dcat#")
+        model.setNsPrefix("dcatno", "https://data.norge.no/vocabulary/dcatno#")
+        model.setNsPrefix("dct", "http://purl.org/dc/terms/")
+        model.setNsPrefix("eli", "http://data.europa.eu/eli/ontology#")
+        model.setNsPrefix("epo", "http://data.europa.eu/a4g/ontology#")
+        model.setNsPrefix("foaf", "http://xmlns.com/foaf/0.1/")
+        model.setNsPrefix("greg", "http://www.w3.org/ns/time/gregorian#")
+        model.setNsPrefix("locn", "http://www.w3.org/ns/locn#")
+        model.setNsPrefix("org", "http://www.w3.org/ns/org#")
+        model.setNsPrefix("schema", "https://schema.org/")
+        model.setNsPrefix("skos", "http://www.w3.org/2004/02/skos/core#")
+        model.setNsPrefix("time", "http://www.w3.org/2006/time#")
+        model.setNsPrefix("vcard", "http://www.w3.org/2006/vcard/ns#")
+        model.setNsPrefix("xkos", "http://rdf-vocabulary.ddialliance.org/xkos#")
+    }
+
+    /**
+     * Adds common RDF prefixes to the model.
+     * Used when no specific resource type is provided.
+     * 
+     * Namespaces are verified against the fdk-parser-service vocabulary definitions:
+     * https://github.com/Informasjonsforvaltning/fdk-parser-service/tree/main/src/main/kotlin/no/digdir/fdk/parserservice/vocabulary
+     */
+    private fun addCommonPrefixes(model: Model) {
+        // Core RDF vocabularies
+        model.setNsPrefix("rdf", "http://www.w3.org/1999/02/22-rdf-syntax-ns#")
+        model.setNsPrefix("rdfs", "http://www.w3.org/2000/01/rdf-schema#")
+        model.setNsPrefix("owl", "http://www.w3.org/2002/07/owl#")
+        model.setNsPrefix("xsd", "http://www.w3.org/2001/XMLSchema#")
+        
+        // DCAT and Dublin Core vocabularies
+        model.setNsPrefix("dcat", "http://www.w3.org/ns/dcat#")
+        model.setNsPrefix("dct", "http://purl.org/dc/terms/")
+        model.setNsPrefix("dc", "http://purl.org/dc/elements/1.1/")
+        
+        // Additional common vocabularies
+        model.setNsPrefix("foaf", "http://xmlns.com/foaf/0.1/")
+        model.setNsPrefix("skos", "http://www.w3.org/2004/02/skos/core#")
+        model.setNsPrefix("schema", "http://schema.org/")
+        model.setNsPrefix("vcard", "http://www.w3.org/2006/vcard/ns#")
+        model.setNsPrefix("prov", "http://www.w3.org/ns/prov#")
+        model.setNsPrefix("adms", "http://www.w3.org/ns/adms#")
+        model.setNsPrefix("locn", "http://www.w3.org/ns/locn#")
     }
 
     /**

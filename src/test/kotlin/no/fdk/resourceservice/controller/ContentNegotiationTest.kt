@@ -26,7 +26,7 @@ class ContentNegotiationTest : BaseControllerTest() {
 
         every { resourceService.getResourceJsonLd(testDatasetId, ResourceType.DATASET) } returns jsonLdData
         every { rdfService.getBestFormat("application/ld+json") } returns RdfService.RdfFormat.JSON_LD
-        every { rdfService.convertFromJsonLd(jsonLdData, RdfService.RdfFormat.JSON_LD, RdfService.RdfFormatStyle.PRETTY, false) } returns "{\"@id\":\"$testDatasetUri\",\"@type\":\"http://example.org/Dataset\"}"
+        every { rdfService.convertFromJsonLd(jsonLdData, RdfService.RdfFormat.JSON_LD, RdfService.RdfFormatStyle.PRETTY, true, ResourceType.DATASET) } returns "{\"@id\":\"$testDatasetUri\",\"@type\":\"http://example.org/Dataset\"}"
         every { rdfService.getContentType(RdfService.RdfFormat.JSON_LD) } returns MediaType.APPLICATION_JSON
 
         // When & Then
@@ -51,7 +51,7 @@ class ContentNegotiationTest : BaseControllerTest() {
 
         every { resourceService.getResourceJsonLd(testDatasetId, ResourceType.DATASET) } returns jsonLdData
         every { rdfService.getBestFormat("text/turtle") } returns RdfService.RdfFormat.TURTLE
-        every { rdfService.convertFromJsonLd(jsonLdData, RdfService.RdfFormat.TURTLE, RdfService.RdfFormatStyle.PRETTY, false) } returns turtleContent
+        every { rdfService.convertFromJsonLd(jsonLdData, RdfService.RdfFormat.TURTLE, RdfService.RdfFormatStyle.PRETTY, true, ResourceType.DATASET) } returns turtleContent
         every { rdfService.getContentType(RdfService.RdfFormat.TURTLE) } returns MediaType("text", "turtle")
 
         // When & Then
@@ -75,7 +75,7 @@ class ContentNegotiationTest : BaseControllerTest() {
 
         every { resourceService.getResourceJsonLd(testDatasetId, ResourceType.DATASET) } returns jsonLdData
         every { rdfService.getBestFormat("application/rdf+xml") } returns RdfService.RdfFormat.RDF_XML
-        every { rdfService.convertFromJsonLd(jsonLdData, RdfService.RdfFormat.RDF_XML, RdfService.RdfFormatStyle.PRETTY, false) } returns rdfXmlContent
+        every { rdfService.convertFromJsonLd(jsonLdData, RdfService.RdfFormat.RDF_XML, RdfService.RdfFormatStyle.PRETTY, true, ResourceType.DATASET) } returns rdfXmlContent
         every { rdfService.getContentType(RdfService.RdfFormat.RDF_XML) } returns MediaType("application", "rdf+xml")
 
         // When & Then
@@ -99,7 +99,7 @@ class ContentNegotiationTest : BaseControllerTest() {
 
         every { resourceService.getResourceJsonLd(testDatasetId, ResourceType.DATASET) } returns jsonLdData
         every { rdfService.getBestFormat("application/n-triples") } returns RdfService.RdfFormat.N_TRIPLES
-        every { rdfService.convertFromJsonLd(jsonLdData, RdfService.RdfFormat.N_TRIPLES, RdfService.RdfFormatStyle.PRETTY, false) } returns nTriplesContent
+        every { rdfService.convertFromJsonLd(jsonLdData, RdfService.RdfFormat.N_TRIPLES, RdfService.RdfFormatStyle.PRETTY, true, ResourceType.DATASET) } returns nTriplesContent
         every { rdfService.getContentType(RdfService.RdfFormat.N_TRIPLES) } returns MediaType("application", "n-triples")
 
         // When & Then
@@ -123,7 +123,7 @@ class ContentNegotiationTest : BaseControllerTest() {
 
         every { resourceService.getResourceJsonLd(testDatasetId, ResourceType.DATASET) } returns jsonLdData
         every { rdfService.getBestFormat("application/n-quads") } returns RdfService.RdfFormat.N_QUADS
-        every { rdfService.convertFromJsonLd(jsonLdData, RdfService.RdfFormat.N_QUADS, RdfService.RdfFormatStyle.PRETTY, false) } returns nQuadsContent
+        every { rdfService.convertFromJsonLd(jsonLdData, RdfService.RdfFormat.N_QUADS, RdfService.RdfFormatStyle.PRETTY, true, ResourceType.DATASET) } returns nQuadsContent
         every { rdfService.getContentType(RdfService.RdfFormat.N_QUADS) } returns MediaType("application", "n-quads")
 
         // When & Then
@@ -146,7 +146,7 @@ class ContentNegotiationTest : BaseControllerTest() {
 
         every { resourceService.getResourceJsonLd(testDatasetId, ResourceType.DATASET) } returns jsonLdData
         every { rdfService.getBestFormat(null) } returns RdfService.RdfFormat.JSON_LD
-        every { rdfService.convertFromJsonLd(jsonLdData, RdfService.RdfFormat.JSON_LD, RdfService.RdfFormatStyle.PRETTY, false) } returns "{\"@id\":\"$testDatasetUri\",\"@type\":\"http://example.org/Dataset\"}"
+        every { rdfService.convertFromJsonLd(jsonLdData, RdfService.RdfFormat.JSON_LD, RdfService.RdfFormatStyle.PRETTY, true, ResourceType.DATASET) } returns "{\"@id\":\"$testDatasetUri\",\"@type\":\"http://example.org/Dataset\"}"
         every { rdfService.getContentType(RdfService.RdfFormat.JSON_LD) } returns MediaType.APPLICATION_JSON
 
         // When & Then
@@ -182,7 +182,7 @@ class ContentNegotiationTest : BaseControllerTest() {
 
         every { resourceService.getResourceJsonLd(testDatasetId, ResourceType.DATASET) } returns jsonLdData
         every { rdfService.getBestFormat("text/turtle") } returns RdfService.RdfFormat.TURTLE
-        every { rdfService.convertFromJsonLd(jsonLdData, RdfService.RdfFormat.TURTLE, RdfService.RdfFormatStyle.PRETTY, false) } returns null // Conversion fails
+        every { rdfService.convertFromJsonLd(jsonLdData, RdfService.RdfFormat.TURTLE, RdfService.RdfFormatStyle.PRETTY, true, ResourceType.DATASET) } returns null // Conversion fails
 
         // When & Then
         mockMvc.perform(get("/v1/datasets/$testDatasetId/graph")
