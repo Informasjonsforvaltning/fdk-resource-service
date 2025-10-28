@@ -232,7 +232,7 @@ class KafkaConsumer(
         }
     }
 
-    @KafkaListener(topics = ["\${app.kafka.topics.rdf-parse}"])
+    @KafkaListener(topics = ["\${app.kafka.topics.rdf-parse}"], concurrency = "4")
     fun handleRdfParseEvent(
         record: ConsumerRecord<String, Any>,
         acknowledgment: Acknowledgment,
@@ -259,7 +259,7 @@ class KafkaConsumer(
         }
     }
 
-    @KafkaListener(topics = ["\${app.kafka.topics.concept}"])
+    @KafkaListener(topics = ["\${app.kafka.topics.concept}"], concurrency = "4")
     fun handleConceptEvent(
         record: ConsumerRecord<String, Any>,
         acknowledgment: Acknowledgment,
@@ -290,7 +290,7 @@ class KafkaConsumer(
         }
     }
 
-    @KafkaListener(topics = ["\${app.kafka.topics.dataset}"])
+    @KafkaListener(topics = ["\${app.kafka.topics.dataset}"], concurrency = "4")
     fun handleDatasetEvent(
         record: ConsumerRecord<String, Any>,
         acknowledgment: Acknowledgment,
@@ -318,7 +318,7 @@ class KafkaConsumer(
         }
     }
 
-    @KafkaListener(topics = ["\${app.kafka.topics.data-service}"])
+    @KafkaListener(topics = ["\${app.kafka.topics.data-service}"], concurrency = "4")
     fun handleDataServiceEvent(
         record: ConsumerRecord<String, Any>,
         acknowledgment: Acknowledgment,
@@ -346,7 +346,7 @@ class KafkaConsumer(
         }
     }
 
-    @KafkaListener(topics = ["\${app.kafka.topics.information-model}"])
+    @KafkaListener(topics = ["\${app.kafka.topics.information-model}"], concurrency = "4")
     fun handleInformationModelEvent(
         record: ConsumerRecord<String, Any>,
         acknowledgment: Acknowledgment,
@@ -374,7 +374,7 @@ class KafkaConsumer(
         }
     }
 
-    @KafkaListener(topics = ["\${app.kafka.topics.service}"])
+    @KafkaListener(topics = ["\${app.kafka.topics.service}"], concurrency = "4")
     fun handleServiceEvent(
         record: ConsumerRecord<String, Any>,
         acknowledgment: Acknowledgment,
@@ -402,7 +402,7 @@ class KafkaConsumer(
         }
     }
 
-    @KafkaListener(topics = ["\${app.kafka.topics.event}"])
+    @KafkaListener(topics = ["\${app.kafka.topics.event}"], concurrency = "4")
     fun handleEventEvent(
         record: ConsumerRecord<String, Any>,
         acknowledgment: Acknowledgment,
