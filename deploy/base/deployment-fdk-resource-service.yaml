@@ -57,7 +57,7 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: kafka
-                  key: SCHEMA_REGISTRY            
+                  key: SCHEMA_REGISTRY
           image: fdk-resource-service
           imagePullPolicy: Always
           ports:

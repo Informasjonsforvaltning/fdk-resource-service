@@ -49,7 +49,7 @@ class EventControllerTest : BaseControllerTest() {
 
         every { resourceService.getResourceJsonLd(eventId, ResourceType.EVENT) } returns graphData
         every { rdfService.getBestFormat(null) } returns RdfService.RdfFormat.JSON_LD
-        every { rdfService.convertFromJsonLd(graphData, RdfService.RdfFormat.JSON_LD, RdfService.RdfFormatStyle.PRETTY, false) } returns """{"@id":"https://example.com/event","title":"Test Event"}"""
+        every { rdfService.convertFromJsonLd(graphData, RdfService.RdfFormat.JSON_LD, RdfService.RdfFormatStyle.PRETTY, true, ResourceType.EVENT) } returns """{"@id":"https://example.com/event","title":"Test Event"}"""
         every { rdfService.getContentType(RdfService.RdfFormat.JSON_LD) } returns MediaType.APPLICATION_JSON
 
         mockMvc.perform(get("/v1/events/{id}/graph", eventId))
@@ -66,7 +66,7 @@ class EventControllerTest : BaseControllerTest() {
 
         every { resourceService.getResourceJsonLdByUri(uri, ResourceType.EVENT) } returns graphData
         every { rdfService.getBestFormat(null) } returns RdfService.RdfFormat.JSON_LD
-        every { rdfService.convertFromJsonLd(graphData, RdfService.RdfFormat.JSON_LD, RdfService.RdfFormatStyle.PRETTY, false) } returns """{"@id":"https://example.com/event","title":"Test Event"}"""
+        every { rdfService.convertFromJsonLd(graphData, RdfService.RdfFormat.JSON_LD, RdfService.RdfFormatStyle.PRETTY, true, ResourceType.EVENT) } returns """{"@id":"https://example.com/event","title":"Test Event"}"""
         every { rdfService.getContentType(RdfService.RdfFormat.JSON_LD) } returns MediaType.APPLICATION_JSON
 
         mockMvc.perform(get("/v1/events/by-uri/graph")
@@ -85,5 +85,42 @@ class EventControllerTest : BaseControllerTest() {
 
         mockMvc.perform(get("/v1/events/{id}", eventId))
             .andExpect(status().isNotFound)
+    }
+
+    @Test
+    fun `should get event graph by id with standard style`() {
+        val eventId = "test-event-id"
+        val graphData = mapOf("@id" to "https://example.com/event", "title" to "Test Event")
+        val standardJsonLd = """{"@id":"https://example.com/event","title":"Test Event"}"""
+
+        every { resourceService.getResourceJsonLd(eventId, ResourceType.EVENT) } returns graphData
+        every { rdfService.getBestFormat(null) } returns RdfService.RdfFormat.JSON_LD
+        every { rdfService.convertFromJsonLd(graphData, RdfService.RdfFormat.JSON_LD, RdfService.RdfFormatStyle.STANDARD, true, ResourceType.EVENT) } returns standardJsonLd
+        every { rdfService.getContentType(RdfService.RdfFormat.JSON_LD) } returns MediaType.APPLICATION_JSON
+
+        mockMvc.perform(get("/v1/events/{id}/graph", eventId)
+            .param("style", "standard"))
+            .andExpect(status().isOk)
+            .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+            .andExpect(jsonPath("$.@id").value("https://example.com/event"))
+    }
+
+    @Test
+    fun `should get event graph by uri with standard style`() {
+        val uri = "https://example.com/event"
+        val graphData = mapOf("@id" to uri, "title" to "Test Event")
+        val standardJsonLd = """{"@id":"https://example.com/event","title":"Test Event"}"""
+
+        every { resourceService.getResourceJsonLdByUri(uri, ResourceType.EVENT) } returns graphData
+        every { rdfService.getBestFormat(null) } returns RdfService.RdfFormat.JSON_LD
+        every { rdfService.convertFromJsonLd(graphData, RdfService.RdfFormat.JSON_LD, RdfService.RdfFormatStyle.STANDARD, true, ResourceType.EVENT) } returns standardJsonLd
+        every { rdfService.getContentType(RdfService.RdfFormat.JSON_LD) } returns MediaType.APPLICATION_JSON
+
+        mockMvc.perform(get("/v1/events/by-uri/graph")
+            .param("uri", uri)
+            .param("style", "standard"))
+            .andExpect(status().isOk)
+            .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+            .andExpect(jsonPath("$.@id").value(uri))
     }
 }

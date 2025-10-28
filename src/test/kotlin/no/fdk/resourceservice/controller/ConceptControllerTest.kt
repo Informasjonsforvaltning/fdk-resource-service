@@ -94,7 +94,7 @@ class ConceptControllerTest : BaseControllerTest() {
         
         every { resourceService.getResourceJsonLd("test-concept-3", ResourceType.CONCEPT) } returns jsonLdData
         every { rdfService.getBestFormat(null) } returns RdfService.RdfFormat.JSON_LD
-        every { rdfService.convertFromJsonLd(jsonLdData, RdfService.RdfFormat.JSON_LD, RdfService.RdfFormatStyle.PRETTY, false) } returns convertedData
+        every { rdfService.convertFromJsonLd(jsonLdData, RdfService.RdfFormat.JSON_LD, RdfService.RdfFormatStyle.PRETTY, true, ResourceType.CONCEPT) } returns convertedData
         every { rdfService.getContentType(RdfService.RdfFormat.JSON_LD) } returns MediaType.APPLICATION_JSON
 
         // When & Then
@@ -121,7 +121,7 @@ class ConceptControllerTest : BaseControllerTest() {
         
         every { resourceService.getResourceJsonLd("test-concept-4", ResourceType.CONCEPT) } returns jsonLdData
         every { rdfService.getBestFormat("text/turtle") } returns RdfService.RdfFormat.TURTLE
-        every { rdfService.convertFromJsonLd(jsonLdData, RdfService.RdfFormat.TURTLE, RdfService.RdfFormatStyle.PRETTY, false) } returns turtleData
+        every { rdfService.convertFromJsonLd(jsonLdData, RdfService.RdfFormat.TURTLE, RdfService.RdfFormatStyle.PRETTY, true, ResourceType.CONCEPT) } returns turtleData
         every { rdfService.getContentType(RdfService.RdfFormat.TURTLE) } returns MediaType.valueOf("text/turtle")
 
         // When & Then
@@ -158,7 +158,7 @@ class ConceptControllerTest : BaseControllerTest() {
         
         every { resourceService.getResourceJsonLdByUri("https://example.com/concept-5", ResourceType.CONCEPT) } returns jsonLdData
         every { rdfService.getBestFormat(null) } returns RdfService.RdfFormat.JSON_LD
-        every { rdfService.convertFromJsonLd(jsonLdData, RdfService.RdfFormat.JSON_LD, RdfService.RdfFormatStyle.PRETTY, false) } returns convertedData
+        every { rdfService.convertFromJsonLd(jsonLdData, RdfService.RdfFormat.JSON_LD, RdfService.RdfFormatStyle.PRETTY, true, ResourceType.CONCEPT) } returns convertedData
         every { rdfService.getContentType(RdfService.RdfFormat.JSON_LD) } returns MediaType.APPLICATION_JSON
 
         // When & Then
@@ -203,7 +203,7 @@ class ConceptControllerTest : BaseControllerTest() {
         
         every { resourceService.getResourceJsonLd("test-concept-6", ResourceType.CONCEPT) } returns jsonLdData
         every { rdfService.getBestFormat(null) } returns RdfService.RdfFormat.JSON_LD
-        every { rdfService.convertFromJsonLd(jsonLdData, RdfService.RdfFormat.JSON_LD, RdfService.RdfFormatStyle.STANDARD, false) } returns standardJsonLd
+        every { rdfService.convertFromJsonLd(jsonLdData, RdfService.RdfFormat.JSON_LD, RdfService.RdfFormatStyle.STANDARD, true, ResourceType.CONCEPT) } returns standardJsonLd
         every { rdfService.getContentType(RdfService.RdfFormat.JSON_LD) } returns MediaType.APPLICATION_JSON
 
         // When & Then
@@ -232,7 +232,7 @@ class ConceptControllerTest : BaseControllerTest() {
         
         every { resourceService.getResourceJsonLd("test-concept-7", ResourceType.CONCEPT) } returns jsonLdData
         every { rdfService.getBestFormat(null) } returns RdfService.RdfFormat.JSON_LD
-        every { rdfService.convertFromJsonLd(jsonLdData, RdfService.RdfFormat.JSON_LD, RdfService.RdfFormatStyle.PRETTY, false) } returns prettyJsonLd
+        every { rdfService.convertFromJsonLd(jsonLdData, RdfService.RdfFormat.JSON_LD, RdfService.RdfFormatStyle.PRETTY, true, ResourceType.CONCEPT) } returns prettyJsonLd
         every { rdfService.getContentType(RdfService.RdfFormat.JSON_LD) } returns MediaType.APPLICATION_JSON
 
         // When & Then
@@ -260,7 +260,7 @@ class ConceptControllerTest : BaseControllerTest() {
         
         every { resourceService.getResourceJsonLd("test-concept-8", ResourceType.CONCEPT) } returns jsonLdData
         every { rdfService.getBestFormat(null) } returns RdfService.RdfFormat.JSON_LD
-        every { rdfService.convertFromJsonLd(jsonLdData, RdfService.RdfFormat.JSON_LD, RdfService.RdfFormatStyle.PRETTY, false) } returns prettyJsonLd
+        every { rdfService.convertFromJsonLd(jsonLdData, RdfService.RdfFormat.JSON_LD, RdfService.RdfFormatStyle.PRETTY, true, ResourceType.CONCEPT) } returns prettyJsonLd
         every { rdfService.getContentType(RdfService.RdfFormat.JSON_LD) } returns MediaType.APPLICATION_JSON
 
         // When & Then
@@ -286,7 +286,7 @@ class ConceptControllerTest : BaseControllerTest() {
         
         every { resourceService.getResourceJsonLd("test-concept-9", ResourceType.CONCEPT) } returns jsonLdData
         every { rdfService.getBestFormat(null) } returns RdfService.RdfFormat.JSON_LD
-        every { rdfService.convertFromJsonLd(jsonLdData, RdfService.RdfFormat.JSON_LD, RdfService.RdfFormatStyle.PRETTY, false) } returns prettyJsonLd
+        every { rdfService.convertFromJsonLd(jsonLdData, RdfService.RdfFormat.JSON_LD, RdfService.RdfFormatStyle.PRETTY, true, ResourceType.CONCEPT) } returns prettyJsonLd
         every { rdfService.getContentType(RdfService.RdfFormat.JSON_LD) } returns MediaType.APPLICATION_JSON
 
         // When & Then
@@ -319,7 +319,7 @@ class ConceptControllerTest : BaseControllerTest() {
         
         every { resourceService.getResourceJsonLdByUri("https://example.com/concept-10", ResourceType.CONCEPT) } returns jsonLdData
         every { rdfService.getBestFormat(null) } returns RdfService.RdfFormat.JSON_LD
-        every { rdfService.convertFromJsonLd(jsonLdData, RdfService.RdfFormat.JSON_LD, RdfService.RdfFormatStyle.STANDARD, false) } returns standardJsonLd
+        every { rdfService.convertFromJsonLd(jsonLdData, RdfService.RdfFormat.JSON_LD, RdfService.RdfFormatStyle.STANDARD, true, ResourceType.CONCEPT) } returns standardJsonLd
         every { rdfService.getContentType(RdfService.RdfFormat.JSON_LD) } returns MediaType.APPLICATION_JSON
 
         // When & Then
@@ -346,7 +346,7 @@ class ConceptControllerTest : BaseControllerTest() {
         
         every { resourceService.getResourceJsonLd("test-concept-11", ResourceType.CONCEPT) } returns jsonLdData
         every { rdfService.getBestFormat("text/turtle") } returns RdfService.RdfFormat.TURTLE
-        every { rdfService.convertFromJsonLd(jsonLdData, RdfService.RdfFormat.TURTLE, RdfService.RdfFormatStyle.PRETTY, false) } returns prettyTurtle
+        every { rdfService.convertFromJsonLd(jsonLdData, RdfService.RdfFormat.TURTLE, RdfService.RdfFormatStyle.PRETTY, true, ResourceType.CONCEPT) } returns prettyTurtle
         every { rdfService.getContentType(RdfService.RdfFormat.TURTLE) } returns MediaType.valueOf("text/turtle")
 
         // When & Then
@@ -374,7 +374,7 @@ class ConceptControllerTest : BaseControllerTest() {
         
         every { resourceService.getResourceJsonLd("test-concept-12", ResourceType.CONCEPT) } returns jsonLdData
         every { rdfService.getBestFormat("text/turtle") } returns RdfService.RdfFormat.TURTLE
-        every { rdfService.convertFromJsonLd(jsonLdData, RdfService.RdfFormat.TURTLE, RdfService.RdfFormatStyle.STANDARD, false) } returns standardTurtle
+        every { rdfService.convertFromJsonLd(jsonLdData, RdfService.RdfFormat.TURTLE, RdfService.RdfFormatStyle.STANDARD, true, ResourceType.CONCEPT) } returns standardTurtle
         every { rdfService.getContentType(RdfService.RdfFormat.TURTLE) } returns MediaType.valueOf("text/turtle")
 
         // When & Then
@@ -404,7 +404,7 @@ class ConceptControllerTest : BaseControllerTest() {
         
         every { resourceService.getResourceJsonLd("test-concept-13", ResourceType.CONCEPT) } returns jsonLdData
         every { rdfService.getBestFormat("application/rdf+xml") } returns RdfService.RdfFormat.RDF_XML
-        every { rdfService.convertFromJsonLd(jsonLdData, RdfService.RdfFormat.RDF_XML, RdfService.RdfFormatStyle.PRETTY, false) } returns prettyRdfXml
+        every { rdfService.convertFromJsonLd(jsonLdData, RdfService.RdfFormat.RDF_XML, RdfService.RdfFormatStyle.PRETTY, true, ResourceType.CONCEPT) } returns prettyRdfXml
         every { rdfService.getContentType(RdfService.RdfFormat.RDF_XML) } returns MediaType.valueOf("application/rdf+xml")
 
         // When & Then
@@ -435,7 +435,7 @@ class ConceptControllerTest : BaseControllerTest() {
         
         every { resourceService.getResourceJsonLd("test-concept-14", ResourceType.CONCEPT) } returns jsonLdData
         every { rdfService.getBestFormat("application/rdf+xml") } returns RdfService.RdfFormat.RDF_XML
-        every { rdfService.convertFromJsonLd(jsonLdData, RdfService.RdfFormat.RDF_XML, RdfService.RdfFormatStyle.STANDARD, false) } returns standardRdfXml
+        every { rdfService.convertFromJsonLd(jsonLdData, RdfService.RdfFormat.RDF_XML, RdfService.RdfFormatStyle.STANDARD, true, ResourceType.CONCEPT) } returns standardRdfXml
         every { rdfService.getContentType(RdfService.RdfFormat.RDF_XML) } returns MediaType.valueOf("application/rdf+xml")
 
         // When & Then

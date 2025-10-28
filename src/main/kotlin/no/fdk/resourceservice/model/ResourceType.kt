@@ -8,8 +8,3 @@ enum class ResourceType {
     SERVICE,
     EVENT
 }
-
-
-
-
-

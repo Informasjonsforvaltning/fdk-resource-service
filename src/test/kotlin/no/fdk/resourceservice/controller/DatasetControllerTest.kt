@@ -47,7 +47,7 @@ class DatasetControllerTest : BaseControllerTest() {
         val jsonLdData = mapOf("@id" to "http://example.com/dataset", "@type" to "http://example.org/Dataset")
         every { resourceService.getResourceJsonLd("test-id", ResourceType.DATASET) } returns jsonLdData
         every { rdfService.getBestFormat(null) } returns RdfService.RdfFormat.JSON_LD
-        every { rdfService.convertFromJsonLd(jsonLdData, RdfService.RdfFormat.JSON_LD, RdfService.RdfFormatStyle.PRETTY, false) } returns "{\"@id\":\"http://example.com/dataset\",\"@type\":\"http://example.org/Dataset\"}"
+        every { rdfService.convertFromJsonLd(jsonLdData, RdfService.RdfFormat.JSON_LD, RdfService.RdfFormatStyle.PRETTY, true, ResourceType.DATASET) } returns "{\"@id\":\"http://example.com/dataset\",\"@type\":\"http://example.org/Dataset\"}"
         every { rdfService.getContentType(RdfService.RdfFormat.JSON_LD) } returns MediaType.APPLICATION_JSON
 
         // When & Then
@@ -65,7 +65,7 @@ class DatasetControllerTest : BaseControllerTest() {
         
         every { resourceService.getResourceJsonLd("test-id", ResourceType.DATASET) } returns jsonLdData
         every { rdfService.getBestFormat("text/turtle") } returns RdfService.RdfFormat.TURTLE
-        every { rdfService.convertFromJsonLd(jsonLdData, RdfService.RdfFormat.TURTLE, RdfService.RdfFormatStyle.PRETTY, false) } returns turtleData
+        every { rdfService.convertFromJsonLd(jsonLdData, RdfService.RdfFormat.TURTLE, RdfService.RdfFormatStyle.PRETTY, true, ResourceType.DATASET) } returns turtleData
         every { rdfService.getContentType(RdfService.RdfFormat.TURTLE) } returns MediaType("text", "turtle")
 
         // When & Then
@@ -82,7 +82,7 @@ class DatasetControllerTest : BaseControllerTest() {
         val jsonLdData = mapOf("@id" to "http://example.com/dataset")
         every { resourceService.getResourceJsonLd("test-id", ResourceType.DATASET) } returns jsonLdData
         every { rdfService.getBestFormat("text/turtle") } returns RdfService.RdfFormat.TURTLE
-        every { rdfService.convertFromJsonLd(jsonLdData, RdfService.RdfFormat.TURTLE, RdfService.RdfFormatStyle.PRETTY, false) } returns null
+        every { rdfService.convertFromJsonLd(jsonLdData, RdfService.RdfFormat.TURTLE, RdfService.RdfFormatStyle.PRETTY, true, ResourceType.DATASET) } returns null
 
         // When & Then
         mockMvc.perform(get("/v1/datasets/test-id/graph")
@@ -110,7 +110,7 @@ class DatasetControllerTest : BaseControllerTest() {
         
         every { resourceService.getResourceJsonLdByUri("https://example.com/dataset", ResourceType.DATASET) } returns jsonLdData
         every { rdfService.getBestFormat("application/rdf+xml") } returns RdfService.RdfFormat.RDF_XML
-        every { rdfService.convertFromJsonLd(jsonLdData, RdfService.RdfFormat.RDF_XML, RdfService.RdfFormatStyle.PRETTY, false) } returns rdfXmlData
+        every { rdfService.convertFromJsonLd(jsonLdData, RdfService.RdfFormat.RDF_XML, RdfService.RdfFormatStyle.PRETTY, true, ResourceType.DATASET) } returns rdfXmlData
         every { rdfService.getContentType(RdfService.RdfFormat.RDF_XML) } returns MediaType("application", "rdf+xml")
 
         // When & Then
@@ -120,5 +120,45 @@ class DatasetControllerTest : BaseControllerTest() {
             .andExpect(status().isOk)
             .andExpect(content().contentType(MediaType("application", "rdf+xml")))
             .andExpect(content().string(rdfXmlData))
+    }
+
+    @Test
+    fun `getDatasetGraph should use standard style when style parameter is standard`() {
+        // Given
+        val jsonLdData = mapOf("@id" to "http://example.com/dataset", "@type" to "http://example.org/Dataset")
+        val standardJsonLd = "{\"@id\":\"http://example.com/dataset\",\"@type\":\"http://example.org/Dataset\"}"
+        
+        every { resourceService.getResourceJsonLd("test-id", ResourceType.DATASET) } returns jsonLdData
+        every { rdfService.getBestFormat(null) } returns RdfService.RdfFormat.JSON_LD
+        every { rdfService.convertFromJsonLd(jsonLdData, RdfService.RdfFormat.JSON_LD, RdfService.RdfFormatStyle.STANDARD, true, ResourceType.DATASET) } returns standardJsonLd
+        every { rdfService.getContentType(RdfService.RdfFormat.JSON_LD) } returns MediaType.APPLICATION_JSON
+
+        // When & Then
+        mockMvc.perform(get("/v1/datasets/test-id/graph")
+            .param("style", "standard"))
+            .andExpect(status().isOk)
+            .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+            .andExpect(content().string(standardJsonLd))
+    }
+
+    @Test
+    fun `getDatasetGraphByUri should use standard style when style parameter is standard`() {
+        // Given
+        val jsonLdData = mapOf("@id" to "http://example.com/dataset")
+        val standardTurtle = "@prefix : <http://example.org/> .\n<http://example.com/dataset> a :Dataset ."
+        
+        every { resourceService.getResourceJsonLdByUri("https://example.com/dataset", ResourceType.DATASET) } returns jsonLdData
+        every { rdfService.getBestFormat("text/turtle") } returns RdfService.RdfFormat.TURTLE
+        every { rdfService.convertFromJsonLd(jsonLdData, RdfService.RdfFormat.TURTLE, RdfService.RdfFormatStyle.STANDARD, true, ResourceType.DATASET) } returns standardTurtle
+        every { rdfService.getContentType(RdfService.RdfFormat.TURTLE) } returns MediaType("text", "turtle")
+
+        // When & Then
+        mockMvc.perform(get("/v1/datasets/by-uri/graph")
+            .param("uri", "https://example.com/dataset")
+            .param("style", "standard")
+            .header("Accept", "text/turtle"))
+            .andExpect(status().isOk)
+            .andExpect(content().contentType(MediaType("text", "turtle")))
+            .andExpect(content().string(standardTurtle))
     }
 }

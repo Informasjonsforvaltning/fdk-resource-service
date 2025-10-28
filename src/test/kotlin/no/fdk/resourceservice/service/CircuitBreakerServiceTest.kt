@@ -18,6 +18,7 @@ import no.fdk.service.ServiceEvent
 import no.fdk.service.ServiceEventType
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import no.fdk.resourceservice.service.RdfService
 import java.sql.SQLException
 
@@ -33,6 +34,7 @@ class CircuitBreakerServiceTest {
         circuitBreakerService = CircuitBreakerService(resourceService, rdfService)
         
         // Mock ResourceService methods with relaxed mocking
+        every { resourceService.shouldUpdateResource(any(), any()) } returns true // Default: allow updates
         every { resourceService.storeResourceJsonLd(any(), any(), any(), any()) } just Runs
         every { resourceService.storeResourceJson(any(), any(), any(), any()) } just Runs
         every { resourceService.markResourceAsDeleted(any(), any(), any()) } just Runs
@@ -47,12 +49,35 @@ class CircuitBreakerServiceTest {
             setData("""{"id": "test-id", "title": "Test Concept"}""")
             setTimestamp(System.currentTimeMillis())
         }
+        every { resourceService.shouldUpdateResource("test-id", any()) } returns true
 
         // When
         circuitBreakerService.handleRdfParseEvent(event)
 
         // Then
+        verify { resourceService.shouldUpdateResource("test-id", any()) }
         verify { resourceService.storeResourceJson("test-id", ResourceType.CONCEPT, any(), any()) }
+    }
+
+    @Test
+    fun `should handle RdfParseEvent with invalid JSON gracefully`() {
+        // Given
+        val event = RdfParseEvent().apply {
+            setFdkId("test-id")
+            setResourceType(RdfParseResourceType.CONCEPT)
+            setData("invalid-json-string") // Not valid JSON
+            setTimestamp(System.currentTimeMillis())
+        }
+        every { resourceService.shouldUpdateResource("test-id", any()) } returns true
+
+        // When/Then - should throw exception when JSON parsing fails
+        assertThrows<Exception> {
+            circuitBreakerService.handleRdfParseEvent(event)
+        }
+
+        // Verify that storeResourceJson was not called when JSON parsing fails
+        verify { resourceService.shouldUpdateResource("test-id", any()) }
+        verify(exactly = 0) { resourceService.storeResourceJson(any(), any(), any(), any()) }
     }
 
     @Test
@@ -66,13 +91,15 @@ class CircuitBreakerServiceTest {
         }
 
         // Mock the RDF processing service
-        every { rdfService.convertTurtleToJsonLdMap("test-graph") }
+        every { rdfService.convertTurtleToJsonLdMap("test-graph", true) }
             .returns(mapOf("@id" to "http://example.com/concept"))
+        every { resourceService.shouldUpdateResource("test-concept-id", any()) } returns true
 
         // When
         circuitBreakerService.handleConceptEvent(event)
 
         // Then
+        verify { resourceService.shouldUpdateResource("test-concept-id", any()) }
         verify { resourceService.storeResourceJsonLd("test-concept-id", ResourceType.CONCEPT, any(), any()) }
     }
 
@@ -87,13 +114,15 @@ class CircuitBreakerServiceTest {
         }
 
         // Mock the RDF processing service
-        every { rdfService.convertTurtleToJsonLdMap("test-graph") }
+        every { rdfService.convertTurtleToJsonLdMap("test-graph", true) }
             .returns(mapOf("@id" to "http://example.com/dataset"))
+        every { resourceService.shouldUpdateResource("test-dataset-id", any()) } returns true
 
         // When
         circuitBreakerService.handleDatasetEvent(event)
 
         // Then
+        verify { resourceService.shouldUpdateResource("test-dataset-id", any()) }
         verify { resourceService.storeResourceJsonLd("test-dataset-id", ResourceType.DATASET, any(), any()) }
     }
 
@@ -108,14 +137,16 @@ class CircuitBreakerServiceTest {
         }
 
         // Mock the RDF processing service
-        every { rdfService.convertTurtleToJsonLdMap("test-graph") }
+        every { rdfService.convertTurtleToJsonLdMap("test-graph", true) }
             .returns(mapOf("@id" to "http://example.com/dataservice"))
+        every { resourceService.shouldUpdateResource("test-dataservice-id", any()) } returns true
 
         // When
         circuitBreakerService.handleDataServiceEvent(event)
 
         // Then
-        verify { resourceService.storeResourceJsonLd(any(), any(), any(), any()) }
+        verify { resourceService.shouldUpdateResource("test-dataservice-id", any()) }
+        verify { resourceService.storeResourceJsonLd("test-dataservice-id", ResourceType.DATA_SERVICE, any(), any()) }
     }
 
     @Test
@@ -129,14 +160,16 @@ class CircuitBreakerServiceTest {
         }
 
         // Mock the RDF processing service
-        every { rdfService.convertTurtleToJsonLdMap("test-graph") }
+        every { rdfService.convertTurtleToJsonLdMap("test-graph", true) }
             .returns(mapOf("@id" to "http://example.com/informationmodel"))
+        every { resourceService.shouldUpdateResource("test-informationmodel-id", any()) } returns true
 
         // When
         circuitBreakerService.handleInformationModelEvent(event)
 
         // Then
-        verify { resourceService.storeResourceJsonLd(any(), any(), any(), any()) }
+        verify { resourceService.shouldUpdateResource("test-informationmodel-id", any()) }
+        verify { resourceService.storeResourceJsonLd("test-informationmodel-id", ResourceType.INFORMATION_MODEL, any(), any()) }
     }
 
     @Test
@@ -150,14 +183,16 @@ class CircuitBreakerServiceTest {
         }
 
         // Mock the RDF processing service
-        every { rdfService.convertTurtleToJsonLdMap("test-graph") }
+        every { rdfService.convertTurtleToJsonLdMap("test-graph", true) }
             .returns(mapOf("@id" to "http://example.com/service"))
+        every { resourceService.shouldUpdateResource("test-service-id", any()) } returns true
 
         // When
         circuitBreakerService.handleServiceEvent(event)
 
         // Then
-        verify { resourceService.storeResourceJsonLd(any(), any(), any(), any()) }
+        verify { resourceService.shouldUpdateResource("test-service-id", any()) }
+        verify { resourceService.storeResourceJsonLd("test-service-id", ResourceType.SERVICE, any(), any()) }
     }
 
     @Test
@@ -171,14 +206,16 @@ class CircuitBreakerServiceTest {
         }
 
         // Mock the RDF processing service
-        every { rdfService.convertTurtleToJsonLdMap("test-graph") }
+        every { rdfService.convertTurtleToJsonLdMap("test-graph", true) }
             .returns(mapOf("@id" to "http://example.com/event"))
+        every { resourceService.shouldUpdateResource("test-event-id", any()) } returns true
 
         // When
         circuitBreakerService.handleEventEvent(event)
 
         // Then
-        verify { resourceService.storeResourceJsonLd(any(), any(), any(), any()) }
+        verify { resourceService.shouldUpdateResource("test-event-id", any()) }
+        verify { resourceService.storeResourceJsonLd("test-event-id", ResourceType.EVENT, any(), any()) }
     }
 
     @Test
@@ -191,6 +228,7 @@ class CircuitBreakerServiceTest {
             setTimestamp(System.currentTimeMillis())
         }
 
+        every { resourceService.shouldUpdateResource("test-id", any()) } returns true
         // When ResourceService throws an exception
         every { resourceService.storeResourceJson(any(), any(), any(), any()) } throws SQLException("Database connection failed")
 
@@ -214,8 +252,9 @@ class CircuitBreakerServiceTest {
         }
 
         // Mock the RDF processing service
-        every { rdfService.convertTurtleToJsonLdMap("test-graph") }
+        every { rdfService.convertTurtleToJsonLdMap("test-graph", true) }
             .returns(mapOf("@id" to "http://example.com/concept"))
+        every { resourceService.shouldUpdateResource("test-concept-id", any()) } returns true
 
         // When ResourceService throws an exception
         every { resourceService.storeResourceJsonLd(any(), any(), any(), any()) } throws SQLException("Database connection failed")
