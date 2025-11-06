@@ -2,10 +2,10 @@ package no.fdk.resourceservice.kafka
 
 import no.fdk.concept.ConceptEvent
 import no.fdk.concept.ConceptEventType
-import no.fdk.dataset.DatasetEvent
-import no.fdk.dataset.DatasetEventType
 import no.fdk.dataservice.DataServiceEvent
 import no.fdk.dataservice.DataServiceEventType
+import no.fdk.dataset.DatasetEvent
+import no.fdk.dataset.DatasetEventType
 import no.fdk.event.EventEvent
 import no.fdk.event.EventEventType
 import no.fdk.informationmodel.InformationModelEvent
@@ -26,10 +26,10 @@ import java.time.Duration
 
 @Component
 class KafkaConsumer(
-    private val circuitBreakerService: CircuitBreakerService
+    private val circuitBreakerService: CircuitBreakerService,
 ) {
     private val logger = LoggerFactory.getLogger(KafkaConsumer::class.java)
-    
+
     private fun extractConceptEvent(record: ConsumerRecord<String, Any>): ConceptEvent? {
         val value = record.value()
         return when (value) {
@@ -40,7 +40,8 @@ class KafkaConsumer(
             is org.apache.avro.generic.GenericRecord -> {
                 logger.debug("Converting GenericRecord to ConceptEvent")
                 try {
-                    ConceptEvent.newBuilder()
+                    ConceptEvent
+                        .newBuilder()
                         .setFdkId(value.get("fdkId")?.toString() ?: "")
                         .setType(ConceptEventType.valueOf(value.get("type")?.toString() ?: "CONCEPT_HARVESTED"))
                         .setTimestamp(value.get("timestamp") as? Long ?: System.currentTimeMillis())
@@ -52,12 +53,15 @@ class KafkaConsumer(
                 }
             }
             else -> {
-                logger.warn("ConsumerRecord contains unsupported value type for ConceptEvent: ${value?.javaClass?.simpleName ?: "null"}, ignoring message")
+                logger.warn(
+                    "ConsumerRecord contains unsupported value type for ConceptEvent: " +
+                        "${value?.javaClass?.simpleName ?: "null"}, ignoring message",
+                )
                 null
             }
         }
     }
-    
+
     private fun extractDatasetEvent(record: ConsumerRecord<String, Any>): DatasetEvent? {
         val value = record.value()
         return when (value) {
@@ -68,7 +72,8 @@ class KafkaConsumer(
             is org.apache.avro.generic.GenericRecord -> {
                 logger.debug("Converting GenericRecord to DatasetEvent")
                 try {
-                    DatasetEvent.newBuilder()
+                    DatasetEvent
+                        .newBuilder()
                         .setFdkId(value.get("fdkId")?.toString() ?: "")
                         .setType(DatasetEventType.valueOf(value.get("type")?.toString() ?: "DATASET_HARVESTED"))
                         .setTimestamp(value.get("timestamp") as? Long ?: System.currentTimeMillis())
@@ -80,12 +85,15 @@ class KafkaConsumer(
                 }
             }
             else -> {
-                logger.warn("ConsumerRecord contains unsupported value type for DatasetEvent: ${value?.javaClass?.simpleName ?: "null"}, ignoring message")
+                logger.warn(
+                    "ConsumerRecord contains unsupported value type for DatasetEvent: " +
+                        "${value?.javaClass?.simpleName ?: "null"}, ignoring message",
+                )
                 null
             }
         }
     }
-    
+
     private fun extractDataServiceEvent(record: ConsumerRecord<String, Any>): DataServiceEvent? {
         val value = record.value()
         return when (value) {
@@ -96,7 +104,8 @@ class KafkaConsumer(
             is org.apache.avro.generic.GenericRecord -> {
                 logger.debug("Converting GenericRecord to DataServiceEvent")
                 try {
-                    DataServiceEvent.newBuilder()
+                    DataServiceEvent
+                        .newBuilder()
                         .setFdkId(value.get("fdkId")?.toString() ?: "")
                         .setType(DataServiceEventType.valueOf(value.get("type")?.toString() ?: "DATA_SERVICE_HARVESTED"))
                         .setTimestamp(value.get("timestamp") as? Long ?: System.currentTimeMillis())
@@ -108,12 +117,15 @@ class KafkaConsumer(
                 }
             }
             else -> {
-                logger.warn("ConsumerRecord contains unsupported value type for DataServiceEvent: ${value?.javaClass?.simpleName ?: "null"}, ignoring message")
+                logger.warn(
+                    "ConsumerRecord contains unsupported value type for DataServiceEvent: " +
+                        "${value?.javaClass?.simpleName ?: "null"}, ignoring message",
+                )
                 null
             }
         }
     }
-    
+
     private fun extractEventEvent(record: ConsumerRecord<String, Any>): EventEvent? {
         val value = record.value()
         return when (value) {
@@ -124,7 +136,8 @@ class KafkaConsumer(
             is org.apache.avro.generic.GenericRecord -> {
                 logger.debug("Converting GenericRecord to EventEvent")
                 try {
-                    EventEvent.newBuilder()
+                    EventEvent
+                        .newBuilder()
                         .setFdkId(value.get("fdkId")?.toString() ?: "")
                         .setType(EventEventType.valueOf(value.get("type")?.toString() ?: "EVENT_HARVESTED"))
                         .setTimestamp(value.get("timestamp") as? Long ?: System.currentTimeMillis())
@@ -136,12 +149,15 @@ class KafkaConsumer(
                 }
             }
             else -> {
-                logger.warn("ConsumerRecord contains unsupported value type for EventEvent: ${value?.javaClass?.simpleName ?: "null"}, ignoring message")
+                logger.warn(
+                    "ConsumerRecord contains unsupported value type for EventEvent: " +
+                        "${value?.javaClass?.simpleName ?: "null"}, ignoring message",
+                )
                 null
             }
         }
     }
-    
+
     private fun extractInformationModelEvent(record: ConsumerRecord<String, Any>): InformationModelEvent? {
         val value = record.value()
         return when (value) {
@@ -152,7 +168,8 @@ class KafkaConsumer(
             is org.apache.avro.generic.GenericRecord -> {
                 logger.debug("Converting GenericRecord to InformationModelEvent")
                 try {
-                    InformationModelEvent.newBuilder()
+                    InformationModelEvent
+                        .newBuilder()
                         .setFdkId(value.get("fdkId")?.toString() ?: "")
                         .setType(InformationModelEventType.valueOf(value.get("type")?.toString() ?: "INFORMATION_MODEL_HARVESTED"))
                         .setTimestamp(value.get("timestamp") as? Long ?: System.currentTimeMillis())
@@ -164,12 +181,15 @@ class KafkaConsumer(
                 }
             }
             else -> {
-                logger.warn("ConsumerRecord contains unsupported value type for InformationModelEvent: ${value?.javaClass?.simpleName ?: "null"}, ignoring message")
+                logger.warn(
+                    "ConsumerRecord contains unsupported value type for InformationModelEvent: " +
+                        "${value?.javaClass?.simpleName ?: "null"}, ignoring message",
+                )
                 null
             }
         }
     }
-    
+
     private fun extractServiceEvent(record: ConsumerRecord<String, Any>): ServiceEvent? {
         val value = record.value()
         return when (value) {
@@ -180,7 +200,8 @@ class KafkaConsumer(
             is org.apache.avro.generic.GenericRecord -> {
                 logger.debug("Converting GenericRecord to ServiceEvent")
                 try {
-                    ServiceEvent.newBuilder()
+                    ServiceEvent
+                        .newBuilder()
                         .setFdkId(value.get("fdkId")?.toString() ?: "")
                         .setType(ServiceEventType.valueOf(value.get("type")?.toString() ?: "SERVICE_HARVESTED"))
                         .setTimestamp(value.get("timestamp") as? Long ?: System.currentTimeMillis())
@@ -192,12 +213,15 @@ class KafkaConsumer(
                 }
             }
             else -> {
-                logger.warn("ConsumerRecord contains unsupported value type for ServiceEvent: ${value?.javaClass?.simpleName ?: "null"}, ignoring message")
+                logger.warn(
+                    "ConsumerRecord contains unsupported value type for ServiceEvent: " +
+                        "${value?.javaClass?.simpleName ?: "null"}, ignoring message",
+                )
                 null
             }
         }
     }
-    
+
     private fun extractRdfParseEvent(record: ConsumerRecord<String, Any>): RdfParseEvent? {
         val value = record.value()
         return when (value) {
@@ -213,8 +237,9 @@ class KafkaConsumer(
                         logger.warn("Missing or empty resourceType in RdfParseEvent, ignoring message")
                         return null
                     }
-                    
-                    RdfParseEvent.newBuilder()
+
+                    RdfParseEvent
+                        .newBuilder()
                         .setFdkId(value.get("fdkId")?.toString() ?: "")
                         .setResourceType(RdfParseResourceType.valueOf(resourceTypeStr))
                         .setTimestamp(value.get("timestamp") as? Long ?: System.currentTimeMillis())
@@ -226,7 +251,10 @@ class KafkaConsumer(
                 }
             }
             else -> {
-                logger.warn("ConsumerRecord contains unsupported value type for RdfParseEvent: ${value?.javaClass?.simpleName ?: "null"}, ignoring message")
+                logger.warn(
+                    "ConsumerRecord contains unsupported value type for RdfParseEvent: " +
+                        "${value?.javaClass?.simpleName ?: "null"}, ignoring message",
+                )
                 null
             }
         }
@@ -238,13 +266,13 @@ class KafkaConsumer(
         acknowledgment: Acknowledgment,
         @Header(KafkaHeaders.RECEIVED_TOPIC) topic: String,
         @Header(KafkaHeaders.RECEIVED_PARTITION) partition: Int,
-        @Header(KafkaHeaders.OFFSET) offset: Long
+        @Header(KafkaHeaders.OFFSET) offset: Long,
     ) {
         logger.debug("Received RDF parse event from topic: $topic, partition: $partition, offset: $offset")
-        
+
         try {
             val rdfParseEvent = extractRdfParseEvent(record)
-            
+
             if (rdfParseEvent != null) {
                 circuitBreakerService.handleRdfParseEvent(rdfParseEvent)
                 acknowledgment.acknowledge()
@@ -265,13 +293,13 @@ class KafkaConsumer(
         acknowledgment: Acknowledgment,
         @Header(KafkaHeaders.RECEIVED_TOPIC) topic: String,
         @Header(KafkaHeaders.RECEIVED_PARTITION) partition: Int,
-        @Header(KafkaHeaders.OFFSET) offset: Long
+        @Header(KafkaHeaders.OFFSET) offset: Long,
     ) {
         logger.debug("Received concept event from topic: $topic, partition: $partition, offset: $offset")
-        
+
         try {
             val conceptEvent = extractConceptEvent(record)
-            
+
             if (conceptEvent != null) {
                 circuitBreakerService.handleConceptEvent(conceptEvent)
                 acknowledgment.acknowledge()
@@ -292,13 +320,13 @@ class KafkaConsumer(
         acknowledgment: Acknowledgment,
         @Header(KafkaHeaders.RECEIVED_TOPIC) topic: String,
         @Header(KafkaHeaders.RECEIVED_PARTITION) partition: Int,
-        @Header(KafkaHeaders.OFFSET) offset: Long
+        @Header(KafkaHeaders.OFFSET) offset: Long,
     ) {
         logger.debug("Received dataset event from topic: $topic, partition: $partition, offset: $offset")
-        
+
         try {
             val datasetEvent = extractDatasetEvent(record)
-            
+
             if (datasetEvent != null) {
                 circuitBreakerService.handleDatasetEvent(datasetEvent)
                 acknowledgment.acknowledge()
@@ -319,13 +347,13 @@ class KafkaConsumer(
         acknowledgment: Acknowledgment,
         @Header(KafkaHeaders.RECEIVED_TOPIC) topic: String,
         @Header(KafkaHeaders.RECEIVED_PARTITION) partition: Int,
-        @Header(KafkaHeaders.OFFSET) offset: Long
+        @Header(KafkaHeaders.OFFSET) offset: Long,
     ) {
         logger.debug("Received data service event from topic: $topic, partition: $partition, offset: $offset")
-        
+
         try {
             val dataServiceEvent = extractDataServiceEvent(record)
-            
+
             if (dataServiceEvent != null) {
                 circuitBreakerService.handleDataServiceEvent(dataServiceEvent)
                 acknowledgment.acknowledge()
@@ -346,13 +374,13 @@ class KafkaConsumer(
         acknowledgment: Acknowledgment,
         @Header(KafkaHeaders.RECEIVED_TOPIC) topic: String,
         @Header(KafkaHeaders.RECEIVED_PARTITION) partition: Int,
-        @Header(KafkaHeaders.OFFSET) offset: Long
+        @Header(KafkaHeaders.OFFSET) offset: Long,
     ) {
         logger.debug("Received information model event from topic: $topic, partition: $partition, offset: $offset")
-        
+
         try {
             val informationModelEvent = extractInformationModelEvent(record)
-            
+
             if (informationModelEvent != null) {
                 circuitBreakerService.handleInformationModelEvent(informationModelEvent)
                 acknowledgment.acknowledge()
@@ -373,13 +401,13 @@ class KafkaConsumer(
         acknowledgment: Acknowledgment,
         @Header(KafkaHeaders.RECEIVED_TOPIC) topic: String,
         @Header(KafkaHeaders.RECEIVED_PARTITION) partition: Int,
-        @Header(KafkaHeaders.OFFSET) offset: Long
+        @Header(KafkaHeaders.OFFSET) offset: Long,
     ) {
         logger.debug("Received service event from topic: $topic, partition: $partition, offset: $offset")
-        
+
         try {
             val serviceEvent = extractServiceEvent(record)
-            
+
             if (serviceEvent != null) {
                 circuitBreakerService.handleServiceEvent(serviceEvent)
                 acknowledgment.acknowledge()
@@ -400,13 +428,13 @@ class KafkaConsumer(
         acknowledgment: Acknowledgment,
         @Header(KafkaHeaders.RECEIVED_TOPIC) topic: String,
         @Header(KafkaHeaders.RECEIVED_PARTITION) partition: Int,
-        @Header(KafkaHeaders.OFFSET) offset: Long
+        @Header(KafkaHeaders.OFFSET) offset: Long,
     ) {
         logger.debug("Received event event from topic: $topic, partition: $partition, offset: $offset")
-        
+
         try {
             val eventEvent = extractEventEvent(record)
-            
+
             if (eventEvent != null) {
                 circuitBreakerService.handleEventEvent(eventEvent)
                 acknowledgment.acknowledge()
@@ -420,5 +448,4 @@ class KafkaConsumer(
             acknowledgment.nack(Duration.ZERO)
         }
     }
-
 }

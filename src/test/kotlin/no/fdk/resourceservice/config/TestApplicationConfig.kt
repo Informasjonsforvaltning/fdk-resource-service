@@ -10,8 +10,8 @@ import org.springframework.context.annotation.FilterType
     excludeFilters = [
         ComponentScan.Filter(
             type = FilterType.REGEX,
-            pattern = ["no.fdk.resourceservice.kafka.*"]
-        )
-    ]
+            pattern = ["no.fdk.resourceservice.kafka.*"],
+        ),
+    ],
 )
 class TestApplicationConfig

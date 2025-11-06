@@ -10,30 +10,33 @@ import org.apache.jena.riot.RDFFormat
 import org.slf4j.LoggerFactory
 import org.springframework.http.MediaType
 import org.springframework.stereotype.Service
-import java.io.StringWriter
 import java.io.ByteArrayInputStream
+import java.io.StringWriter
 
 /**
  * Unified service for RDF processing, format conversion, and content negotiation.
- * 
+ *
  * This service combines the functionality of both RdfProcessingService and RdfFormatService
  * into a single, comprehensive service that handles all RDF-related operations.
  */
 @Service
 class RdfService(
-    private val objectMapper: ObjectMapper
+    private val objectMapper: ObjectMapper,
 ) {
     private val logger = LoggerFactory.getLogger(RdfService::class.java)
 
     /**
      * Supported RDF formats and their corresponding media types.
      */
-    enum class RdfFormat(val mediaType: MediaType, val fileExtension: String) {
+    enum class RdfFormat(
+        val mediaType: MediaType,
+        val fileExtension: String,
+    ) {
         JSON_LD(MediaType("application", "ld+json"), "jsonld"),
         TURTLE(MediaType("text", "turtle"), "ttl"),
         RDF_XML(MediaType("application", "rdf+xml"), "rdf"),
         N_TRIPLES(MediaType("application", "n-triples"), "nt"),
-        N_QUADS(MediaType("application", "n-quads"), "nq")
+        N_QUADS(MediaType("application", "n-quads"), "nq"),
     }
 
     /**
@@ -44,11 +47,11 @@ class RdfService(
          * Pretty format with namespace prefixes, human-readable.
          */
         PRETTY,
-        
+
         /**
          * Standard format with namespace prefixes and compact representation.
          */
-        STANDARD
+        STANDARD,
     }
 
     /**
@@ -62,9 +65,11 @@ class RdfService(
             return RdfFormat.JSON_LD
         }
 
-        val acceptTypes = acceptHeader.split(',')
-            .map { it.trim().lowercase() }
-            .filter { it.isNotBlank() }
+        val acceptTypes =
+            acceptHeader
+                .split(',')
+                .map { it.trim().lowercase() }
+                .filter { it.isNotBlank() }
 
         // Prioritize exact matches
         for (acceptType in acceptTypes) {
@@ -85,32 +90,43 @@ class RdfService(
      * @param format The RdfFormat.
      * @return The corresponding MediaType.
      */
-    fun getContentType(format: RdfFormat): MediaType {
-        return format.mediaType
-    }
+    fun getContentType(format: RdfFormat): MediaType = format.mediaType
 
     /**
      * Converts from Turtle format to any target format.
      */
-    fun convertFromTurtle(turtleData: String, toFormat: RdfFormat, style: RdfFormatStyle, expandUris: Boolean = false): String? {
+    fun convertFromTurtle(
+        turtleData: String,
+        toFormat: RdfFormat,
+        style: RdfFormatStyle,
+        expandUris: Boolean = false,
+    ): String? {
         val model = ModelFactory.createDefaultModel()
-        val inputStream = ByteArrayInputStream(turtleData.toByteArray())
-        RDFDataMgr.read(model, inputStream, Lang.TURTLE)
+        try {
+            ByteArrayInputStream(turtleData.toByteArray()).use { inputStream ->
+                RDFDataMgr.read(model, inputStream, Lang.TURTLE)
+            }
 
-        if (expandUris) {
-            model.clearNsPrefixMap()
+            if (expandUris) {
+                model.clearNsPrefixMap()
+            }
+
+            val rdfFormat = getRdfFormat(toFormat, style)
+            val result =
+                StringWriter().use { outputStream ->
+                    RDFDataMgr.write(outputStream, model, rdfFormat)
+                    outputStream.toString()
+                }
+
+            return handleSpecialCases(result, rdfFormat)
+        } finally {
+            model.close()
         }
-
-        val rdfFormat = getRdfFormat(toFormat, style)
-        val outputStream = StringWriter()
-        RDFDataMgr.write(outputStream, model, rdfFormat)
-        
-        return handleSpecialCases(outputStream.toString(), rdfFormat)
     }
 
     /**
      * Converts from JSON-LD format to any target format.
-     * 
+     *
      * @param jsonLdData The JSON-LD data to convert
      * @param toFormat The target RDF format
      * @param style The format style (PRETTY or STANDARD)
@@ -118,11 +134,11 @@ class RdfService(
      * @param resourceType Optional resource type to use resource-specific namespace prefixes
      */
     fun convertFromJsonLd(
-        jsonLdData: Map<String, Any>, 
-        toFormat: RdfFormat, 
-        style: RdfFormatStyle, 
+        jsonLdData: Map<String, Any>,
+        toFormat: RdfFormat,
+        style: RdfFormatStyle,
         expandUris: Boolean = false,
-        resourceType: ResourceType? = null
+        resourceType: ResourceType? = null,
     ): String? {
         // Handle JSON-LD pretty printing (no RDF conversion needed)
         if (toFormat == RdfFormat.JSON_LD && style == RdfFormatStyle.PRETTY && expandUris) {
@@ -132,53 +148,66 @@ class RdfService(
         // Convert Map to JSON string and parse to model
         val jsonString = objectMapper.writeValueAsString(jsonLdData)
         val model = ModelFactory.createDefaultModel()
-        val inputStream = ByteArrayInputStream(jsonString.toByteArray())
-        RDFDataMgr.read(model, inputStream, Lang.JSONLD)
+        try {
+            ByteArrayInputStream(jsonString.toByteArray()).use { inputStream ->
+                RDFDataMgr.read(model, inputStream, Lang.JSONLD)
+            }
 
-        if(expandUris) {
-            model.clearNsPrefixMap()
-        } else {
-            // Add resource-specific prefixes when expandUris is false
-            addPrefixesForResourceType(model, resourceType)
+            if (expandUris) {
+                model.clearNsPrefixMap()
+            } else {
+                // Add resource-specific prefixes when expandUris is false
+                addPrefixesForResourceType(model, resourceType)
+            }
+
+            val rdfFormat = getRdfFormat(toFormat, style)
+            val result =
+                StringWriter().use { outputStream ->
+                    RDFDataMgr.write(outputStream, model, rdfFormat)
+                    outputStream.toString()
+                }
+
+            return handleSpecialCases(result, rdfFormat)
+        } finally {
+            model.close()
         }
-
-        val rdfFormat = getRdfFormat(toFormat, style)
-        val outputStream = StringWriter()
-        RDFDataMgr.write(outputStream, model, rdfFormat)
-        
-        return handleSpecialCases(outputStream.toString(), rdfFormat)
     }
 
     /**
      * Maps format and style enums to RDFFormat enum.
      */
-    private fun getRdfFormat(format: RdfFormat, style: RdfFormatStyle): RDFFormat {
-        return when (format) {
+    private fun getRdfFormat(
+        format: RdfFormat,
+        style: RdfFormatStyle,
+    ): RDFFormat =
+        when (format) {
             RdfFormat.TURTLE -> if (style == RdfFormatStyle.PRETTY) RDFFormat.TURTLE_PRETTY else RDFFormat.TURTLE
             RdfFormat.RDF_XML -> if (style == RdfFormatStyle.PRETTY) RDFFormat.RDFXML_PRETTY else RDFFormat.RDFXML
             RdfFormat.N_TRIPLES -> RDFFormat.NTRIPLES
             RdfFormat.N_QUADS -> RDFFormat.NQUADS
             RdfFormat.JSON_LD -> if (style == RdfFormatStyle.PRETTY) RDFFormat.JSONLD_PRETTY else RDFFormat.JSONLD
         }
-    }
 
     /**
      * Converts Turtle RDF to JSON-LD Map.
-     * 
+     *
      * This method converts Turtle RDF data to JSON-LD format and returns it as a Map.
      * It's specifically designed for storing in the database where JSON-LD data is expected as Map<String, Any>.
-     * 
+     *
      * @param turtleData The Turtle RDF data as a string
      * @param expandUris Whether to expand URIs (clear namespace prefixes, default: true for expanded URIs)
      * @return JSON-LD data as Map<String, Any>, or empty map if conversion fails
      */
-    fun convertTurtleToJsonLdMap(turtleData: String, expandUris: Boolean = true): Map<String, Any> {
-        return try {
+    fun convertTurtleToJsonLdMap(
+        turtleData: String,
+        expandUris: Boolean = true,
+    ): Map<String, Any> =
+        try {
             logger.debug("Converting Turtle to JSON-LD Map (expandUris: $expandUris)")
-            
+
             // Convert Turtle to JSON-LD string
             val jsonLdString = convertFromTurtle(turtleData, RdfFormat.JSON_LD, RdfFormatStyle.PRETTY, expandUris)
-            
+
             if (jsonLdString != null) {
                 // Parse JSON-LD string to Map
                 @Suppress("UNCHECKED_CAST")
@@ -193,16 +222,18 @@ class RdfService(
             logger.error("Failed to convert Turtle to JSON-LD Map", e)
             emptyMap<String, Any>()
         }
-    }
 
     /**
      * Adds resource-type-specific prefixes to the model.
      * If no resource type is provided, adds common prefixes.
-     * 
+     *
      * @param model The RDF model to add prefixes to
      * @param resourceType The resource type, or null for common prefixes
      */
-    private fun addPrefixesForResourceType(model: Model, resourceType: ResourceType?) {
+    private fun addPrefixesForResourceType(
+        model: Model,
+        resourceType: ResourceType?,
+    ) {
         when (resourceType) {
             ResourceType.DATASET -> addDatasetPrefixes(model)
             ResourceType.DATA_SERVICE -> addDataServicePrefixes(model)
@@ -216,7 +247,7 @@ class RdfService(
 
     /**
      * Adds prefixes for Dataset resources according to DCAT-AP-NO specification.
-     * 
+     *
      * Namespaces are based on:
      * https://data.norge.no/specification/dcat-ap-no#URIer-i-bruk
      */
@@ -226,13 +257,13 @@ class RdfService(
         model.setNsPrefix("rdfs", "http://www.w3.org/2000/01/rdf-schema#")
         model.setNsPrefix("owl", "http://www.w3.org/2002/07/owl#")
         model.setNsPrefix("xsd", "http://www.w3.org/2001/XMLSchema#")
-        
+
         // DCAT-AP-NO core vocabularies
         model.setNsPrefix("dcat", "http://www.w3.org/ns/dcat#")
         model.setNsPrefix("dcatap", "http://data.europa.eu/r5r/")
         model.setNsPrefix("dcatno", "https://data.norge.no/vocabulary/dcatno#")
         model.setNsPrefix("dct", "http://purl.org/dc/terms/")
-        
+
         // Additional DCAT-AP-NO vocabularies
         model.setNsPrefix("adms", "http://www.w3.org/ns/adms#")
         model.setNsPrefix("cv", "http://data.europa.eu/m8g/")
@@ -260,7 +291,7 @@ class RdfService(
 
     /**
      * Adds prefixes for Concept resources according to SKOS-AP-NO-Begrep specification.
-     * 
+     *
      * Namespaces are based on:
      * https://data.norge.no/specification/skos-ap-no-begrep#Navnerom-brukt-i-standarden
      */
@@ -270,7 +301,7 @@ class RdfService(
         model.setNsPrefix("rdfs", "http://www.w3.org/2000/01/rdf-schema#")
         model.setNsPrefix("owl", "http://www.w3.org/2002/07/owl#")
         model.setNsPrefix("xsd", "http://www.w3.org/2001/XMLSchema#")
-        
+
         // SKOS-AP-NO-Begrep core vocabularies
         model.setNsPrefix("adms", "http://www.w3.org/ns/adms#")
         model.setNsPrefix("dcat", "http://www.w3.org/ns/dcat#")
@@ -285,7 +316,7 @@ class RdfService(
 
     /**
      * Adds prefixes for Information Model resources according to ModellDCAT-AP-NO specification.
-     * 
+     *
      * Namespaces are based on:
      * https://data.norge.no/specification/modelldcat-ap-no#URIer-som-er-i-bruk
      */
@@ -295,7 +326,7 @@ class RdfService(
         model.setNsPrefix("rdfs", "http://www.w3.org/2000/01/rdf-schema#")
         model.setNsPrefix("owl", "http://www.w3.org/2002/07/owl#")
         model.setNsPrefix("xsd", "http://www.w3.org/2001/XMLSchema#")
-        
+
         // ModellDCAT-AP-NO core vocabularies
         model.setNsPrefix("adms", "http://www.w3.org/ns/adms#")
         model.setNsPrefix("dcat", "http://www.w3.org/ns/dcat#")
@@ -311,7 +342,7 @@ class RdfService(
 
     /**
      * Adds prefixes for Service resources according to CPSV-AP-NO specification.
-     * 
+     *
      * Namespaces are based on:
      * https://data.norge.no/specification/cpsv-ap-no#Navnerom
      */
@@ -320,7 +351,7 @@ class RdfService(
         model.setNsPrefix("rdf", "http://www.w3.org/1999/02/22-rdf-syntax-ns#")
         model.setNsPrefix("rdfs", "http://www.w3.org/2000/01/rdf-schema#")
         model.setNsPrefix("xsd", "http://www.w3.org/2001/XMLSchema#")
-        
+
         // CPSV-AP-NO core vocabularies
         model.setNsPrefix("adms", "http://www.w3.org/ns/adms#")
         model.setNsPrefix("cpsv", "http://purl.org/vocab/cpsv#")
@@ -344,7 +375,7 @@ class RdfService(
 
     /**
      * Adds prefixes for Event resources according to CPSV-AP-NO specification.
-     * 
+     *
      * Namespaces are based on:
      * https://data.norge.no/specification/cpsv-ap-no#Navnerom
      */
@@ -353,7 +384,7 @@ class RdfService(
         model.setNsPrefix("rdf", "http://www.w3.org/1999/02/22-rdf-syntax-ns#")
         model.setNsPrefix("rdfs", "http://www.w3.org/2000/01/rdf-schema#")
         model.setNsPrefix("xsd", "http://www.w3.org/2001/XMLSchema#")
-        
+
         // CPSV-AP-NO core vocabularies
         model.setNsPrefix("adms", "http://www.w3.org/ns/adms#")
         model.setNsPrefix("cpsv", "http://purl.org/vocab/cpsv#")
@@ -378,7 +409,7 @@ class RdfService(
     /**
      * Adds common RDF prefixes to the model.
      * Used when no specific resource type is provided.
-     * 
+     *
      * Namespaces are verified against the fdk-parser-service vocabulary definitions:
      * https://github.com/Informasjonsforvaltning/fdk-parser-service/tree/main/src/main/kotlin/no/digdir/fdk/parserservice/vocabulary
      */
@@ -388,12 +419,12 @@ class RdfService(
         model.setNsPrefix("rdfs", "http://www.w3.org/2000/01/rdf-schema#")
         model.setNsPrefix("owl", "http://www.w3.org/2002/07/owl#")
         model.setNsPrefix("xsd", "http://www.w3.org/2001/XMLSchema#")
-        
+
         // DCAT and Dublin Core vocabularies
         model.setNsPrefix("dcat", "http://www.w3.org/ns/dcat#")
         model.setNsPrefix("dct", "http://purl.org/dc/terms/")
         model.setNsPrefix("dc", "http://purl.org/dc/elements/1.1/")
-        
+
         // Additional common vocabularies
         model.setNsPrefix("foaf", "http://xmlns.com/foaf/0.1/")
         model.setNsPrefix("skos", "http://www.w3.org/2004/02/skos/core#")
@@ -407,8 +438,11 @@ class RdfService(
     /**
      * Handles special cases like XML declarations for RDF/XML.
      */
-    private fun handleSpecialCases(result: String, rdfFormat: RDFFormat): String {
-        return when {
+    private fun handleSpecialCases(
+        result: String,
+        rdfFormat: RDFFormat,
+    ): String =
+        when {
             rdfFormat == RDFFormat.RDFXML || rdfFormat == RDFFormat.RDFXML_PRETTY -> {
                 if (!result.startsWith("<?xml")) {
                     "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n$result"
@@ -418,5 +452,4 @@ class RdfService(
             }
             else -> result
         }
-    }
 }

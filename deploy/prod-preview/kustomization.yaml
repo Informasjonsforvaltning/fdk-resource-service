@@ -9,4 +9,4 @@ resources:
 images:
   - name: fdk-resource-service-preview
     newName: ghcr.io/informasjonsforvaltning/fdk-resource-service
-    newTag: $(GIT_COMMIT_SHA)  -
+    newTag: $(GIT_COMMIT_SHA)

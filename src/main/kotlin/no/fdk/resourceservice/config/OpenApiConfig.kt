@@ -7,14 +7,14 @@ import org.springframework.context.annotation.Configuration
 
 @Configuration
 class OpenApiConfig {
-
     @Bean
-    fun openAPI(): OpenAPI {
-        return OpenAPI()
+    fun openAPI(): OpenAPI =
+        OpenAPI()
             .info(
                 Info()
                     .title("Resource Service API")
-                    .description("""
+                    .description(
+                        """
                         A comprehensive REST API providing programmatic access to Norway's national data catalog, enabling discovery and reuse of public sector data resources.
                         
                         ## About Data.norge.no
@@ -50,8 +50,7 @@ class OpenApiConfig {
                         Content is provided by the organizations themselves, with each organization responsible for managing their content in the catalogs. The Norwegian Digitalisation Agency is responsible for the operation and development of the platform.
                         
                         For more information about finding and using data, visit [data.norge.no](https://data.norge.no/nb/docs/finding-data) or learn more [about the platform](https://data.norge.no/nb/about).
-                    """.trimIndent())
-                    .version("1.0.0")
+                        """.trimIndent(),
+                    ).version("1.0.0"),
             )
-    }
 }
