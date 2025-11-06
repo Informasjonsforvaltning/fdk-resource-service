@@ -1,15 +1,14 @@
 package no.fdk.resourceservice.config
 
-import org.springframework.context.annotation.Configuration
-import org.springframework.web.servlet.config.annotation.InterceptorRegistry
-import org.springframework.web.servlet.config.annotation.WebMvcConfigurer
-import org.springframework.web.servlet.HandlerInterceptor
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
+import org.springframework.context.annotation.Configuration
+import org.springframework.web.servlet.HandlerInterceptor
+import org.springframework.web.servlet.config.annotation.InterceptorRegistry
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer
 
 @Configuration
 class WebConfig : WebMvcConfigurer {
-
     override fun addInterceptors(registry: InterceptorRegistry) {
         registry.addInterceptor(CacheControlInterceptor())
     }
@@ -18,7 +17,7 @@ class WebConfig : WebMvcConfigurer {
         override fun preHandle(
             request: HttpServletRequest,
             response: HttpServletResponse,
-            handler: Any
+            handler: Any,
         ): Boolean {
             // Set cache control headers for all API responses
             response.setHeader("Cache-Control", "no-cache, no-store, must-revalidate")

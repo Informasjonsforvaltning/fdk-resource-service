@@ -9,10 +9,10 @@ import org.springframework.stereotype.Service
 
 /**
  * Service that manages Kafka listener containers based on circuit breaker state.
- * 
+ *
  * This service monitors circuit breaker states and pauses/resumes Kafka listeners
  * to prevent message processing when downstream services are failing.
- * 
+ *
  * Key responsibilities:
  * - Monitor circuit breaker states for all consumer types
  * - Pause listeners when circuit breakers are open
@@ -22,25 +22,26 @@ import org.springframework.stereotype.Service
 @Service
 class KafkaListenerManager(
     private val circuitBreakerRegistry: CircuitBreakerRegistry,
-    private val kafkaListenerContainers: List<KafkaMessageListenerContainer<*, *>>
+    private val kafkaListenerContainers: List<KafkaMessageListenerContainer<*, *>>,
 ) {
     private val logger = LoggerFactory.getLogger(KafkaListenerManager::class.java)
-    
+
     // Map of circuit breaker names to their corresponding listener containers
-    private val circuitBreakerToContainers = mapOf(
-        "rdfParseConsumer" to listOf("rdf-parse-events"),
-        "conceptConsumer" to listOf("concept-events"),
-        "datasetConsumer" to listOf("dataset-events"),
-        "dataServiceConsumer" to listOf("data-service-events"),
-        "informationModelConsumer" to listOf("information-model-events"),
-        "serviceConsumer" to listOf("service-events"),
-        "eventConsumer" to listOf("event-events")
-    )
-    
+    private val circuitBreakerToContainers =
+        mapOf(
+            "rdfParseConsumer" to listOf("rdf-parse-events"),
+            "conceptConsumer" to listOf("concept-events"),
+            "datasetConsumer" to listOf("dataset-events"),
+            "dataServiceConsumer" to listOf("data-service-events"),
+            "informationModelConsumer" to listOf("information-model-events"),
+            "serviceConsumer" to listOf("service-events"),
+            "eventConsumer" to listOf("event-events"),
+        )
+
     @PostConstruct
     fun initializeCircuitBreakerMonitoring() {
         logger.info("🔧 Initializing Kafka listener management with circuit breaker monitoring")
-        
+
         // Register event listeners for all circuit breakers
         circuitBreakerToContainers.keys.forEach { circuitBreakerName ->
             val circuitBreaker = circuitBreakerRegistry.circuitBreaker(circuitBreakerName)
@@ -54,13 +55,16 @@ class KafkaListenerManager(
             }
         }
     }
-    
-    private fun handleCircuitBreakerStateChange(circuitBreakerName: String, stateTransition: CircuitBreaker.StateTransition) {
+
+    private fun handleCircuitBreakerStateChange(
+        circuitBreakerName: String,
+        stateTransition: CircuitBreaker.StateTransition,
+    ) {
         val fromState = stateTransition.fromState
         val toState = stateTransition.toState
-        
+
         logger.info("🔄 Circuit breaker state change: $circuitBreakerName from $fromState to $toState")
-        
+
         when (toState) {
             CircuitBreaker.State.OPEN -> {
                 pauseListenersForCircuitBreaker(circuitBreakerName)
@@ -76,37 +80,39 @@ class KafkaListenerManager(
             else -> {}
         }
     }
-    
+
     private fun pauseListenersForCircuitBreaker(circuitBreakerName: String) {
         val topics = circuitBreakerToContainers[circuitBreakerName] ?: return
-        
+
         kafkaListenerContainers.forEach { container ->
             if (topics.any { topic -> container.listenerId?.contains(topic) == true }) {
                 if (!container.isRunning) {
                     logger.debug("📴 Listener container ${container.listenerId} is already stopped")
                     return@forEach
                 }
-                
+
                 try {
                     container.pause()
-                    logger.warn("⏸️ PAUSED listener container ${container.listenerId} due to circuit breaker $circuitBreakerName being OPEN")
+                    logger.warn(
+                        "⏸️ PAUSED listener container ${container.listenerId} due to circuit breaker $circuitBreakerName being OPEN",
+                    )
                 } catch (e: Exception) {
                     logger.error("❌ Failed to pause listener container ${container.listenerId}", e)
                 }
             }
         }
     }
-    
+
     private fun resumeListenersForCircuitBreaker(circuitBreakerName: String) {
         val topics = circuitBreakerToContainers[circuitBreakerName] ?: return
-        
+
         kafkaListenerContainers.forEach { container ->
             if (topics.any { topic -> container.listenerId?.contains(topic) == true }) {
                 if (container.isRunning) {
                     logger.debug("▶️ Listener container ${container.listenerId} is already running")
                     return@forEach
                 }
-                
+
                 try {
                     container.resume()
                     logger.info("▶️ RESUMED listener container ${container.listenerId} - circuit breaker $circuitBreakerName is CLOSED")
@@ -116,25 +122,27 @@ class KafkaListenerManager(
             }
         }
     }
-    
+
     /**
      * Get the current status of all circuit breakers and their corresponding listeners
      */
-    fun getCircuitBreakerStatus(): Map<String, CircuitBreakerStatus> {
-        return circuitBreakerToContainers.keys.associateWith { circuitBreakerName ->
+    fun getCircuitBreakerStatus(): Map<String, CircuitBreakerStatus> =
+        circuitBreakerToContainers.keys.associateWith { circuitBreakerName ->
             val circuitBreaker = circuitBreakerRegistry.circuitBreaker(circuitBreakerName)
             val topics = circuitBreakerToContainers[circuitBreakerName] ?: emptyList()
-            
-            val listenerStatus = kafkaListenerContainers
-                .filter { container -> topics.any { topic -> container.listenerId?.contains(topic) == true } }
-                .associate { container ->
-                    container.listenerId to ListenerStatus(
-                        isRunning = container.isRunning,
-                        isPaused = !container.isRunning,
-                        topics = topics
-                    )
-                }
-            
+
+            val listenerStatus =
+                kafkaListenerContainers
+                    .filter { container -> topics.any { topic -> container.listenerId?.contains(topic) == true } }
+                    .associate { container ->
+                        container.listenerId to
+                            ListenerStatus(
+                                isRunning = container.isRunning,
+                                isPaused = !container.isRunning,
+                                topics = topics,
+                            )
+                    }
+
             CircuitBreakerStatus(
                 name = circuitBreakerName,
                 state = circuitBreaker?.state?.name ?: "UNKNOWN",
@@ -142,11 +150,10 @@ class KafkaListenerManager(
                 numberOfBufferedCalls = circuitBreaker?.metrics?.numberOfBufferedCalls ?: 0,
                 numberOfFailedCalls = circuitBreaker?.metrics?.numberOfFailedCalls ?: 0,
                 numberOfSuccessfulCalls = circuitBreaker?.metrics?.numberOfSuccessfulCalls ?: 0,
-                listeners = listenerStatus
+                listeners = listenerStatus,
             )
         }
-    }
-    
+
     /**
      * Manually pause all listeners (for maintenance or emergency situations)
      */
@@ -163,7 +170,7 @@ class KafkaListenerManager(
             }
         }
     }
-    
+
     /**
      * Manually resume all listeners
      */
@@ -189,11 +196,11 @@ data class CircuitBreakerStatus(
     val numberOfBufferedCalls: Int,
     val numberOfFailedCalls: Int,
     val numberOfSuccessfulCalls: Int,
-    val listeners: Map<String, ListenerStatus>
+    val listeners: Map<String, ListenerStatus>,
 )
 
 data class ListenerStatus(
     val isRunning: Boolean,
     val isPaused: Boolean,
-    val topics: List<String>
+    val topics: List<String>,
 )

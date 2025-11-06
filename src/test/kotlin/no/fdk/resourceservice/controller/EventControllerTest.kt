@@ -1,18 +1,16 @@
 package no.fdk.resourceservice.controller
 
-import com.fasterxml.jackson.databind.ObjectMapper
 import io.mockk.every
-import io.mockk.mockk
 import no.fdk.resourceservice.model.ResourceType
-import no.fdk.resourceservice.service.ResourceService
 import no.fdk.resourceservice.service.RdfService
 import org.junit.jupiter.api.Test
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
-import org.springframework.test.web.servlet.result.MockMvcResultMatchers.*
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.content
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 
 class EventControllerTest : BaseControllerTest() {
-
     @Test
     fun `should get event by id`() {
         val eventId = "test-event-id"
@@ -20,7 +18,8 @@ class EventControllerTest : BaseControllerTest() {
 
         every { resourceService.getResourceJson(eventId, ResourceType.EVENT) } returns eventData
 
-        mockMvc.perform(get("/v1/events/{id}", eventId))
+        mockMvc
+            .perform(get("/v1/events/{id}", eventId))
             .andExpect(status().isOk)
             .andExpect(content().contentType(MediaType.APPLICATION_JSON))
             .andExpect(jsonPath("$.id").value(eventId))
@@ -34,9 +33,11 @@ class EventControllerTest : BaseControllerTest() {
 
         every { resourceService.getResourceJsonByUri(uri, ResourceType.EVENT) } returns eventData
 
-        mockMvc.perform(get("/v1/events/by-uri")
-            .param("uri", uri))
-            .andExpect(status().isOk)
+        mockMvc
+            .perform(
+                get("/v1/events/by-uri")
+                    .param("uri", uri),
+            ).andExpect(status().isOk)
             .andExpect(content().contentType(MediaType.APPLICATION_JSON))
             .andExpect(jsonPath("$.uri").value(uri))
             .andExpect(jsonPath("$.title").value("Test Event"))
@@ -49,10 +50,19 @@ class EventControllerTest : BaseControllerTest() {
 
         every { resourceService.getResourceJsonLd(eventId, ResourceType.EVENT) } returns graphData
         every { rdfService.getBestFormat(null) } returns RdfService.RdfFormat.JSON_LD
-        every { rdfService.convertFromJsonLd(graphData, RdfService.RdfFormat.JSON_LD, RdfService.RdfFormatStyle.PRETTY, true, ResourceType.EVENT) } returns """{"@id":"https://example.com/event","title":"Test Event"}"""
+        every {
+            rdfService.convertFromJsonLd(
+                graphData,
+                RdfService.RdfFormat.JSON_LD,
+                RdfService.RdfFormatStyle.PRETTY,
+                true,
+                ResourceType.EVENT,
+            )
+        } returns """{"@id":"https://example.com/event","title":"Test Event"}"""
         every { rdfService.getContentType(RdfService.RdfFormat.JSON_LD) } returns MediaType.APPLICATION_JSON
 
-        mockMvc.perform(get("/v1/events/{id}/graph", eventId))
+        mockMvc
+            .perform(get("/v1/events/{id}/graph", eventId))
             .andExpect(status().isOk)
             .andExpect(content().contentType(MediaType.APPLICATION_JSON))
             .andExpect(jsonPath("$.@id").value("https://example.com/event"))
@@ -66,12 +76,22 @@ class EventControllerTest : BaseControllerTest() {
 
         every { resourceService.getResourceJsonLdByUri(uri, ResourceType.EVENT) } returns graphData
         every { rdfService.getBestFormat(null) } returns RdfService.RdfFormat.JSON_LD
-        every { rdfService.convertFromJsonLd(graphData, RdfService.RdfFormat.JSON_LD, RdfService.RdfFormatStyle.PRETTY, true, ResourceType.EVENT) } returns """{"@id":"https://example.com/event","title":"Test Event"}"""
+        every {
+            rdfService.convertFromJsonLd(
+                graphData,
+                RdfService.RdfFormat.JSON_LD,
+                RdfService.RdfFormatStyle.PRETTY,
+                true,
+                ResourceType.EVENT,
+            )
+        } returns """{"@id":"https://example.com/event","title":"Test Event"}"""
         every { rdfService.getContentType(RdfService.RdfFormat.JSON_LD) } returns MediaType.APPLICATION_JSON
 
-        mockMvc.perform(get("/v1/events/by-uri/graph")
-            .param("uri", uri))
-            .andExpect(status().isOk)
+        mockMvc
+            .perform(
+                get("/v1/events/by-uri/graph")
+                    .param("uri", uri),
+            ).andExpect(status().isOk)
             .andExpect(content().contentType(MediaType.APPLICATION_JSON))
             .andExpect(jsonPath("$.@id").value(uri))
             .andExpect(jsonPath("$.title").value("Test Event"))
@@ -83,7 +103,8 @@ class EventControllerTest : BaseControllerTest() {
 
         every { resourceService.getResourceJson(eventId, ResourceType.EVENT) } returns null
 
-        mockMvc.perform(get("/v1/events/{id}", eventId))
+        mockMvc
+            .perform(get("/v1/events/{id}", eventId))
             .andExpect(status().isNotFound)
     }
 
@@ -95,12 +116,22 @@ class EventControllerTest : BaseControllerTest() {
 
         every { resourceService.getResourceJsonLd(eventId, ResourceType.EVENT) } returns graphData
         every { rdfService.getBestFormat(null) } returns RdfService.RdfFormat.JSON_LD
-        every { rdfService.convertFromJsonLd(graphData, RdfService.RdfFormat.JSON_LD, RdfService.RdfFormatStyle.STANDARD, true, ResourceType.EVENT) } returns standardJsonLd
+        every {
+            rdfService.convertFromJsonLd(
+                graphData,
+                RdfService.RdfFormat.JSON_LD,
+                RdfService.RdfFormatStyle.STANDARD,
+                true,
+                ResourceType.EVENT,
+            )
+        } returns standardJsonLd
         every { rdfService.getContentType(RdfService.RdfFormat.JSON_LD) } returns MediaType.APPLICATION_JSON
 
-        mockMvc.perform(get("/v1/events/{id}/graph", eventId)
-            .param("style", "standard"))
-            .andExpect(status().isOk)
+        mockMvc
+            .perform(
+                get("/v1/events/{id}/graph", eventId)
+                    .param("style", "standard"),
+            ).andExpect(status().isOk)
             .andExpect(content().contentType(MediaType.APPLICATION_JSON))
             .andExpect(jsonPath("$.@id").value("https://example.com/event"))
     }
@@ -113,13 +144,23 @@ class EventControllerTest : BaseControllerTest() {
 
         every { resourceService.getResourceJsonLdByUri(uri, ResourceType.EVENT) } returns graphData
         every { rdfService.getBestFormat(null) } returns RdfService.RdfFormat.JSON_LD
-        every { rdfService.convertFromJsonLd(graphData, RdfService.RdfFormat.JSON_LD, RdfService.RdfFormatStyle.STANDARD, true, ResourceType.EVENT) } returns standardJsonLd
+        every {
+            rdfService.convertFromJsonLd(
+                graphData,
+                RdfService.RdfFormat.JSON_LD,
+                RdfService.RdfFormatStyle.STANDARD,
+                true,
+                ResourceType.EVENT,
+            )
+        } returns standardJsonLd
         every { rdfService.getContentType(RdfService.RdfFormat.JSON_LD) } returns MediaType.APPLICATION_JSON
 
-        mockMvc.perform(get("/v1/events/by-uri/graph")
-            .param("uri", uri)
-            .param("style", "standard"))
-            .andExpect(status().isOk)
+        mockMvc
+            .perform(
+                get("/v1/events/by-uri/graph")
+                    .param("uri", uri)
+                    .param("style", "standard"),
+            ).andExpect(status().isOk)
             .andExpect(content().contentType(MediaType.APPLICATION_JSON))
             .andExpect(jsonPath("$.@id").value(uri))
     }

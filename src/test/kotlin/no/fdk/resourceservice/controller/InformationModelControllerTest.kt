@@ -1,18 +1,16 @@
 package no.fdk.resourceservice.controller
 
-import com.fasterxml.jackson.databind.ObjectMapper
 import io.mockk.every
-import io.mockk.mockk
 import no.fdk.resourceservice.model.ResourceType
-import no.fdk.resourceservice.service.ResourceService
 import no.fdk.resourceservice.service.RdfService
 import org.junit.jupiter.api.Test
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
-import org.springframework.test.web.servlet.result.MockMvcResultMatchers.*
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.content
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 
 class InformationModelControllerTest : BaseControllerTest() {
-
     @Test
     fun `should get information model by id`() {
         val informationModelId = "test-information-model-id"
@@ -20,7 +18,8 @@ class InformationModelControllerTest : BaseControllerTest() {
 
         every { resourceService.getResourceJson(informationModelId, ResourceType.INFORMATION_MODEL) } returns informationModelData
 
-        mockMvc.perform(get("/v1/information-models/{id}", informationModelId))
+        mockMvc
+            .perform(get("/v1/information-models/{id}", informationModelId))
             .andExpect(status().isOk)
             .andExpect(content().contentType(MediaType.APPLICATION_JSON))
             .andExpect(jsonPath("$.id").value(informationModelId))
@@ -34,9 +33,11 @@ class InformationModelControllerTest : BaseControllerTest() {
 
         every { resourceService.getResourceJsonByUri(uri, ResourceType.INFORMATION_MODEL) } returns informationModelData
 
-        mockMvc.perform(get("/v1/information-models/by-uri")
-            .param("uri", uri))
-            .andExpect(status().isOk)
+        mockMvc
+            .perform(
+                get("/v1/information-models/by-uri")
+                    .param("uri", uri),
+            ).andExpect(status().isOk)
             .andExpect(content().contentType(MediaType.APPLICATION_JSON))
             .andExpect(jsonPath("$.uri").value(uri))
             .andExpect(jsonPath("$.title").value("Test Information Model"))
@@ -49,10 +50,19 @@ class InformationModelControllerTest : BaseControllerTest() {
 
         every { resourceService.getResourceJsonLd(informationModelId, ResourceType.INFORMATION_MODEL) } returns graphData
         every { rdfService.getBestFormat(null) } returns RdfService.RdfFormat.JSON_LD
-        every { rdfService.convertFromJsonLd(graphData, RdfService.RdfFormat.JSON_LD, RdfService.RdfFormatStyle.PRETTY, true, ResourceType.INFORMATION_MODEL) } returns """{"@id":"https://example.com/information-model","title":"Test Information Model"}"""
+        every {
+            rdfService.convertFromJsonLd(
+                graphData,
+                RdfService.RdfFormat.JSON_LD,
+                RdfService.RdfFormatStyle.PRETTY,
+                true,
+                ResourceType.INFORMATION_MODEL,
+            )
+        } returns """{"@id":"https://example.com/information-model","title":"Test Information Model"}"""
         every { rdfService.getContentType(RdfService.RdfFormat.JSON_LD) } returns MediaType.APPLICATION_JSON
 
-        mockMvc.perform(get("/v1/information-models/{id}/graph", informationModelId))
+        mockMvc
+            .perform(get("/v1/information-models/{id}/graph", informationModelId))
             .andExpect(status().isOk)
             .andExpect(content().contentType(MediaType.APPLICATION_JSON))
             .andExpect(jsonPath("$.@id").value("https://example.com/information-model"))
@@ -66,12 +76,22 @@ class InformationModelControllerTest : BaseControllerTest() {
 
         every { resourceService.getResourceJsonLdByUri(uri, ResourceType.INFORMATION_MODEL) } returns graphData
         every { rdfService.getBestFormat(null) } returns RdfService.RdfFormat.JSON_LD
-        every { rdfService.convertFromJsonLd(graphData, RdfService.RdfFormat.JSON_LD, RdfService.RdfFormatStyle.PRETTY, true, ResourceType.INFORMATION_MODEL) } returns """{"@id":"https://example.com/information-model","title":"Test Information Model"}"""
+        every {
+            rdfService.convertFromJsonLd(
+                graphData,
+                RdfService.RdfFormat.JSON_LD,
+                RdfService.RdfFormatStyle.PRETTY,
+                true,
+                ResourceType.INFORMATION_MODEL,
+            )
+        } returns """{"@id":"https://example.com/information-model","title":"Test Information Model"}"""
         every { rdfService.getContentType(RdfService.RdfFormat.JSON_LD) } returns MediaType.APPLICATION_JSON
 
-        mockMvc.perform(get("/v1/information-models/by-uri/graph")
-            .param("uri", uri))
-            .andExpect(status().isOk)
+        mockMvc
+            .perform(
+                get("/v1/information-models/by-uri/graph")
+                    .param("uri", uri),
+            ).andExpect(status().isOk)
             .andExpect(content().contentType(MediaType.APPLICATION_JSON))
             .andExpect(jsonPath("$.@id").value(uri))
             .andExpect(jsonPath("$.title").value("Test Information Model"))
@@ -83,7 +103,8 @@ class InformationModelControllerTest : BaseControllerTest() {
 
         every { resourceService.getResourceJson(informationModelId, ResourceType.INFORMATION_MODEL) } returns null
 
-        mockMvc.perform(get("/v1/information-models/{id}", informationModelId))
+        mockMvc
+            .perform(get("/v1/information-models/{id}", informationModelId))
             .andExpect(status().isNotFound)
     }
 
@@ -95,12 +116,22 @@ class InformationModelControllerTest : BaseControllerTest() {
 
         every { resourceService.getResourceJsonLd(informationModelId, ResourceType.INFORMATION_MODEL) } returns graphData
         every { rdfService.getBestFormat(null) } returns RdfService.RdfFormat.JSON_LD
-        every { rdfService.convertFromJsonLd(graphData, RdfService.RdfFormat.JSON_LD, RdfService.RdfFormatStyle.STANDARD, true, ResourceType.INFORMATION_MODEL) } returns standardJsonLd
+        every {
+            rdfService.convertFromJsonLd(
+                graphData,
+                RdfService.RdfFormat.JSON_LD,
+                RdfService.RdfFormatStyle.STANDARD,
+                true,
+                ResourceType.INFORMATION_MODEL,
+            )
+        } returns standardJsonLd
         every { rdfService.getContentType(RdfService.RdfFormat.JSON_LD) } returns MediaType.APPLICATION_JSON
 
-        mockMvc.perform(get("/v1/information-models/{id}/graph", informationModelId)
-            .param("style", "standard"))
-            .andExpect(status().isOk)
+        mockMvc
+            .perform(
+                get("/v1/information-models/{id}/graph", informationModelId)
+                    .param("style", "standard"),
+            ).andExpect(status().isOk)
             .andExpect(content().contentType(MediaType.APPLICATION_JSON))
             .andExpect(jsonPath("$.@id").value("https://example.com/information-model"))
     }
@@ -113,13 +144,23 @@ class InformationModelControllerTest : BaseControllerTest() {
 
         every { resourceService.getResourceJsonLdByUri(uri, ResourceType.INFORMATION_MODEL) } returns graphData
         every { rdfService.getBestFormat(null) } returns RdfService.RdfFormat.JSON_LD
-        every { rdfService.convertFromJsonLd(graphData, RdfService.RdfFormat.JSON_LD, RdfService.RdfFormatStyle.STANDARD, true, ResourceType.INFORMATION_MODEL) } returns standardJsonLd
+        every {
+            rdfService.convertFromJsonLd(
+                graphData,
+                RdfService.RdfFormat.JSON_LD,
+                RdfService.RdfFormatStyle.STANDARD,
+                true,
+                ResourceType.INFORMATION_MODEL,
+            )
+        } returns standardJsonLd
         every { rdfService.getContentType(RdfService.RdfFormat.JSON_LD) } returns MediaType.APPLICATION_JSON
 
-        mockMvc.perform(get("/v1/information-models/by-uri/graph")
-            .param("uri", uri)
-            .param("style", "standard"))
-            .andExpect(status().isOk)
+        mockMvc
+            .perform(
+                get("/v1/information-models/by-uri/graph")
+                    .param("uri", uri)
+                    .param("style", "standard"),
+            ).andExpect(status().isOk)
             .andExpect(content().contentType(MediaType.APPLICATION_JSON))
             .andExpect(jsonPath("$.@id").value(uri))
     }

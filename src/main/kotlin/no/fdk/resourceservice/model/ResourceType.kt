@@ -6,5 +6,5 @@ enum class ResourceType {
     DATA_SERVICE,
     INFORMATION_MODEL,
     SERVICE,
-    EVENT
+    EVENT,
 }

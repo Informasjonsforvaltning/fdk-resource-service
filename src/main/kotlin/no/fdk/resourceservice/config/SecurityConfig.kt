@@ -13,35 +13,34 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource
 @Configuration
 @EnableWebSecurity
 class SecurityConfig {
-
     @Bean
-    fun filterChain(http: HttpSecurity): SecurityFilterChain {
-        return http
+    fun filterChain(http: HttpSecurity): SecurityFilterChain =
+        http
             .cors { it.configurationSource(corsConfigurationSource()) }
             .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
             .authorizeHttpRequests { authz ->
                 authz.anyRequest().permitAll()
-            }
-            .build()
-    }
+            }.build()
 
     @Bean
     fun corsConfigurationSource(): CorsConfigurationSource {
         val configuration = CorsConfiguration()
         configuration.allowedOriginPatterns = listOf("*")
-        configuration.allowedMethods = listOf("GET", "POST", "PUT", "OPTIONS")
-        configuration.allowedHeaders = listOf(
-            "Accept",
-            "Content-Type",
-            "Origin"
-        )
-        configuration.exposedHeaders = listOf(
-            "Content-Type",
-            "Cache-Control"
-        )
+        configuration.allowedMethods = listOf("GET", "POST", "OPTIONS")
+        configuration.allowedHeaders =
+            listOf(
+                "Accept",
+                "Content-Type",
+                "Origin",
+            )
+        configuration.exposedHeaders =
+            listOf(
+                "Content-Type",
+                "Cache-Control",
+            )
         configuration.allowCredentials = true
         configuration.maxAge = 3600L // 1 hour
-        
+
         val source = UrlBasedCorsConfigurationSource()
         source.registerCorsConfiguration("/**", configuration)
         return source
