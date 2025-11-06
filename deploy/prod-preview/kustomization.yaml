@@ -1,0 +1,12 @@
+---
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: prod
+resources:
+  - deployment-fdk-resource-service.yaml
+  - service-fdk-resource-service.yaml
+  - ingress.yaml
+images:
+  - name: fdk-resource-service-preview
+    newName: ghcr.io/informasjonsforvaltning/fdk-resource-service
+    newTag: $(GIT_COMMIT_SHA)  -

@@ -1,0 +1,28 @@
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: fdk-resource-service-preview
+  annotations:
+    nginx.ingress.kubernetes.io/limit-rps: "5"
+    nginx.ingress.kubernetes.io/limit-burst-multiplier: "2"
+    nginx.ingress.kubernetes.io/limit-whitelist: "10.0.0.0/8,35.228.50.2/32"
+    nginx.ingress.kubernetes.io/server-snippet: |
+      server_tokens off;
+      location ~ ^/(actuator/health|actuator/info|actuator/metrics) {
+        deny all;
+        return 404;
+      }
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: resource-preview.api.fellesdatakatalog.digdir.no
+      http:
+        paths:
+          - backend:
+              service:
+                name: fdk-resource-service-preview
+                port:
+                  number: 8080
+            path: /
+            pathType: Prefix
