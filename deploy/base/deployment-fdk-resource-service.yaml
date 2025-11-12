@@ -17,7 +17,7 @@ spec:
       labels:
         app: fdk-resource-service
       annotations:
-        prometheus.io/scrape: "false"
+        prometheus.io/scrape: "true"
     spec:
       serviceAccountName: error-reporting-sa
       containers:
