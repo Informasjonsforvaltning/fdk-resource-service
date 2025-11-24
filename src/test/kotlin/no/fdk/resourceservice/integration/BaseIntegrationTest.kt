@@ -1,10 +1,12 @@
 package no.fdk.resourceservice.integration
 
+import no.fdk.resourceservice.config.UnionGraphConfig
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.util.TestPropertyValues
 import org.springframework.context.ApplicationContextInitializer
 import org.springframework.context.ConfigurableApplicationContext
+import org.springframework.context.annotation.Import
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.ContextConfiguration
 import org.testcontainers.junit.jupiter.Testcontainers
@@ -13,6 +15,7 @@ import org.testcontainers.junit.jupiter.Testcontainers
 @Testcontainers
 @ActiveProfiles("test")
 @ContextConfiguration(initializers = [BaseIntegrationTest.Companion.Initializer::class])
+@Import(UnionGraphConfig::class)
 @ExtendWith(TestContainerLifecycleExtension::class)
 abstract class BaseIntegrationTest {
     companion object {

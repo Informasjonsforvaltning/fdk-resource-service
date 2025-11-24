@@ -189,4 +189,48 @@ interface ResourceRepository : JpaRepository<ResourceEntity, String> {
     fun findTimestampById(
         @Param("id") id: String,
     ): Long?
+
+    /**
+     * Finds resources by type with pagination for memory-efficient processing.
+     * Used for building union graphs in batches.
+     *
+     * @param resourceType The resource type to filter by
+     * @param offset Number of records to skip
+     * @param limit Maximum number of records to return
+     * @return List of resource entities
+     */
+    @Query(
+        value = """
+        SELECT * FROM resources 
+        WHERE resource_type = :resourceType 
+        AND deleted = false
+        ORDER BY id ASC
+        LIMIT :limit OFFSET :offset
+    """,
+        nativeQuery = true,
+    )
+    fun findByResourceTypeAndDeletedFalsePaginated(
+        @Param("resourceType") resourceType: String,
+        @Param("offset") offset: Int,
+        @Param("limit") limit: Int,
+    ): List<ResourceEntity>
+
+    /**
+     * Counts resources by type (non-deleted only).
+     * Used to determine total number of resources for pagination.
+     *
+     * @param resourceType The resource type to count
+     * @return Total count of non-deleted resources of the specified type
+     */
+    @Query(
+        value = """
+        SELECT COUNT(*) FROM resources 
+        WHERE resource_type = :resourceType 
+        AND deleted = false
+    """,
+        nativeQuery = true,
+    )
+    fun countByResourceTypeAndDeletedFalse(
+        @Param("resourceType") resourceType: String,
+    ): Long
 }

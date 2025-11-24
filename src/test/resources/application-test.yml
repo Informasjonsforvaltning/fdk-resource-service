@@ -47,3 +47,7 @@ app:
       information-model: information-model-events
       service: service-events
       event: event-events
+  union-graphs:
+    # Enable delete and reset endpoints for tests
+    delete-enabled: true
+    reset-enabled: true

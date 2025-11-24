@@ -82,6 +82,8 @@ services:
       POSTGRES_PASSWORD: postgres
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       SCHEMA_REGISTRY_URL: http://schema-registry:8081
+      UNION_GRAPHS_DELETE_ENABLED: true
+      UNION_GRAPHS_RESET_ENABLED: true
 
 volumes:
   postgres_data:
