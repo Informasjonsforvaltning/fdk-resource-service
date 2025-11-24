@@ -3,13 +3,11 @@ package no.fdk.resourceservice.controller
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.Parameter
 import io.swagger.v3.oas.annotations.media.Content
-import io.swagger.v3.oas.annotations.media.Schema
 import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.responses.ApiResponses
 import io.swagger.v3.oas.annotations.tags.Tag
 import no.fdk.resourceservice.model.ResourceType
 import no.fdk.resourceservice.service.RdfService
-import no.fdk.resourceservice.service.RdfService.RdfFormatStyle
 import no.fdk.resourceservice.service.ResourceService
 import org.springframework.http.HttpHeaders
 import org.springframework.http.ResponseEntity
@@ -122,25 +120,7 @@ class ConceptController(
             hidden = true,
         )
         @RequestHeader(HttpHeaders.ACCEPT, required = false) acceptHeader: String?,
-        @Parameter(
-            description = "RDF format style: 'pretty' (human-readable) or 'standard' (compact). Default: pretty",
-            schema = Schema(type = "string", allowableValues = ["pretty", "standard"]),
-            example = "pretty",
-        )
-        @RequestParam(name = "style", required = false, defaultValue = "pretty") style: String?,
-        @Parameter(description = "Whether to expand URIs (clear namespace prefixes). Default: true")
-        @RequestParam(name = "expandUris", required = false, defaultValue = "true") expandUris: Boolean?,
-    ): ResponseEntity<Any> {
-        val rdfFormatStyle =
-            try {
-                RdfFormatStyle.valueOf((style ?: "pretty").uppercase())
-            } catch (e: IllegalArgumentException) {
-                logger.warn("Invalid style parameter: $style, using default: pretty")
-                RdfFormatStyle.PRETTY
-            }
-
-        return handleGraphRequest(id, ResourceType.CONCEPT, acceptHeader, rdfFormatStyle, expandUris ?: true)
-    }
+    ): ResponseEntity<Any> = handleGraphRequest(id, ResourceType.CONCEPT, acceptHeader)
 
     @GetMapping(
         "/by-uri/graph",
@@ -191,33 +171,5 @@ class ConceptController(
             hidden = true,
         )
         @RequestHeader(HttpHeaders.ACCEPT, required = false) acceptHeader: String?,
-        @Parameter(
-            description = "RDF format style: 'pretty' (human-readable) or 'standard' (compact). Default: pretty",
-            schema = Schema(type = "string", allowableValues = ["pretty", "standard"]),
-            example = "pretty",
-        )
-        @RequestParam(name = "style", required = false, defaultValue = "pretty") style: String?,
-        @Parameter(description = "Whether to expand URIs (clear namespace prefixes). Default: true", schema = Schema(), example = "true")
-        @RequestParam(name = "expandUris", required = false, defaultValue = "true") expandUris: Boolean?,
-    ): ResponseEntity<Any> {
-        val rdfFormatStyle =
-            try {
-                when (style?.lowercase()) {
-                    "pretty" -> RdfFormatStyle.PRETTY
-                    "standard" -> RdfFormatStyle.STANDARD
-                    else -> RdfFormatStyle.PRETTY
-                }
-            } catch (e: IllegalArgumentException) {
-                logger.warn("Invalid style parameter: $style, using default: PRETTY")
-                RdfFormatStyle.PRETTY
-            }
-
-        return handleGraphRequestByUri(
-            uri,
-            ResourceType.CONCEPT,
-            acceptHeader,
-            rdfFormatStyle,
-            expandUris ?: true,
-        )
-    }
+    ): ResponseEntity<Any> = handleGraphRequestByUri(uri, ResourceType.CONCEPT, acceptHeader)
 }

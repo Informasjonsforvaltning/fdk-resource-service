@@ -16,6 +16,12 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
+        # Enable batch inserts for better performance when saving multiple entities
+        # This significantly reduces database round trips when creating snapshots
+        jdbc:
+          batch_size: 50
+          order_inserts: true
+          order_updates: true
         type:
           json_format_mapper: no.fdk.resourceservice.config.CustomJacksonJsonFormatMapper
 
@@ -54,7 +60,7 @@ management:
 
 logging:
   level:
-    no.fdk.resourceservice: WARN
+    no.fdk.resourceservice: INFO
     org.springframework.kafka: WARN
     org.hibernate.SQL: WARN
     org.hibernate.type.descriptor.sql.BasicBinder: WARN
@@ -70,6 +76,25 @@ app:
       information-model: information-model-events
       service: service-events
       event: event-events
+  union-graphs:
+    # Enable/disable delete endpoint for union graph orders
+    # Set to true to allow deletion of orders (default: false)
+    delete-enabled: ${UNION_GRAPHS_DELETE_ENABLED:false}
+    # Enable/disable reset endpoint for union graph orders
+    # Set to true to allow resetting orders to PENDING (default: false)
+    reset-enabled: ${UNION_GRAPHS_RESET_ENABLED:false}
+    # API key for securing union graph endpoints (except GET /{id} graph endpoint)
+    api-key: ${UNION_GRAPHS_API_KEY:}
+    # Resource batch size for processing union graphs
+    # Lower values reduce memory usage and contention but increase database queries
+    # Note: parallelStream() processes all items concurrently, so smaller batches reduce contention
+    resource-batch-size: ${UNION_GRAPHS_RESOURCE_BATCH_SIZE:50}
+    # Delay in milliseconds between batches to prevent CPU saturation
+    # This allows API request threads to get CPU time during union graph building
+    # Higher values (100-200ms) provide better API responsiveness but slower graph building
+    # Lower values (10-50ms) build faster but may impact API performance
+    # Set to 0 to disable throttling (not recommended for production)
+    batch-delay-ms: ${UNION_GRAPHS_BATCH_DELAY_MS:50}
 
 # SpringDoc OpenAPI configuration
 springdoc:

@@ -15,6 +15,7 @@ import no.fdk.service.ServiceEventType
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.junit.jupiter.api.Assertions.assertNotNull
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import java.util.Properties
@@ -92,7 +93,7 @@ class KafkaIntegrationTest : BaseIntegrationTest() {
                 ConceptEvent
                     .newBuilder()
                     .setFdkId(resourceId)
-                    .setType(ConceptEventType.CONCEPT_HARVESTED)
+                    .setType(ConceptEventType.CONCEPT_REASONED)
                     .setTimestamp(timestamp)
                     .setGraph(turtleData)
                     .build()
@@ -105,11 +106,12 @@ class KafkaIntegrationTest : BaseIntegrationTest() {
             Thread.sleep(2000)
 
             // Then: Verify the resource was stored in the database
-            val storedResourceJsonLd = resourceService.getResourceJsonLd(resourceId, ResourceType.CONCEPT)
-            assertNotNull(storedResourceJsonLd, "Resource jsonld should be stored in database")
-            // The stored resource will be in JSON-LD format, so we check for the converted values
-            assert(storedResourceJsonLd!!["@id"] == "https://example.com/test-concept")
-            assert(storedResourceJsonLd["http://purl.org/dc/elements/1.1/title"]?.toString()?.contains("Test Concept") == true)
+            val storedResource = resourceService.getResourceEntity(resourceId, ResourceType.CONCEPT)
+            assertNotNull(storedResource, "Resource should be stored in database")
+            assertNotNull(storedResource!!.resourceGraphData, "Resource graph data should be stored")
+            // The stored resource will be in Turtle format, so we check for the URI
+            assertTrue(storedResource.resourceGraphData!!.contains("https://example.com/test-concept"))
+            assertTrue(storedResource.resourceGraphData.contains("Test Concept"))
 
             println("✅ Resource successfully stored and retrieved from database")
         } finally {
@@ -138,27 +140,14 @@ class KafkaIntegrationTest : BaseIntegrationTest() {
             ConceptEvent
                 .newBuilder()
                 .setFdkId(resourceId)
-                .setType(ConceptEventType.CONCEPT_HARVESTED)
+                .setType(ConceptEventType.CONCEPT_REASONED)
                 .setTimestamp(System.currentTimeMillis())
                 .setGraph(turtleData)
                 .build()
 
-        // Call the circuit breaker service directly for HARVESTED event
-        println("🔧 Testing HARVESTED event...")
-        circuitBreakerService.handleConceptEvent(event)
-
-        // Now simulate the REASONED event to set the resourceGraph
-        val reasonedEvent =
-            ConceptEvent
-                .newBuilder()
-                .setFdkId(resourceId)
-                .setType(ConceptEventType.CONCEPT_REASONED)
-                .setTimestamp(System.currentTimeMillis() + 1000) // Slightly later timestamp
-                .setGraph(turtleData)
-                .build()
-
+        // Call the circuit breaker service directly for REASONED event
         println("🔧 Testing REASONED event...")
-        circuitBreakerService.handleConceptEvent(reasonedEvent)
+        circuitBreakerService.handleConceptEvent(event)
 
         // Wait a bit for transaction to commit
         Thread.sleep(1000)
@@ -218,7 +207,7 @@ class KafkaIntegrationTest : BaseIntegrationTest() {
                 ConceptEvent
                     .newBuilder()
                     .setFdkId(resourceId)
-                    .setType(ConceptEventType.CONCEPT_HARVESTED)
+                    .setType(ConceptEventType.CONCEPT_REASONED)
                     .setTimestamp(System.currentTimeMillis())
                     .setGraph(turtleData)
                     .build()
@@ -286,7 +275,7 @@ class KafkaIntegrationTest : BaseIntegrationTest() {
                 ResourceTestData(
                     "dataset-events",
                     ResourceType.DATASET,
-                    "DATASET_HARVESTED",
+                    "DATASET_REASONED",
                     """
                     @prefix dc: <http://purl.org/dc/elements/1.1/> .
                     @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
@@ -299,7 +288,7 @@ class KafkaIntegrationTest : BaseIntegrationTest() {
                 ResourceTestData(
                     "data-service-events",
                     ResourceType.DATA_SERVICE,
-                    "DATA_SERVICE_HARVESTED",
+                    "DATA_SERVICE_REASONED",
                     """
                     @prefix dc: <http://purl.org/dc/elements/1.1/> .
                     @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
@@ -312,7 +301,7 @@ class KafkaIntegrationTest : BaseIntegrationTest() {
                 ResourceTestData(
                     "service-events",
                     ResourceType.SERVICE,
-                    "SERVICE_HARVESTED",
+                    "SERVICE_REASONED",
                     """
                     @prefix dc: <http://purl.org/dc/elements/1.1/> .
                     @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
@@ -365,7 +354,7 @@ class KafkaIntegrationTest : BaseIntegrationTest() {
                             DatasetEvent
                                 .newBuilder()
                                 .setFdkId(resourceId)
-                                .setType(DatasetEventType.DATASET_HARVESTED)
+                                .setType(DatasetEventType.DATASET_REASONED)
                                 .setTimestamp(timestamp)
                                 .setGraph(graph)
                                 .build()
@@ -374,7 +363,7 @@ class KafkaIntegrationTest : BaseIntegrationTest() {
                             DataServiceEvent
                                 .newBuilder()
                                 .setFdkId(resourceId)
-                                .setType(DataServiceEventType.DATA_SERVICE_HARVESTED)
+                                .setType(DataServiceEventType.DATA_SERVICE_REASONED)
                                 .setTimestamp(timestamp)
                                 .setGraph(graph)
                                 .build()
@@ -383,7 +372,7 @@ class KafkaIntegrationTest : BaseIntegrationTest() {
                             ServiceEvent
                                 .newBuilder()
                                 .setFdkId(resourceId)
-                                .setType(ServiceEventType.SERVICE_HARVESTED)
+                                .setType(ServiceEventType.SERVICE_REASONED)
                                 .setTimestamp(timestamp)
                                 .setGraph(graph)
                                 .build()
@@ -470,7 +459,7 @@ class KafkaIntegrationTest : BaseIntegrationTest() {
                 ConceptEvent
                     .newBuilder()
                     .setFdkId(resourceId)
-                    .setType(ConceptEventType.CONCEPT_HARVESTED)
+                    .setType(ConceptEventType.CONCEPT_REASONED)
                     .setTimestamp(System.currentTimeMillis())
                     .setGraph(initialTurtleData)
                     .build()
@@ -481,17 +470,18 @@ class KafkaIntegrationTest : BaseIntegrationTest() {
             Thread.sleep(2000)
 
             // Verify initial state
-            val initialResourceJsonLd = resourceService.getResourceJsonLd(resourceId, ResourceType.CONCEPT)
-            assertNotNull(initialResourceJsonLd)
-            assert(initialResourceJsonLd!!["@id"] == "https://example.com/concept")
-            assert(initialResourceJsonLd["http://purl.org/dc/elements/1.1/title"]?.toString()?.contains("Initial Title") == true)
+            val initialResource = resourceService.getResourceEntity(resourceId, ResourceType.CONCEPT)
+            assertNotNull(initialResource)
+            assertNotNull(initialResource!!.resourceGraphData)
+            assertTrue(initialResource.resourceGraphData!!.contains("https://example.com/concept"))
+            assertTrue(initialResource.resourceGraphData.contains("Initial Title"))
 
             // Send UPDATE event
             val updateEvent =
                 ConceptEvent
                     .newBuilder()
                     .setFdkId(resourceId)
-                    .setType(ConceptEventType.CONCEPT_HARVESTED)
+                    .setType(ConceptEventType.CONCEPT_REASONED)
                     .setTimestamp(System.currentTimeMillis() + 1000)
                     .setGraph(updatedTurtleData)
                     .build()
@@ -502,10 +492,11 @@ class KafkaIntegrationTest : BaseIntegrationTest() {
             Thread.sleep(2000)
 
             // Then: Verify the resource was updated
-            val updatedResourceJsonLd = resourceService.getResourceJsonLd(resourceId, ResourceType.CONCEPT)
-            assertNotNull(updatedResourceJsonLd)
-            assert(updatedResourceJsonLd!!["@id"] == "https://example.com/concept")
-            assert(updatedResourceJsonLd["http://purl.org/dc/elements/1.1/title"]?.toString()?.contains("Updated Title") == true)
+            val updatedResource = resourceService.getResourceEntity(resourceId, ResourceType.CONCEPT)
+            assertNotNull(updatedResource)
+            assertNotNull(updatedResource!!.resourceGraphData)
+            assertTrue(updatedResource.resourceGraphData!!.contains("https://example.com/concept"))
+            assertTrue(updatedResource.resourceGraphData.contains("Updated Title"))
             println("✅ Resource successfully updated via Kafka")
         } finally {
             producer.close()

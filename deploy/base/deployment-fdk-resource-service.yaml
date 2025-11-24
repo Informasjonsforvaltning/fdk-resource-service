@@ -18,8 +18,8 @@ spec:
         app: fdk-resource-service
       annotations:
         prometheus.io/scrape: "true"
+        prometheus.io/path: "/actuator/prometheus"
     spec:
-      serviceAccountName: error-reporting-sa
       containers:
         - name: fdk-resource-service
           env:
@@ -58,15 +58,39 @@ spec:
                 secretKeyRef:
                   name: kafka
                   key: SCHEMA_REGISTRY
+            - name: UNION_GRAPHS_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: fdk-resource-service
+                  key: UNION_GRAPHS_API_KEY
+            - name: JAVA_OPTS
+              value: "-XX:MaxRAMPercentage=75.0 -XX:+UseZGC"
           image: fdk-resource-service
           imagePullPolicy: Always
           ports:
             - containerPort: 8080
+          resources:
+            requests:
+              memory: "6Gi"
+              cpu: "2000m"
+            limits:
+              memory: "8Gi"
+              cpu: "4000m"
           livenessProbe:
             httpGet:
               path: /actuator/health/liveness
               port: 8080
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 3
+            successThreshold: 1
           readinessProbe:
             httpGet:
               path: /actuator/health/readiness
               port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+            successThreshold: 1

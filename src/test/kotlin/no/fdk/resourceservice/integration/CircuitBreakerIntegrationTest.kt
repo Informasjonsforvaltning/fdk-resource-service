@@ -127,13 +127,13 @@ class CircuitBreakerIntegrationTest : BaseIntegrationTest() {
                     ConceptEvent
                         .newBuilder()
                         .setFdkId("test-concept-fail-$i")
-                        .setType(ConceptEventType.CONCEPT_HARVESTED)
+                        .setType(ConceptEventType.CONCEPT_REASONED)
                         .setTimestamp(System.currentTimeMillis() + i)
                         .setGraph(validTurtleData)
                         .build()
                 }
 
-            // Make storeResourceJsonLd throw exceptions for calls 3-6 (4 failures out of 6 = 66%)
+            // Make ResourceService throw exceptions for calls 3-6 (4 failures out of 6 = 66%)
             // We need to intercept the calls - use a simple approach: make ResourceService fail
             // Since we can't easily mock in integration test, let's use invalid data that causes failures
 
@@ -144,7 +144,7 @@ class CircuitBreakerIntegrationTest : BaseIntegrationTest() {
                     ConceptEvent
                         .newBuilder()
                         .setFdkId("test-concept-fail-$i")
-                        .setType(ConceptEventType.CONCEPT_HARVESTED)
+                        .setType(ConceptEventType.CONCEPT_REASONED)
                         .setTimestamp(System.currentTimeMillis() + i)
                         .setGraph(emptyTurtleData)
                         .build()

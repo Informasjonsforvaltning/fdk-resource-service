@@ -37,6 +37,27 @@ class ResourceService(
     }
 
     /**
+     * Gets a resource entity by ID and type.
+     *
+     * @param id The unique identifier of the resource
+     * @param resourceType The type of resource to retrieve
+     * @return ResourceEntity, or null if not found or type mismatch
+     */
+    fun getResourceEntity(
+        id: String,
+        resourceType: ResourceType,
+    ): ResourceEntity? {
+        logger.debug("Getting resource entity with id: {} and type: {}", id, resourceType)
+
+        val entity = resourceRepository.findById(id).orElse(null)
+        return if (entity?.resourceType == resourceType.name) {
+            entity
+        } else {
+            null
+        }
+    }
+
+    /**
      * Retrieves a specific resource by its unique identifier as JSON representation.
      *
      * @param id The unique identifier of the resource
@@ -136,20 +157,24 @@ class ResourceService(
     }
 
     /**
-     * Retrieves a resource by its URI across all resource types as JSON-LD representation.
-     *
-     * Uses getResourceEntityByUri for consistent URI lookup with fallback support.
-     * Returns the complete stored JSON-LD graph, whether it's in single node format
-     * or @graph format with multiple nodes.
+     * Retrieves the original graph data for a resource by its URI and type.
      *
      * @param uri The URI of the resource
-     * @return JSON-LD representation of the resource (complete graph), or null if not found
+     * @param resourceType The type of resource to retrieve
+     * @return Graph data representation of the resource (typically Turtle text), or null if not found or type mismatch
      */
-    fun getResourceJsonLdByUri(uri: String): Map<String, Any>? {
-        logger.debug("Getting resource JSON-LD with uri: {} across all types", uri)
+    fun getResourceGraphDataByUri(
+        uri: String,
+        resourceType: ResourceType,
+    ): String? {
+        logger.debug("Getting resource graph data with uri: {} and type: {}", uri, resourceType)
 
         val entity = getResourceEntityByUri(uri)
-        return entity?.resourceJsonLd
+        return if (entity?.resourceType == resourceType.name) {
+            entity.resourceGraphData
+        } else {
+            null
+        }
     }
 
     /**
@@ -205,7 +230,7 @@ class ResourceService(
 
         if (existingEntity != null) {
             if (existingEntity.timestamp > timestamp) {
-                logger.debug("Skipped (older timestamp): id=$id, existingTs=${existingEntity.timestamp}, newTs=$timestamp")
+                logger.info("Skipped (older timestamp): id=$id, existingTs=${existingEntity.timestamp}, newTs=$timestamp")
                 return
             }
             // Extract URI from resourceJson if available
@@ -223,7 +248,6 @@ class ResourceService(
                     id = id,
                     resourceType = resourceType.name,
                     resourceJson = resourceJson,
-                    resourceJsonLd = null,
                     uri = uri,
                     timestamp = timestamp,
                     deleted = false,
@@ -234,24 +258,25 @@ class ResourceService(
     }
 
     /**
-     * Stores a resource with JSON-LD graph representation.
+     * Stores a resource with original graph data.
      *
-     * This method stores a resource with the complete RDF graph in JSON-LD 1.1 format (resourceJsonLd).
-     * The resourceJsonLd contains the full RDF structure with expanded URIs in JSON-LD 1.1 pretty format.
-     * Supports both single node format and @graph format with multiple root nodes.
+     * This method stores a resource with the original RDF graph data (resourceGraphData).
+     * The graph data is typically in Turtle format but can support other formats in the future.
      *
-     * Note: URI is not extracted from JSON-LD. The URI should be set from the parsed JSON (resourceJson)
+     * Note: URI is not extracted from graph data. The URI should be set from the parsed JSON (resourceJson)
      * when storing via storeResourceJson.
      *
      * @param id The unique identifier for the resource
      * @param resourceType The type of resource (CONCEPT, DATASET, etc.)
-     * @param resourceJsonLd The JSON-LD 1.1 representation (single node or @graph format)
+     * @param graphData The original graph data representation (typically Turtle text)
+     * @param format The format of the original RDF data (default: TURTLE)
      * @param timestamp The timestamp when the resource was processed
      */
-    fun storeResourceJsonLd(
+    fun storeResourceGraphData(
         id: String,
         resourceType: ResourceType,
-        resourceJsonLd: Map<String, Any>,
+        graphData: String,
+        format: String = "TURTLE",
         timestamp: Long,
     ) {
         // Note: Timestamp check already done in CircuitBreakerService, but double-check here as safety
@@ -259,37 +284,33 @@ class ResourceService(
 
         if (existingEntity != null) {
             if (existingEntity.timestamp > timestamp) {
-                logger.debug("Skipped (older timestamp): id=$id, existingTs=${existingEntity.timestamp}, newTs=$timestamp")
+                logger.info("Skipped (older timestamp): id=$id, existingTs=${existingEntity.timestamp}, newTs=$timestamp")
                 return
             }
-            val jsonLdSize = jsonLdSize(resourceJsonLd)
-            val jsonLdString = objectMapper.writeValueAsString(resourceJsonLd)
-            val updateCount = resourceRepository.updateResourceJsonLdAndUndelete(id, jsonLdString, timestamp)
+            val updateCount =
+                resourceRepository.updateResourceGraphData(
+                    id = id,
+                    graphData = graphData,
+                    format = format,
+                    timestamp = timestamp,
+                )
             resourceRepository.flush()
-            logger.info("Updated JSON-LD: id=$id, type=$resourceType, size=$jsonLdSize, rows=$updateCount")
+            logger.info("Updated graph data: id=$id, type=$resourceType, format=$format, rows=$updateCount")
         } else {
-            val jsonLdSize = jsonLdSize(resourceJsonLd)
             val newEntity =
                 ResourceEntity(
                     id = id,
                     resourceType = resourceType.name,
                     resourceJson = null,
-                    resourceJsonLd = resourceJsonLd,
+                    resourceGraphData = graphData,
+                    resourceGraphFormat = format,
                     uri = null,
                     timestamp = timestamp,
                     deleted = false,
                 )
             resourceRepository.save(newEntity)
-            logger.info("Created JSON-LD: id=$id, type=$resourceType, size=$jsonLdSize")
-        }
-    }
-
-    private fun jsonLdSize(jsonLd: Map<String, Any>): String {
-        val str = objectMapper.writeValueAsString(jsonLd)
-        return when {
-            str.length < 1000 -> "${str.length}B"
-            str.length < 1_000_000 -> "${str.length / 1000}KB"
-            else -> "${str.length / 1_000_000}MB"
+            resourceRepository.flush()
+            logger.info("Created graph data: id=$id, type=$resourceType, format=$format")
         }
     }
 
@@ -308,82 +329,6 @@ class ResourceService(
 
         val entities = resourceRepository.findResourcesSince(resourceType.name, since)
         return entities.map { it.resourceJson }
-    }
-
-    /**
-     * Retrieves a specific resource by its unique identifier as JSON-LD representation.
-     *
-     * @param id The unique identifier of the resource
-     * @param resourceType The type of resource to retrieve
-     * @return JSON-LD representation of the resource, or null if not found or type mismatch
-     */
-    fun getResourceJsonLd(
-        id: String,
-        resourceType: ResourceType,
-    ): Map<String, Any>? {
-        logger.debug("Getting resource JSON-LD with id: {} and type: {}", id, resourceType)
-
-        val entity = resourceRepository.findById(id).orElse(null)
-        return if (entity?.resourceType == resourceType.name) {
-            entity.resourceJsonLd
-        } else {
-            null
-        }
-    }
-
-    /**
-     * Retrieves a specific resource by its URI as JSON-LD representation.
-     *
-     * Uses getResourceEntityByUri for consistent URI lookup with fallback support,
-     * then filters by resource type. Returns the complete stored JSON-LD graph,
-     * whether it's in single node format or @graph format with multiple nodes.
-     *
-     * @param uri The URI of the resource
-     * @param resourceType The type of resource to retrieve
-     * @return JSON-LD representation of the resource (complete graph), or null if not found or type mismatch
-     */
-    fun getResourceJsonLdByUri(
-        uri: String,
-        resourceType: ResourceType,
-    ): Map<String, Any>? {
-        logger.debug("Getting resource JSON-LD with uri: {} and type: {}", uri, resourceType)
-
-        val entity = getResourceEntityByUri(uri)
-        return if (entity?.resourceType == resourceType.name) {
-            entity.resourceJsonLd
-        } else {
-            null
-        }
-    }
-
-    /**
-     * Retrieves all resources of a specific type as JSON-LD representations.
-     *
-     * @param resourceType The type of resource to retrieve
-     * @return List of JSON-LD representations (may include null values for resources without JSON-LD data)
-     */
-    fun getResourceJsonLdList(resourceType: ResourceType): List<Map<String, Any>?> {
-        logger.debug("Getting resource JSON-LD for type: {}", resourceType)
-
-        val entities = resourceRepository.findByResourceType(resourceType.name)
-        return entities.map { it.resourceJsonLd }
-    }
-
-    /**
-     * Retrieves all resources of a specific type that were updated since a given timestamp as JSON-LD representations.
-     *
-     * @param resourceType The type of resource to retrieve
-     * @param since The timestamp to filter resources (only resources updated after this timestamp)
-     * @return List of JSON-LD representations (may include null values for resources without JSON-LD data)
-     */
-    fun getResourceJsonLdListSince(
-        resourceType: ResourceType,
-        since: Long,
-    ): List<Map<String, Any>?> {
-        logger.debug("Getting resource JSON-LD for type: {} since: {}", resourceType, since)
-
-        val entities = resourceRepository.findResourcesSince(resourceType.name, since)
-        return entities.map { it.resourceJsonLd }
     }
 
     /**
@@ -422,7 +367,6 @@ class ResourceService(
                     id = id,
                     resourceType = resourceType.name,
                     resourceJson = null,
-                    resourceJsonLd = null,
                     uri = null,
                     timestamp = timestamp,
                     deleted = true,

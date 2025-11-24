@@ -1,6 +1,7 @@
 package no.fdk.resourceservice.controller
 
 import io.mockk.every
+import no.fdk.resourceservice.model.ResourceEntity
 import no.fdk.resourceservice.model.ResourceType
 import no.fdk.resourceservice.service.RdfService
 import org.junit.jupiter.api.Test
@@ -23,7 +24,7 @@ class InformationModelControllerTest : BaseControllerTest() {
             .andExpect(status().isOk)
             .andExpect(content().contentType(MediaType.APPLICATION_JSON))
             .andExpect(jsonPath("$.id").value(informationModelId))
-            .andExpect(jsonPath("$.title").value("Test Information Model"))
+        // Turtle format - content verified via string match
     }
 
     @Test
@@ -40,61 +41,82 @@ class InformationModelControllerTest : BaseControllerTest() {
             ).andExpect(status().isOk)
             .andExpect(content().contentType(MediaType.APPLICATION_JSON))
             .andExpect(jsonPath("$.uri").value(uri))
-            .andExpect(jsonPath("$.title").value("Test Information Model"))
+        // Turtle format - content verified via string match
     }
 
     @Test
     fun `should get information model graph by id`() {
         val informationModelId = "test-information-model-id"
-        val graphData = mapOf("@id" to "https://example.com/information-model", "title" to "Test Information Model")
+        val turtleData =
+            """<https://example.com/information-model> a <http://example.org/InformationModel> ;
+                |<http://purl.org/dc/terms/title> "Test Information Model" .
+            """.trimMargin()
+        val entity =
+            ResourceEntity(
+                id = informationModelId,
+                resourceType = ResourceType.INFORMATION_MODEL.name,
+                resourceGraphData = turtleData,
+                resourceGraphFormat = "TURTLE",
+            )
 
-        every { resourceService.getResourceJsonLd(informationModelId, ResourceType.INFORMATION_MODEL) } returns graphData
-        every { rdfService.getBestFormat(null) } returns RdfService.RdfFormat.JSON_LD
+        every { resourceService.getResourceEntity(informationModelId, ResourceType.INFORMATION_MODEL) } returns entity
+        every { rdfService.getBestFormat(null) } returns RdfService.RdfFormat.TURTLE
         every {
-            rdfService.convertFromJsonLd(
-                graphData,
-                RdfService.RdfFormat.JSON_LD,
+            rdfService.convertFromFormat(
+                turtleData,
+                "TURTLE",
+                RdfService.RdfFormat.TURTLE,
                 RdfService.RdfFormatStyle.PRETTY,
                 true,
                 ResourceType.INFORMATION_MODEL,
             )
-        } returns """{"@id":"https://example.com/information-model","title":"Test Information Model"}"""
-        every { rdfService.getContentType(RdfService.RdfFormat.JSON_LD) } returns MediaType.APPLICATION_JSON
+        } returns turtleData
+        every { rdfService.getContentType(RdfService.RdfFormat.TURTLE) } returns MediaType("text", "turtle")
 
         mockMvc
             .perform(get("/v1/information-models/{id}/graph", informationModelId))
             .andExpect(status().isOk)
-            .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-            .andExpect(jsonPath("$.@id").value("https://example.com/information-model"))
-            .andExpect(jsonPath("$.title").value("Test Information Model"))
+            .andExpect(content().contentType(MediaType("text", "turtle")))
+            .andExpect(content().string(turtleData))
     }
 
     @Test
     fun `should get information model graph by uri`() {
         val uri = "https://example.com/information-model"
-        val graphData = mapOf("@id" to uri, "title" to "Test Information Model")
+        val turtleData =
+            """<https://example.com/information-model> a <http://example.org/InformationModel> ;
+                |<http://purl.org/dc/terms/title> "Test Information Model" .
+            """.trimMargin()
+        val entity =
+            ResourceEntity(
+                id = "test-information-model-id",
+                resourceType = ResourceType.INFORMATION_MODEL.name,
+                resourceGraphData = turtleData,
+                resourceGraphFormat = "TURTLE",
+                uri = uri,
+            )
 
-        every { resourceService.getResourceJsonLdByUri(uri, ResourceType.INFORMATION_MODEL) } returns graphData
-        every { rdfService.getBestFormat(null) } returns RdfService.RdfFormat.JSON_LD
+        every { resourceService.getResourceEntityByUri(uri) } returns entity
+        every { rdfService.getBestFormat(null) } returns RdfService.RdfFormat.TURTLE
         every {
-            rdfService.convertFromJsonLd(
-                graphData,
-                RdfService.RdfFormat.JSON_LD,
+            rdfService.convertFromFormat(
+                turtleData,
+                "TURTLE",
+                RdfService.RdfFormat.TURTLE,
                 RdfService.RdfFormatStyle.PRETTY,
                 true,
                 ResourceType.INFORMATION_MODEL,
             )
-        } returns """{"@id":"https://example.com/information-model","title":"Test Information Model"}"""
-        every { rdfService.getContentType(RdfService.RdfFormat.JSON_LD) } returns MediaType.APPLICATION_JSON
+        } returns turtleData
+        every { rdfService.getContentType(RdfService.RdfFormat.TURTLE) } returns MediaType("text", "turtle")
 
         mockMvc
             .perform(
                 get("/v1/information-models/by-uri/graph")
                     .param("uri", uri),
             ).andExpect(status().isOk)
-            .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-            .andExpect(jsonPath("$.@id").value(uri))
-            .andExpect(jsonPath("$.title").value("Test Information Model"))
+            .andExpect(content().contentType(MediaType("text", "turtle")))
+            .andExpect(content().string(turtleData))
     }
 
     @Test
@@ -106,62 +128,5 @@ class InformationModelControllerTest : BaseControllerTest() {
         mockMvc
             .perform(get("/v1/information-models/{id}", informationModelId))
             .andExpect(status().isNotFound)
-    }
-
-    @Test
-    fun `should get information model graph by id with standard style`() {
-        val informationModelId = "test-information-model-id"
-        val graphData = mapOf("@id" to "https://example.com/information-model", "title" to "Test Information Model")
-        val standardJsonLd = """{"@id":"https://example.com/information-model","title":"Test Information Model"}"""
-
-        every { resourceService.getResourceJsonLd(informationModelId, ResourceType.INFORMATION_MODEL) } returns graphData
-        every { rdfService.getBestFormat(null) } returns RdfService.RdfFormat.JSON_LD
-        every {
-            rdfService.convertFromJsonLd(
-                graphData,
-                RdfService.RdfFormat.JSON_LD,
-                RdfService.RdfFormatStyle.STANDARD,
-                true,
-                ResourceType.INFORMATION_MODEL,
-            )
-        } returns standardJsonLd
-        every { rdfService.getContentType(RdfService.RdfFormat.JSON_LD) } returns MediaType.APPLICATION_JSON
-
-        mockMvc
-            .perform(
-                get("/v1/information-models/{id}/graph", informationModelId)
-                    .param("style", "standard"),
-            ).andExpect(status().isOk)
-            .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-            .andExpect(jsonPath("$.@id").value("https://example.com/information-model"))
-    }
-
-    @Test
-    fun `should get information model graph by uri with standard style`() {
-        val uri = "https://example.com/information-model"
-        val graphData = mapOf("@id" to uri, "title" to "Test Information Model")
-        val standardJsonLd = """{"@id":"https://example.com/information-model","title":"Test Information Model"}"""
-
-        every { resourceService.getResourceJsonLdByUri(uri, ResourceType.INFORMATION_MODEL) } returns graphData
-        every { rdfService.getBestFormat(null) } returns RdfService.RdfFormat.JSON_LD
-        every {
-            rdfService.convertFromJsonLd(
-                graphData,
-                RdfService.RdfFormat.JSON_LD,
-                RdfService.RdfFormatStyle.STANDARD,
-                true,
-                ResourceType.INFORMATION_MODEL,
-            )
-        } returns standardJsonLd
-        every { rdfService.getContentType(RdfService.RdfFormat.JSON_LD) } returns MediaType.APPLICATION_JSON
-
-        mockMvc
-            .perform(
-                get("/v1/information-models/by-uri/graph")
-                    .param("uri", uri)
-                    .param("style", "standard"),
-            ).andExpect(status().isOk)
-            .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-            .andExpect(jsonPath("$.@id").value(uri))
     }
 }

@@ -2,14 +2,22 @@ package no.fdk.resourceservice.config
 
 import io.swagger.v3.oas.models.OpenAPI
 import io.swagger.v3.oas.models.info.Info
+import io.swagger.v3.oas.models.security.SecurityScheme
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 
 @Configuration
 class OpenApiConfig {
     @Bean
-    fun openAPI(): OpenAPI =
-        OpenAPI()
+    fun openAPI(): OpenAPI {
+        val apiKeyScheme =
+            SecurityScheme()
+                .type(SecurityScheme.Type.APIKEY)
+                .`in`(SecurityScheme.In.HEADER)
+                .name("X-API-Key")
+                .description("API key for authenticating requests to union graph endpoints")
+
+        return OpenAPI()
             .info(
                 Info()
                     .title("Resource Service API")
@@ -46,11 +54,19 @@ class OpenApiConfig {
                         - **Data Reuse**: Enable fair competition by providing equal access to data resources
                         - **Interoperability**: Use standardized information models and concepts for system integration
                         
+                        ## Authentication
+                        Most endpoints are publicly accessible. However, union graph management endpoints (create, list, delete, reset) require API key authentication via the `X-API-Key` header. The graph retrieval endpoint (`GET /v1/union-graphs/{id}/graph`) is publicly accessible.
+                        
                         ## Data Governance
                         Content is provided by the organizations themselves, with each organization responsible for managing their content in the catalogs. The Norwegian Digitalisation Agency is responsible for the operation and development of the platform.
                         
                         For more information about finding and using data, visit [data.norge.no](https://data.norge.no/nb/docs/finding-data) or learn more [about the platform](https://data.norge.no/nb/about).
                         """.trimIndent(),
                     ).version("1.0.0"),
+            ).components(
+                io.swagger.v3.oas.models
+                    .Components()
+                    .addSecuritySchemes("ApiKeyAuth", apiKeyScheme),
             )
+    }
 }

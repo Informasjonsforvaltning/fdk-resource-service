@@ -30,6 +30,76 @@ class KafkaConsumer(
 ) {
     private val logger = LoggerFactory.getLogger(KafkaConsumer::class.java)
 
+    /**
+     * Validates and extracts required fields from a GenericRecord.
+     * Throws IllegalArgumentException if any required field is missing or empty.
+     * Graph can be empty, so it's not validated.
+     *
+     * @param value The GenericRecord to extract fields from
+     * @param eventTypeName The name of the event type (for logging)
+     * @return A data class containing fdkId, type, timestamp, and graph
+     * @throws IllegalArgumentException if fdkId, type, or timestamp is missing or invalid
+     */
+    private data class RequiredFields(
+        val fdkId: String,
+        val type: String,
+        val timestamp: Long,
+        val graph: String,
+    )
+
+    private fun extractRequiredFields(
+        value: org.apache.avro.generic.GenericRecord,
+        eventTypeName: String,
+    ): RequiredFields {
+        val fdkIdStr = value.get("fdkId")?.toString()
+        if (fdkIdStr.isNullOrBlank()) {
+            throw IllegalArgumentException("Missing or empty fdkId in $eventTypeName")
+        }
+
+        val typeStr = value.get("type")?.toString()
+        if (typeStr.isNullOrBlank()) {
+            throw IllegalArgumentException("Missing or empty type in $eventTypeName")
+        }
+
+        val timestamp = value.get("timestamp") as? Long
+        if (timestamp == null) {
+            throw IllegalArgumentException("Missing or invalid timestamp in $eventTypeName")
+        }
+
+        val graph = value.get("graph")?.toString() ?: ""
+
+        return RequiredFields(fdkIdStr, typeStr, timestamp, graph)
+    }
+
+    /**
+     * Validates and extracts required fields from a GenericRecord for RdfParseEvent.
+     * Throws IllegalArgumentException if any required field is missing or empty.
+     * Data can be empty, so it's not validated.
+     *
+     * @param value The GenericRecord to extract fields from
+     * @param eventTypeName The name of the event type (for logging)
+     * @return A Triple of (fdkId, timestamp, data)
+     * @throws IllegalArgumentException if fdkId or timestamp is missing or invalid
+     */
+    private fun extractRdfParseRequiredFields(
+        value: org.apache.avro.generic.GenericRecord,
+        eventTypeName: String,
+    ): Triple<String, Long, String> {
+        val fdkIdStr = value.get("fdkId")?.toString()
+        if (fdkIdStr.isNullOrBlank()) {
+            throw IllegalArgumentException("Missing or empty fdkId in $eventTypeName")
+        }
+
+        val timestamp = value.get("timestamp") as? Long
+        if (timestamp == null) {
+            throw IllegalArgumentException("Missing or invalid timestamp in $eventTypeName")
+        }
+
+        val data = value.get("data")?.toString() ?: ""
+
+        return Triple(fdkIdStr, timestamp, data)
+    }
+
     private fun extractConceptEvent(record: ConsumerRecord<String, Any>): ConceptEvent? {
         val value = record.value()
         return when (value) {
@@ -40,12 +110,14 @@ class KafkaConsumer(
             is org.apache.avro.generic.GenericRecord -> {
                 logger.debug("Converting GenericRecord to ConceptEvent")
                 try {
+                    val fields = extractRequiredFields(value, "ConceptEvent")
+
                     ConceptEvent
                         .newBuilder()
-                        .setFdkId(value.get("fdkId")?.toString() ?: "")
-                        .setType(ConceptEventType.valueOf(value.get("type")?.toString() ?: "CONCEPT_HARVESTED"))
-                        .setTimestamp(value.get("timestamp") as? Long ?: System.currentTimeMillis())
-                        .setGraph(value.get("graph")?.toString() ?: "")
+                        .setFdkId(fields.fdkId)
+                        .setType(ConceptEventType.valueOf(fields.type))
+                        .setTimestamp(fields.timestamp)
+                        .setGraph(fields.graph)
                         .build()
                 } catch (e: Exception) {
                     logger.warn("Failed to convert GenericRecord to ConceptEvent: ${e.message}")
@@ -72,12 +144,14 @@ class KafkaConsumer(
             is org.apache.avro.generic.GenericRecord -> {
                 logger.debug("Converting GenericRecord to DatasetEvent")
                 try {
+                    val fields = extractRequiredFields(value, "DatasetEvent")
+
                     DatasetEvent
                         .newBuilder()
-                        .setFdkId(value.get("fdkId")?.toString() ?: "")
-                        .setType(DatasetEventType.valueOf(value.get("type")?.toString() ?: "DATASET_HARVESTED"))
-                        .setTimestamp(value.get("timestamp") as? Long ?: System.currentTimeMillis())
-                        .setGraph(value.get("graph")?.toString() ?: "")
+                        .setFdkId(fields.fdkId)
+                        .setType(DatasetEventType.valueOf(fields.type))
+                        .setTimestamp(fields.timestamp)
+                        .setGraph(fields.graph)
                         .build()
                 } catch (e: Exception) {
                     logger.warn("Failed to convert GenericRecord to DatasetEvent: ${e.message}")
@@ -104,12 +178,14 @@ class KafkaConsumer(
             is org.apache.avro.generic.GenericRecord -> {
                 logger.debug("Converting GenericRecord to DataServiceEvent")
                 try {
+                    val fields = extractRequiredFields(value, "DataServiceEvent")
+
                     DataServiceEvent
                         .newBuilder()
-                        .setFdkId(value.get("fdkId")?.toString() ?: "")
-                        .setType(DataServiceEventType.valueOf(value.get("type")?.toString() ?: "DATA_SERVICE_HARVESTED"))
-                        .setTimestamp(value.get("timestamp") as? Long ?: System.currentTimeMillis())
-                        .setGraph(value.get("graph")?.toString() ?: "")
+                        .setFdkId(fields.fdkId)
+                        .setType(DataServiceEventType.valueOf(fields.type))
+                        .setTimestamp(fields.timestamp)
+                        .setGraph(fields.graph)
                         .build()
                 } catch (e: Exception) {
                     logger.warn("Failed to convert GenericRecord to DataServiceEvent: ${e.message}")
@@ -136,12 +212,14 @@ class KafkaConsumer(
             is org.apache.avro.generic.GenericRecord -> {
                 logger.debug("Converting GenericRecord to EventEvent")
                 try {
+                    val fields = extractRequiredFields(value, "EventEvent")
+
                     EventEvent
                         .newBuilder()
-                        .setFdkId(value.get("fdkId")?.toString() ?: "")
-                        .setType(EventEventType.valueOf(value.get("type")?.toString() ?: "EVENT_HARVESTED"))
-                        .setTimestamp(value.get("timestamp") as? Long ?: System.currentTimeMillis())
-                        .setGraph(value.get("graph")?.toString() ?: "")
+                        .setFdkId(fields.fdkId)
+                        .setType(EventEventType.valueOf(fields.type))
+                        .setTimestamp(fields.timestamp)
+                        .setGraph(fields.graph)
                         .build()
                 } catch (e: Exception) {
                     logger.warn("Failed to convert GenericRecord to EventEvent: ${e.message}")
@@ -168,12 +246,14 @@ class KafkaConsumer(
             is org.apache.avro.generic.GenericRecord -> {
                 logger.debug("Converting GenericRecord to InformationModelEvent")
                 try {
+                    val fields = extractRequiredFields(value, "InformationModelEvent")
+
                     InformationModelEvent
                         .newBuilder()
-                        .setFdkId(value.get("fdkId")?.toString() ?: "")
-                        .setType(InformationModelEventType.valueOf(value.get("type")?.toString() ?: "INFORMATION_MODEL_HARVESTED"))
-                        .setTimestamp(value.get("timestamp") as? Long ?: System.currentTimeMillis())
-                        .setGraph(value.get("graph")?.toString() ?: "")
+                        .setFdkId(fields.fdkId)
+                        .setType(InformationModelEventType.valueOf(fields.type))
+                        .setTimestamp(fields.timestamp)
+                        .setGraph(fields.graph)
                         .build()
                 } catch (e: Exception) {
                     logger.warn("Failed to convert GenericRecord to InformationModelEvent: ${e.message}")
@@ -200,12 +280,14 @@ class KafkaConsumer(
             is org.apache.avro.generic.GenericRecord -> {
                 logger.debug("Converting GenericRecord to ServiceEvent")
                 try {
+                    val fields = extractRequiredFields(value, "ServiceEvent")
+
                     ServiceEvent
                         .newBuilder()
-                        .setFdkId(value.get("fdkId")?.toString() ?: "")
-                        .setType(ServiceEventType.valueOf(value.get("type")?.toString() ?: "SERVICE_HARVESTED"))
-                        .setTimestamp(value.get("timestamp") as? Long ?: System.currentTimeMillis())
-                        .setGraph(value.get("graph")?.toString() ?: "")
+                        .setFdkId(fields.fdkId)
+                        .setType(ServiceEventType.valueOf(fields.type))
+                        .setTimestamp(fields.timestamp)
+                        .setGraph(fields.graph)
                         .build()
                 } catch (e: Exception) {
                     logger.warn("Failed to convert GenericRecord to ServiceEvent: ${e.message}")
@@ -232,18 +314,19 @@ class KafkaConsumer(
             is org.apache.avro.generic.GenericRecord -> {
                 logger.debug("Converting GenericRecord to RdfParseEvent")
                 try {
+                    val (fdkIdStr, timestamp, data) = extractRdfParseRequiredFields(value, "RdfParseEvent")
+
                     val resourceTypeStr = value.get("resourceType")?.toString()
                     if (resourceTypeStr.isNullOrBlank()) {
-                        logger.warn("Missing or empty resourceType in RdfParseEvent, ignoring message")
-                        return null
+                        throw IllegalArgumentException("Missing or empty resourceType in RdfParseEvent")
                     }
 
                     RdfParseEvent
                         .newBuilder()
-                        .setFdkId(value.get("fdkId")?.toString() ?: "")
+                        .setFdkId(fdkIdStr)
                         .setResourceType(RdfParseResourceType.valueOf(resourceTypeStr))
-                        .setTimestamp(value.get("timestamp") as? Long ?: System.currentTimeMillis())
-                        .setData(value.get("data")?.toString() ?: "")
+                        .setTimestamp(timestamp)
+                        .setData(data)
                         .build()
                 } catch (e: Exception) {
                     logger.warn("Failed to convert GenericRecord to RdfParseEvent: ${e.message}")

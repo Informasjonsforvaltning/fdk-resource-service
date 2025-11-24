@@ -1,5 +1,6 @@
 package no.fdk.resourceservice.service
 
+import com.fasterxml.jackson.core.type.TypeReference
 import com.fasterxml.jackson.databind.ObjectMapper
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker
 import io.micrometer.core.instrument.Metrics
@@ -26,8 +27,7 @@ import kotlin.time.toJavaDuration
  * and the JSON-LD graph representation (resourceGraph) of RDF resources.
  *
  * Key responsibilities:
- * - Process HARVESTED events: Store both resourceJson and resourceGraph (JSON-LD 1.1 in pretty format)
- * - Process REASONED events: Update resourceJson and resourceGraph
+ * - Process REASONED events: Store both resourceJson and resourceGraph (JSON-LD 1.1 in pretty format)
  * - Handle circuit breaker failures with fallback methods
  * - Convert Turtle RDF to JSON-LD 1.1 for resourceGraph storage
  */
@@ -71,13 +71,16 @@ class CircuitBreakerService(
                         }
 
                     if (!resourceService.shouldUpdateResource(event.fdkId, event.timestamp)) {
-                        logger.debug("Skipped (older timestamp): id=${event.fdkId}, type=$resourceType")
+                        logger.info("Skipped (older timestamp): id=${event.fdkId}, type=$resourceType")
                         return@measureTimedValue
                     }
 
                     val resourceJson =
                         try {
-                            objectMapper.readValue(event.data, Map::class.java) as Map<String, Any>
+                            objectMapper.readValue(
+                                event.data,
+                                object : TypeReference<Map<String, Any>>() {},
+                            )
                         } catch (e: Exception) {
                             logger.error("JSON parse failed: id=${event.fdkId}, error=${e.message}", e)
                             Metrics
@@ -239,42 +242,37 @@ class CircuitBreakerService(
         logger.debug("Processing event: id=$fdkId, type=$resourceType, event=$eventType, graphLen=${graph.length}")
         val action =
             when {
-                eventType.endsWith("_HARVESTED") -> "HARVESTED"
+                eventType.endsWith("_REASONED") -> "REASONED"
                 eventType.endsWith("_REMOVED") -> "REMOVED"
                 else -> eventType.substringAfter("_")
             }
 
         when (action) {
-            "HARVESTED" -> {
-                // Check timestamp early to avoid expensive conversion
+            "REASONED" -> {
+                // Check timestamp early to avoid expensive operations
                 if (!resourceService.shouldUpdateResource(fdkId, timestamp)) {
-                    logger.debug("Skipped (older timestamp): id=$fdkId, type=$resourceType")
+                    logger.info("Skipped (older timestamp): id=$fdkId, type=$resourceType")
                     return
                 }
 
-                val jsonLdMap = rdfService.convertTurtleToJsonLdMap(graph, true)
-                val mapSize = jsonLdMap.size
-                val isEmpty = jsonLdMap.isEmpty()
-
-                if (isEmpty) {
-                    logger.error("JSON-LD conversion returned empty map: id=$fdkId, type=$resourceType, graphLen=${graph.length}")
+                if (graph.isBlank()) {
+                    logger.error("Graph data is empty: id=$fdkId, type=$resourceType")
                     Metrics
                         .counter(
-                            "store_resource_jsonld_error",
+                            "store_resource_graph_data_error",
                             "type",
                             resourceType.name.lowercase(),
                             "error",
-                            "empty_conversion",
+                            "empty_graph",
                         ).increment()
-                    throw IllegalStateException("JSON-LD conversion returned empty map for id=$fdkId")
-                } else {
-                    logger.debug("JSON-LD converted: id=$fdkId, mapSize=$mapSize")
+                    throw IllegalStateException("Graph data is empty for id=$fdkId")
                 }
 
-                resourceService.storeResourceJsonLd(
+                resourceService.storeResourceGraphData(
                     id = fdkId,
                     resourceType = resourceType,
-                    resourceJsonLd = jsonLdMap,
+                    graphData = graph, // Store original graph data (Turtle text)
+                    format = "TURTLE", // Graph is in Turtle format
                     timestamp = timestamp,
                 )
                 logger.debug("Storage called: id=$fdkId, type=$resourceType")

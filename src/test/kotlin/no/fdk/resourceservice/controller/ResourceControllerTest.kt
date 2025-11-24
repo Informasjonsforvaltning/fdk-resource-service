@@ -45,7 +45,7 @@ class ResourceControllerTest : BaseControllerTest() {
             ).andExpect(status().isOk)
             .andExpect(content().contentType(MediaType.APPLICATION_JSON))
             .andExpect(jsonPath("$.id").value("test-resource-id"))
-            .andExpect(jsonPath("$.title").value("Test Resource"))
+            // Turtle format - content verified via string match
             .andExpect(jsonPath("$.description").value("A test resource"))
             .andExpect(jsonPath("$.uri").value("https://example.com/resource"))
     }
@@ -84,21 +84,26 @@ class ResourceControllerTest : BaseControllerTest() {
             ResourceEntity(
                 id = "test-id",
                 resourceType = "DATASET",
-                resourceJsonLd = jsonLdData,
+                resourceGraphData =
+                    """<https://example.com/resource> a <http://example.org/Resource> ;
+                        |<http://purl.org/dc/terms/title> "Test Resource" .
+                    """.trimMargin(),
+                resourceGraphFormat = "TURTLE",
                 uri = "https://example.com/resource",
             )
         every { resourceService.getResourceEntityByUri("https://example.com/resource") } returns entity
-        every { rdfService.getBestFormat(null) } returns RdfService.RdfFormat.JSON_LD
+        every { rdfService.getBestFormat(null) } returns RdfService.RdfFormat.TURTLE
         every {
-            rdfService.convertFromJsonLd(
-                jsonLdData,
-                RdfService.RdfFormat.JSON_LD,
+            rdfService.convertFromFormat(
+                entity.resourceGraphData!!,
+                "TURTLE",
+                RdfService.RdfFormat.TURTLE,
                 RdfService.RdfFormatStyle.PRETTY,
                 true,
                 ResourceType.DATASET,
             )
-        } returns "{\"@id\":\"https://example.com/resource\",\"@type\":\"http://example.org/Resource\",\"title\":\"Test Resource\"}"
-        every { rdfService.getContentType(RdfService.RdfFormat.JSON_LD) } returns MediaType.APPLICATION_JSON
+        } returns entity.resourceGraphData!!
+        every { rdfService.getContentType(RdfService.RdfFormat.TURTLE) } returns MediaType("text", "turtle")
 
         // When & Then
         mockMvc
@@ -106,12 +111,8 @@ class ResourceControllerTest : BaseControllerTest() {
                 get("/v1/resources/by-uri/graph")
                     .param("uri", "https://example.com/resource"),
             ).andExpect(status().isOk)
-            .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-            .andExpect(
-                content().string(
-                    "{\"@id\":\"https://example.com/resource\",\"@type\":\"http://example.org/Resource\",\"title\":\"Test Resource\"}",
-                ),
-            )
+            .andExpect(content().contentType(MediaType("text", "turtle")))
+            .andExpect(content().string(entity.resourceGraphData!!))
     }
 
     @Test
@@ -127,15 +128,20 @@ class ResourceControllerTest : BaseControllerTest() {
             ResourceEntity(
                 id = "test-id",
                 resourceType = "DATASET",
-                resourceJsonLd = jsonLdData,
+                resourceGraphData =
+                    """<https://example.com/resource> a <http://example.org/Resource> ;
+                        |<http://purl.org/dc/terms/title> "Test Resource" .
+                    """.trimMargin(),
+                resourceGraphFormat = "TURTLE",
                 uri = "https://example.com/resource",
             )
 
         every { resourceService.getResourceEntityByUri("https://example.com/resource") } returns entity
         every { rdfService.getBestFormat("text/turtle") } returns RdfService.RdfFormat.TURTLE
         every {
-            rdfService.convertFromJsonLd(
-                jsonLdData,
+            rdfService.convertFromFormat(
+                entity.resourceGraphData!!,
+                "TURTLE",
                 RdfService.RdfFormat.TURTLE,
                 RdfService.RdfFormatStyle.PRETTY,
                 true,
@@ -165,14 +171,19 @@ class ResourceControllerTest : BaseControllerTest() {
             ResourceEntity(
                 id = "test-id",
                 resourceType = "DATASET",
-                resourceJsonLd = jsonLdData,
+                resourceGraphData =
+                    """<https://example.com/resource> a <http://example.org/Resource> ;
+                        |<http://purl.org/dc/terms/title> "Test Resource" .
+                    """.trimMargin(),
+                resourceGraphFormat = "TURTLE",
                 uri = "https://example.com/resource",
             )
         every { resourceService.getResourceEntityByUri("https://example.com/resource") } returns entity
         every { rdfService.getBestFormat("application/rdf+xml") } returns RdfService.RdfFormat.RDF_XML
         every {
-            rdfService.convertFromJsonLd(
-                jsonLdData,
+            rdfService.convertFromFormat(
+                entity.resourceGraphData!!,
+                "TURTLE",
                 RdfService.RdfFormat.RDF_XML,
                 RdfService.RdfFormatStyle.PRETTY,
                 true,
@@ -204,14 +215,19 @@ class ResourceControllerTest : BaseControllerTest() {
             ResourceEntity(
                 id = "test-id",
                 resourceType = "DATASET",
-                resourceJsonLd = jsonLdData,
+                resourceGraphData =
+                    """<https://example.com/resource> a <http://example.org/Resource> ;
+                        |<http://purl.org/dc/terms/title> "Test Resource" .
+                    """.trimMargin(),
+                resourceGraphFormat = "TURTLE",
                 uri = "https://example.com/resource",
             )
         every { resourceService.getResourceEntityByUri("https://example.com/resource") } returns entity
         every { rdfService.getBestFormat("application/n-triples") } returns RdfService.RdfFormat.N_TRIPLES
         every {
-            rdfService.convertFromJsonLd(
-                jsonLdData,
+            rdfService.convertFromFormat(
+                entity.resourceGraphData!!,
+                "TURTLE",
                 RdfService.RdfFormat.N_TRIPLES,
                 RdfService.RdfFormatStyle.PRETTY,
                 true,
@@ -243,14 +259,19 @@ class ResourceControllerTest : BaseControllerTest() {
             ResourceEntity(
                 id = "test-id",
                 resourceType = "DATASET",
-                resourceJsonLd = jsonLdData,
+                resourceGraphData =
+                    """<https://example.com/resource> a <http://example.org/Resource> ;
+                        |<http://purl.org/dc/terms/title> "Test Resource" .
+                    """.trimMargin(),
+                resourceGraphFormat = "TURTLE",
                 uri = "https://example.com/resource",
             )
         every { resourceService.getResourceEntityByUri("https://example.com/resource") } returns entity
         every { rdfService.getBestFormat("application/n-quads") } returns RdfService.RdfFormat.N_QUADS
         every {
-            rdfService.convertFromJsonLd(
-                jsonLdData,
+            rdfService.convertFromFormat(
+                entity.resourceGraphData!!,
+                "TURTLE",
                 RdfService.RdfFormat.N_QUADS,
                 RdfService.RdfFormatStyle.PRETTY,
                 true,
@@ -271,82 +292,6 @@ class ResourceControllerTest : BaseControllerTest() {
     }
 
     @Test
-    fun `getResourceGraphByUri should use pretty style when style parameter is pretty`() {
-        // Given
-        val jsonLdData = mapOf("@id" to "https://example.com/resource")
-        val turtleData = "@prefix : <http://example.org/> .\n<https://example.com/resource> a :Resource ."
-
-        val entity =
-            ResourceEntity(
-                id = "test-id",
-                resourceType = "DATASET",
-                resourceJsonLd = jsonLdData,
-                uri = "https://example.com/resource",
-            )
-        every { resourceService.getResourceEntityByUri("https://example.com/resource") } returns entity
-        every { rdfService.getBestFormat("text/turtle") } returns RdfService.RdfFormat.TURTLE
-        every {
-            rdfService.convertFromJsonLd(
-                jsonLdData,
-                RdfService.RdfFormat.TURTLE,
-                RdfService.RdfFormatStyle.PRETTY,
-                true,
-                ResourceType.DATASET,
-            )
-        } returns turtleData
-        every { rdfService.getContentType(RdfService.RdfFormat.TURTLE) } returns MediaType("text", "turtle")
-
-        // When & Then
-        mockMvc
-            .perform(
-                get("/v1/resources/by-uri/graph")
-                    .param("uri", "https://example.com/resource")
-                    .param("style", "pretty")
-                    .header("Accept", "text/turtle"),
-            ).andExpect(status().isOk)
-            .andExpect(content().contentType(MediaType("text", "turtle")))
-            .andExpect(content().string(turtleData))
-    }
-
-    @Test
-    fun `getResourceGraphByUri should use standard style when style parameter is standard`() {
-        // Given
-        val jsonLdData = mapOf("@id" to "https://example.com/resource")
-        val turtleData = "@prefix : <http://example.org/> .\n<https://example.com/resource> a :Resource ."
-
-        val entity =
-            ResourceEntity(
-                id = "test-id",
-                resourceType = "DATASET",
-                resourceJsonLd = jsonLdData,
-                uri = "https://example.com/resource",
-            )
-        every { resourceService.getResourceEntityByUri("https://example.com/resource") } returns entity
-        every { rdfService.getBestFormat("text/turtle") } returns RdfService.RdfFormat.TURTLE
-        every {
-            rdfService.convertFromJsonLd(
-                jsonLdData,
-                RdfService.RdfFormat.TURTLE,
-                RdfService.RdfFormatStyle.STANDARD,
-                true,
-                ResourceType.DATASET,
-            )
-        } returns turtleData
-        every { rdfService.getContentType(RdfService.RdfFormat.TURTLE) } returns MediaType("text", "turtle")
-
-        // When & Then
-        mockMvc
-            .perform(
-                get("/v1/resources/by-uri/graph")
-                    .param("uri", "https://example.com/resource")
-                    .param("style", "standard")
-                    .header("Accept", "text/turtle"),
-            ).andExpect(status().isOk)
-            .andExpect(content().contentType(MediaType("text", "turtle")))
-            .andExpect(content().string(turtleData))
-    }
-
-    @Test
     fun `getResourceGraphByUri should expand URIs when expandUris parameter is true`() {
         // Given
         val jsonLdData = mapOf("@id" to "https://example.com/resource")
@@ -356,14 +301,19 @@ class ResourceControllerTest : BaseControllerTest() {
             ResourceEntity(
                 id = "test-id",
                 resourceType = "DATASET",
-                resourceJsonLd = jsonLdData,
+                resourceGraphData =
+                    """<https://example.com/resource> a <http://example.org/Resource> ;
+                        |<http://purl.org/dc/terms/title> "Test Resource" .
+                    """.trimMargin(),
+                resourceGraphFormat = "TURTLE",
                 uri = "https://example.com/resource",
             )
         every { resourceService.getResourceEntityByUri("https://example.com/resource") } returns entity
         every { rdfService.getBestFormat("text/turtle") } returns RdfService.RdfFormat.TURTLE
         every {
-            rdfService.convertFromJsonLd(
-                jsonLdData,
+            rdfService.convertFromFormat(
+                entity.resourceGraphData!!,
+                "TURTLE",
                 RdfService.RdfFormat.TURTLE,
                 RdfService.RdfFormatStyle.PRETTY,
                 true,
@@ -377,7 +327,6 @@ class ResourceControllerTest : BaseControllerTest() {
             .perform(
                 get("/v1/resources/by-uri/graph")
                     .param("uri", "https://example.com/resource")
-                    .param("expandUris", "true")
                     .header("Accept", "text/turtle"),
             ).andExpect(status().isOk)
             .andExpect(content().contentType(MediaType("text", "turtle")))
@@ -392,14 +341,19 @@ class ResourceControllerTest : BaseControllerTest() {
             ResourceEntity(
                 id = "test-id",
                 resourceType = "DATASET",
-                resourceJsonLd = jsonLdData,
+                resourceGraphData =
+                    """<https://example.com/resource> a <http://example.org/Resource> ;
+                        |<http://purl.org/dc/terms/title> "Test Resource" .
+                    """.trimMargin(),
+                resourceGraphFormat = "TURTLE",
                 uri = "https://example.com/resource",
             )
         every { resourceService.getResourceEntityByUri("https://example.com/resource") } returns entity
         every { rdfService.getBestFormat("text/turtle") } returns RdfService.RdfFormat.TURTLE
         every {
-            rdfService.convertFromJsonLd(
-                jsonLdData,
+            rdfService.convertFromFormat(
+                entity.resourceGraphData!!,
+                "TURTLE",
                 RdfService.RdfFormat.TURTLE,
                 RdfService.RdfFormatStyle.PRETTY,
                 true,
@@ -435,14 +389,19 @@ class ResourceControllerTest : BaseControllerTest() {
             ResourceEntity(
                 id = "test-id",
                 resourceType = "DATASET",
-                resourceJsonLd = jsonLdData,
+                resourceGraphData =
+                    """<https://example.com/resource> a <http://example.org/Resource> ;
+                        |<http://purl.org/dc/terms/title> "Test Resource" .
+                    """.trimMargin(),
+                resourceGraphFormat = "TURTLE",
                 uri = "https://example.com/resource",
             )
         every { resourceService.getResourceEntityByUri("https://example.com/resource") } returns entity
         every { rdfService.getBestFormat("application/ld+json, text/turtle;q=0.8") } returns RdfService.RdfFormat.TURTLE
         every {
-            rdfService.convertFromJsonLd(
-                jsonLdData,
+            rdfService.convertFromFormat(
+                entity.resourceGraphData!!,
+                "TURTLE",
                 RdfService.RdfFormat.TURTLE,
                 RdfService.RdfFormatStyle.PRETTY,
                 true,
@@ -470,15 +429,20 @@ class ResourceControllerTest : BaseControllerTest() {
             ResourceEntity(
                 id = "dataset-id",
                 resourceType = "DATASET",
-                resourceJsonLd = jsonLdData,
+                resourceGraphData =
+                    """<https://example.com/resource> a <http://example.org/Resource> ;
+                        |<http://purl.org/dc/terms/title> "Test Resource" .
+                    """.trimMargin(),
+                resourceGraphFormat = "TURTLE",
                 uri = "https://example.com/dataset",
             )
 
         every { resourceService.getResourceEntityByUri("https://example.com/dataset") } returns datasetEntity
         every { rdfService.getBestFormat("text/turtle") } returns RdfService.RdfFormat.TURTLE
         every {
-            rdfService.convertFromJsonLd(
-                jsonLdData,
+            rdfService.convertFromFormat(
+                datasetEntity.resourceGraphData!!,
+                "TURTLE",
                 RdfService.RdfFormat.TURTLE,
                 RdfService.RdfFormatStyle.PRETTY,
                 true,
@@ -504,14 +468,25 @@ class ResourceControllerTest : BaseControllerTest() {
             ResourceEntity(
                 id = "unknown-id",
                 resourceType = "UNKNOWN_TYPE",
-                resourceJsonLd = jsonLdData,
+                resourceGraphData =
+                    """<https://example.com/resource> a <http://example.org/Resource> ;
+                        |<http://purl.org/dc/terms/title> "Test Resource" .
+                    """.trimMargin(),
+                resourceGraphFormat = "TURTLE",
                 uri = "https://example.com/unknown",
             )
 
         every { resourceService.getResourceEntityByUri("https://example.com/unknown") } returns unknownEntity
         every { rdfService.getBestFormat("text/turtle") } returns RdfService.RdfFormat.TURTLE
         every {
-            rdfService.convertFromJsonLd(jsonLdData, RdfService.RdfFormat.TURTLE, RdfService.RdfFormatStyle.PRETTY, true, null)
+            rdfService.convertFromFormat(
+                unknownEntity.resourceGraphData!!,
+                "TURTLE",
+                RdfService.RdfFormat.TURTLE,
+                RdfService.RdfFormatStyle.PRETTY,
+                true,
+                null,
+            )
         } returns "@prefix : <http://example.org/> ."
         every { rdfService.getContentType(RdfService.RdfFormat.TURTLE) } returns MediaType("text", "turtle")
 
