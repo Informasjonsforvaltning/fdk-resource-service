@@ -12,8 +12,8 @@ import java.time.Instant
 /**
  * Entity representing a resource stored in the FDK Resource Service.
  *
- * This entity stores both the parsed JSON representation of RDF resources
- * and their JSON-LD graph representations for different use cases.
+ * This entity stores the parsed JSON representation of RDF resources (resourceJson)
+ * and the original RDF graph data (resourceGraphData) for different use cases.
  */
 @Entity
 @Table(name = "resources")
@@ -44,39 +44,30 @@ data class ResourceEntity(
     @Column(name = "resource_json", columnDefinition = "jsonb")
     val resourceJson: Map<String, Any>? = null,
     /**
-     * The JSON-LD 1.1 representation of the RDF graph without namespace prefixes.
+     * The original RDF graph data representation.
      *
-     * This field contains the RDF data converted to JSON-LD 1.1 format with all
-     * namespace prefixes expanded to full URIs. It provides a standardized
-     * way to access the complete RDF graph data in JSON format.
-     *
-     * Key differences from resourceJson:
-     * - Contains the full RDF graph structure
-     * - Uses expanded URIs (no namespace prefixes)
-     * - Stored in JSON-LD 1.1 pretty format (no @context or @graph wrapper)
-     * - Populated during HARVESTED and REASONED events
-     *
-     * Example structure (JSON-LD 1.1 pretty format):
-     * ```json
-     * {
-     *   "@id": "http://example.com/resource",
-     *   "@type": "http://example.org/Dataset",
-     *   "http://purl.org/dc/elements/1.1/title": "Resource Title",
-     *   "http://purl.org/dc/terms/description": "Resource description"
-     * }
-     * ```
+     * This field stores the original RDF data (typically in Turtle format), which is used
+     * for building union graphs and supporting multiple RDF formats in the future.
      */
-    @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "resource_json_ld", columnDefinition = "jsonb")
-    val resourceJsonLd: Map<String, Any>? = null,
+    @Column(name = "resource_graph_data", columnDefinition = "text")
+    val resourceGraphData: String? = null,
     /**
-     * The URI of the resource extracted from the JSON-LD graph.
+     * The format of the original RDF graph data.
      *
-     * This field stores the URI (@id) extracted from the JSON-LD representation,
+     * This field indicates the format of the original RDF data before conversion to Turtle.
+     * Supported formats: TURTLE, JSON_LD, RDF_XML, N_TRIPLES, N_QUADS.
+     * This allows supporting multiple input formats in the future.
+     */
+    @Column(name = "resource_graph_format", length = 50)
+    val resourceGraphFormat: String? = null,
+    /**
+     * The URI of the resource extracted from the RDF graph.
+     *
+     * This field stores the URI extracted from the RDF representation,
      * supporting both single node format and @graph format with multiple root nodes.
      * The URI is extracted based on the resource type and RDF type matching.
      *
-     * This allows efficient querying by URI without parsing JSONB.
+     * This allows efficient querying by URI without parsing JSONB or text.
      */
     @Column(name = "uri", length = 1000)
     val uri: String? = null,

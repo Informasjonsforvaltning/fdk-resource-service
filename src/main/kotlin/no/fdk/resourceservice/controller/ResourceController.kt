@@ -3,7 +3,6 @@ package no.fdk.resourceservice.controller
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.Parameter
 import io.swagger.v3.oas.annotations.media.Content
-import io.swagger.v3.oas.annotations.media.Schema
 import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.responses.ApiResponses
 import io.swagger.v3.oas.annotations.tags.Tag
@@ -118,25 +117,12 @@ class ResourceController(
             hidden = true,
         )
         @RequestHeader(HttpHeaders.ACCEPT, required = false) acceptHeader: String?,
-        @Parameter(
-            description = "RDF format style: 'pretty' (human-readable) or 'standard' (compact). Default: pretty",
-            schema = Schema(type = "string", allowableValues = ["pretty", "standard"]),
-            example = "pretty",
-        )
-        @RequestParam(name = "style", required = false, defaultValue = "pretty") style: String?,
-        @Parameter(description = "Whether to expand URIs (clear namespace prefixes). Default: true")
-        @RequestParam(name = "expandUris", required = false, defaultValue = "true") expandUris: Boolean?,
     ): ResponseEntity<Any> {
-        logger.debug("Getting resource graph with uri: {}, Accept: {}, style: {}, expandUris: {}", uri, acceptHeader, style, expandUris)
+        logger.debug("Getting resource graph with uri: {}, Accept: {}", uri, acceptHeader)
 
         val entity = resourceService.getResourceEntityByUri(uri)
-        return if (entity != null && entity.resourceJsonLd != null) {
+        return if (entity != null && entity.resourceGraphData != null) {
             val format = rdfService.getBestFormat(acceptHeader)
-            val styleEnum =
-                when (style?.lowercase()) {
-                    "standard" -> RdfFormatStyle.STANDARD
-                    else -> RdfFormatStyle.PRETTY
-                }
 
             // Convert string resource type to enum
             val resourceType =
@@ -147,12 +133,16 @@ class ResourceController(
                     null
                 }
 
+            // Get the stored format, defaulting to TURTLE if not specified
+            val storedFormat = entity.resourceGraphFormat ?: "TURTLE"
+
             val convertedData =
-                rdfService.convertFromJsonLd(
-                    entity.resourceJsonLd,
+                rdfService.convertFromFormat(
+                    entity.resourceGraphData,
+                    storedFormat,
                     format,
-                    styleEnum,
-                    expandUris ?: true,
+                    RdfFormatStyle.PRETTY,
+                    expandUris = true,
                     resourceType, // Use resource-specific prefixes based on the resource type
                 )
 

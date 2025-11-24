@@ -16,7 +16,7 @@ USER $USER
 WORKDIR $HOME
 
 COPY --chown=$USER:$USER /target/fdk-resource-service-*.jar app.jar
-CMD ["sh", "-c", "java -jar -XX:+UseZGC \
+CMD ["sh", "-c", "java -jar \
          -Dorg.xerial.snappy.use.systemlib=true \
          -Dorg.xerial.snappy.lib.path=/usr/lib/libsnappy.so.1 \
          $JAVA_OPTS app.jar"]

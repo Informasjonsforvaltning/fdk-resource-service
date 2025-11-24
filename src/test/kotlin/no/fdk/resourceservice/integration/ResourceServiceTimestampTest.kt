@@ -197,21 +197,29 @@ class ResourceServiceTimestampTest : BaseIntegrationTest() {
         val reharvestTimestamp = deleteTimestamp + 1000
 
         // When - Original harvest
-        resourceService.storeResourceJsonLd(resourceId, ResourceType.CONCEPT, originalData, originalTimestamp)
-        assertNotNull(resourceService.getResourceJsonLd(resourceId, ResourceType.CONCEPT))
+        val originalTurtle =
+            """<https://example.com/original> a <http://www.w3.org/2004/02/skos/core#Concept> ;
+                |<http://purl.org/dc/terms/title> "Original Resource" .
+            """.trimMargin()
+        resourceService.storeResourceGraphData(resourceId, ResourceType.CONCEPT, originalTurtle, "TURTLE", originalTimestamp)
+        assertNotNull(resourceService.getResourceEntity(resourceId, ResourceType.CONCEPT))
 
         // When - Resource is deleted
         resourceService.markResourceAsDeleted(resourceId, ResourceType.CONCEPT, deleteTimestamp)
         // Note: Resource is still retrievable even when marked as deleted
 
         // When - Resource is harvested again (should undelete it)
-        val reharvestData = mapOf("@id" to "https://example.com/reharvested", "title" to "Re-harvested Resource")
-        resourceService.storeResourceJsonLd(resourceId, ResourceType.CONCEPT, reharvestData, reharvestTimestamp)
+        val reharvestTurtle =
+            """<https://example.com/reharvested> a <http://www.w3.org/2004/02/skos/core#Concept> ;
+                |<http://purl.org/dc/terms/title> "Re-harvested Resource" .
+            """.trimMargin()
+        resourceService.storeResourceGraphData(resourceId, ResourceType.CONCEPT, reharvestTurtle, "TURTLE", reharvestTimestamp)
 
         // Then - Resource should be available with updated data and not deleted
-        val retrieved = resourceService.getResourceJsonLd(resourceId, ResourceType.CONCEPT)
+        val retrieved = resourceService.getResourceEntity(resourceId, ResourceType.CONCEPT)
         assertNotNull(retrieved)
-        assertEquals("Re-harvested Resource", retrieved!!["title"])
+        assertNotNull(retrieved!!.resourceGraphData)
+        assertTrue(retrieved.resourceGraphData!!.contains("Re-harvested Resource"))
 
         // Verify the deleted flag is cleared in the database
         val entity = resourceRepository.findById(resourceId).orElse(null)

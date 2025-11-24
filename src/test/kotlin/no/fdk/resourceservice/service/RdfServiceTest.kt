@@ -61,21 +61,21 @@ class RdfServiceTest {
     }
 
     @Test
-    fun `getBestFormat should return JSON_LD when Accept header is null`() {
+    fun `getBestFormat should return TURTLE when Accept header is null`() {
         // When
         val result = rdfService.getBestFormat(null)
 
         // Then
-        assertEquals(RdfService.RdfFormat.JSON_LD, result)
+        assertEquals(RdfService.RdfFormat.TURTLE, result)
     }
 
     @Test
-    fun `getBestFormat should return JSON_LD when Accept header is blank`() {
+    fun `getBestFormat should return TURTLE when Accept header is blank`() {
         // When
         val result = rdfService.getBestFormat("")
 
         // Then
-        assertEquals(RdfService.RdfFormat.JSON_LD, result)
+        assertEquals(RdfService.RdfFormat.TURTLE, result)
     }
 
     @Test
@@ -124,12 +124,12 @@ class RdfServiceTest {
     }
 
     @Test
-    fun `getBestFormat should return JSON_LD when no match found`() {
+    fun `getBestFormat should return TURTLE when no match found`() {
         // When
         val result = rdfService.getBestFormat("application/json")
 
         // Then
-        assertEquals(RdfService.RdfFormat.JSON_LD, result)
+        assertEquals(RdfService.RdfFormat.TURTLE, result)
     }
 
     @Test

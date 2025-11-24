@@ -1,5 +1,6 @@
 package no.fdk.resourceservice.service
 
+import com.fasterxml.jackson.core.type.TypeReference
 import com.fasterxml.jackson.databind.ObjectMapper
 import no.fdk.resourceservice.model.ResourceType
 import org.apache.jena.rdf.model.Model
@@ -58,11 +59,11 @@ class RdfService(
      * Determines the best RDF format based on the Accept header.
      *
      * @param acceptHeader The value of the Accept HTTP header.
-     * @return The best matching RdfFormat, or JSON_LD if no match or header is null/empty.
+     * @return The best matching RdfFormat, or TURTLE if no match or header is null/empty.
      */
     fun getBestFormat(acceptHeader: String?): RdfFormat {
         if (acceptHeader.isNullOrBlank()) {
-            return RdfFormat.JSON_LD
+            return RdfFormat.TURTLE
         }
 
         val acceptTypes =
@@ -80,8 +81,8 @@ class RdfService(
             }
         }
 
-        // Fallback to JSON_LD if no specific match
-        return RdfFormat.JSON_LD
+        // Fallback to TURTLE if no specific match
+        return RdfFormat.TURTLE
     }
 
     /**
@@ -93,34 +94,144 @@ class RdfService(
     fun getContentType(format: RdfFormat): MediaType = format.mediaType
 
     /**
+     * Converts from any RDF format to any target format.
+     *
+     * @param graphData The RDF graph data as a string
+     * @param fromFormat The source RDF format (TURTLE, JSON_LD, RDF_XML, N_TRIPLES, N_QUADS)
+     * @param toFormat The target RDF format
+     * @param style The format style (PRETTY or STANDARD)
+     * @param expandUris Whether to expand URIs (clear namespace prefixes, default: false)
+     * @param resourceType Optional resource type to use resource-specific namespace prefixes
+     */
+    fun convertFromFormat(
+        graphData: String,
+        fromFormat: String,
+        toFormat: RdfFormat,
+        style: RdfFormatStyle,
+        expandUris: Boolean = false,
+        resourceType: ResourceType? = null,
+    ): String? {
+        val fromLang =
+            mapFormatToLang(fromFormat)
+                ?: run {
+                    logger.error("Unsupported source format: $fromFormat")
+                    return null
+                }
+
+        val model = ModelFactory.createDefaultModel()
+        try {
+            ByteArrayInputStream(graphData.toByteArray()).use { inputStream ->
+                RDFDataMgr.read(model, inputStream, fromLang)
+            }
+
+            // Use convertFromModel to handle prefixes and formatting
+            return convertFromModel(model, toFormat, style, expandUris, resourceType)
+        } catch (e: Exception) {
+            logger.error("Failed to parse graph data from format $fromFormat: ${e.message}", e)
+            return null
+        } finally {
+            model.close()
+        }
+    }
+
+    /**
+     * Maps format string to Jena Lang enum.
+     *
+     * @param format The format string (TURTLE, JSON_LD, RDF_XML, N_TRIPLES, N_QUADS)
+     * @return The corresponding Jena Lang, or null if unsupported
+     */
+    private fun mapFormatToLang(format: String?): Lang? {
+        if (format == null) {
+            return Lang.TURTLE // Default to TURTLE if format is null
+        }
+        return when (format.uppercase()) {
+            "TURTLE" -> Lang.TURTLE
+            "JSON_LD", "JSONLD" -> Lang.JSONLD
+            "RDF_XML", "RDFXML" -> Lang.RDFXML
+            "N_TRIPLES", "NTRIPLES" -> Lang.NTRIPLES
+            "N_QUADS", "NQUADS" -> Lang.NQUADS
+            else -> null
+        }
+    }
+
+    /**
      * Converts from Turtle format to any target format.
+     *
+     * @param turtleData The Turtle RDF data as a string
+     * @param toFormat The target RDF format
+     * @param style The format style (PRETTY or STANDARD)
+     * @param expandUris Whether to expand URIs (clear namespace prefixes, default: false)
+     * @param resourceType Optional resource type to use resource-specific namespace prefixes
      */
     fun convertFromTurtle(
         turtleData: String,
         toFormat: RdfFormat,
         style: RdfFormatStyle,
         expandUris: Boolean = false,
+        resourceType: ResourceType? = null,
+    ): String? = convertFromFormat(turtleData, "TURTLE", toFormat, style, expandUris, resourceType)
+
+    /**
+     * Converts a Jena Model directly to any target format.
+     * This is more efficient than converting through intermediate formats.
+     *
+     * For large models (like union graphs), this method optimizes memory usage
+     * by working directly on the model when possible, avoiding unnecessary copies.
+     *
+     * @param model The Jena Model to convert
+     * @param toFormat The target RDF format
+     * @param style The format style (PRETTY or STANDARD)
+     * @param expandUris Whether to expand URIs (clear namespace prefixes, default: false)
+     * @param resourceType Optional resource type to use resource-specific namespace prefixes
+     * @return The converted RDF data as a String, or null if conversion failed
+     */
+    fun convertFromModel(
+        model: org.apache.jena.rdf.model.Model,
+        toFormat: RdfFormat,
+        style: RdfFormatStyle,
+        expandUris: Boolean = false,
+        resourceType: ResourceType? = null,
     ): String? {
-        val model = ModelFactory.createDefaultModel()
-        try {
-            ByteArrayInputStream(turtleData.toByteArray()).use { inputStream ->
-                RDFDataMgr.read(model, inputStream, Lang.TURTLE)
+        // For large models (like union graphs), we optimize by avoiding unnecessary copies.
+        // We only create a copy if we need to modify namespace prefixes for a specific resource type.
+        // For union graphs (resourceType == null), we can work directly on the model since
+        // it's only used once for conversion and will be closed by the caller.
+        val needsCopy = !expandUris && resourceType != null
+        val workingModel =
+            if (needsCopy) {
+                // Create a copy only when we need to add resource-specific prefixes
+                val copy = ModelFactory.createDefaultModel()
+                copy.add(model)
+                copy
+            } else {
+                // Work directly on the original model (safe for union graphs)
+                model
             }
 
+        try {
             if (expandUris) {
-                model.clearNsPrefixMap()
+                workingModel.clearNsPrefixMap()
+            } else {
+                // Add prefixes: resource-specific if resourceType provided, common otherwise
+                addPrefixesForResourceType(workingModel, resourceType)
             }
 
             val rdfFormat = getRdfFormat(toFormat, style)
             val result =
                 StringWriter().use { outputStream ->
-                    RDFDataMgr.write(outputStream, model, rdfFormat)
+                    RDFDataMgr.write(outputStream, workingModel, rdfFormat)
                     outputStream.toString()
                 }
 
             return handleSpecialCases(result, rdfFormat)
+        } catch (e: Exception) {
+            logger.error("Failed to convert model to format {}: {}", toFormat, e.message, e)
+            return null
         } finally {
-            model.close()
+            // Only close if we created a copy (the original model is closed by the caller)
+            if (needsCopy) {
+                workingModel.close()
+            }
         }
     }
 
@@ -153,25 +264,25 @@ class RdfService(
                 RDFDataMgr.read(model, inputStream, Lang.JSONLD)
             }
 
-            if (expandUris) {
-                model.clearNsPrefixMap()
-            } else {
-                // Add resource-specific prefixes when expandUris is false
-                addPrefixesForResourceType(model, resourceType)
-            }
-
-            val rdfFormat = getRdfFormat(toFormat, style)
-            val result =
-                StringWriter().use { outputStream ->
-                    RDFDataMgr.write(outputStream, model, rdfFormat)
-                    outputStream.toString()
-                }
-
-            return handleSpecialCases(result, rdfFormat)
+            // Use the new convertFromModel method
+            return convertFromModel(model, toFormat, style, expandUris, resourceType)
         } finally {
             model.close()
         }
     }
+
+    /**
+     * Converts a Jena Model to the requested format with optimized defaults for union graphs.
+     * Uses STANDARD style and keeps prefixes (expandUris=false) for best performance.
+     *
+     * @param model The Jena Model to convert
+     * @param toFormat The target RDF format
+     * @return The converted RDF data as a String, or null if conversion failed
+     */
+    fun convertFromModelForUnionGraph(
+        model: org.apache.jena.rdf.model.Model,
+        toFormat: RdfFormat,
+    ): String? = convertFromModel(model, toFormat, RdfFormatStyle.STANDARD, expandUris = false, resourceType = null)
 
     /**
      * Maps format and style enums to RDFFormat enum.
@@ -210,8 +321,11 @@ class RdfService(
 
             if (jsonLdString != null) {
                 // Parse JSON-LD string to Map
-                @Suppress("UNCHECKED_CAST")
-                val jsonLdMap = objectMapper.readValue(jsonLdString, Map::class.java) as Map<String, Any>
+                val jsonLdMap =
+                    objectMapper.readValue(
+                        jsonLdString,
+                        object : TypeReference<Map<String, Any>>() {},
+                    )
                 logger.debug("Successfully converted Turtle to JSON-LD Map")
                 jsonLdMap
             } else {

@@ -78,35 +78,31 @@ abstract class BaseController(
      * @param id The resource ID
      * @param resourceType The type of resource
      * @param acceptHeader The Accept header for content negotiation
-     * @param style The RDF format style (optional, defaults to PRETTY)
-     * @param expandUris Whether to expand URIs (clear namespace prefixes, optional, defaults to true)
      * @return ResponseEntity with the graph data in the requested format
      */
     protected fun handleGraphRequest(
         id: String,
         resourceType: ResourceType,
         @RequestHeader(HttpHeaders.ACCEPT, required = false) acceptHeader: String?,
-        style: RdfFormatStyle = RdfFormatStyle.PRETTY,
-        expandUris: Boolean = true,
     ): ResponseEntity<Any> {
         logger.debug(
-            "Getting graph for {} with id: {}, Accept: {}, style: {}, expandUris: {}",
+            "Getting graph for {} with id: {}, Accept: {}",
             resourceType.name.lowercase(),
             id,
             acceptHeader,
-            style,
-            expandUris,
         )
 
-        val jsonLdData = resourceService.getResourceJsonLd(id, resourceType)
-        return if (jsonLdData != null) {
+        val entity = resourceService.getResourceEntity(id, resourceType)
+        return if (entity != null && entity.resourceGraphData != null) {
             val format = rdfService.getBestFormat(acceptHeader)
+            val storedFormat = entity.resourceGraphFormat ?: "TURTLE"
             val convertedData =
-                rdfService.convertFromJsonLd(
-                    jsonLdData,
+                rdfService.convertFromFormat(
+                    entity.resourceGraphData,
+                    storedFormat,
                     format,
-                    style,
-                    expandUris,
+                    RdfFormatStyle.PRETTY,
+                    expandUris = true,
                     resourceType,
                 )
 
@@ -131,31 +127,28 @@ abstract class BaseController(
      * @param uri The resource URI
      * @param resourceType The type of resource
      * @param acceptHeader The Accept header for content negotiation
-     * @param style The RDF format style (optional, defaults to PRETTY)
-     * @param expandUris Whether to expand URIs (clear namespace prefixes, optional, defaults to true)
      * @return ResponseEntity with the graph data in the requested format
      */
     protected fun handleGraphRequestByUri(
         uri: String,
         resourceType: ResourceType,
         @RequestHeader(HttpHeaders.ACCEPT, required = false) acceptHeader: String?,
-        style: RdfFormatStyle = RdfFormatStyle.PRETTY,
-        expandUris: Boolean = true,
     ): ResponseEntity<Any> {
         logger.debug(
-            "Getting graph for ${resourceType.name.lowercase()} with uri: $uri, " +
-                "Accept: $acceptHeader, style: $style, expandUris: $expandUris",
+            "Getting graph for ${resourceType.name.lowercase()} with uri: $uri, Accept: $acceptHeader",
         )
 
-        val jsonLdData = resourceService.getResourceJsonLdByUri(uri, resourceType)
-        return if (jsonLdData != null) {
+        val entity = resourceService.getResourceEntityByUri(uri)
+        return if (entity != null && entity.resourceType == resourceType.name && entity.resourceGraphData != null) {
             val format = rdfService.getBestFormat(acceptHeader)
+            val storedFormat = entity.resourceGraphFormat ?: "TURTLE"
             val convertedData =
-                rdfService.convertFromJsonLd(
-                    jsonLdData,
+                rdfService.convertFromFormat(
+                    entity.resourceGraphData,
+                    storedFormat,
                     format,
-                    style,
-                    expandUris,
+                    RdfFormatStyle.PRETTY,
+                    expandUris = true,
                     resourceType,
                 )
 

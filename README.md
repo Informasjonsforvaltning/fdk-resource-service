@@ -1,84 +1,69 @@
 # FDK Resource Service
 
-This is a Kotlin/Spring Boot implementation of the FDK Resource Service, migrated from the original Go implementation.
+This application provides an API for the management of resources (concepts, datasets, data services, information models, services, and events) in the FDK (Felles Datakatalog) ecosystem. Resources are stored as RDF data and can be accessed in multiple serialization formats (JSON-LD, Turtle, RDF/XML, N-Triples, N-Quads).
+
+The service consumes Kafka events for real-time resource updates and provides REST endpoints for querying and accessing resources. It also supports building union graphs that combine multiple resource graphs into a single queryable graph.
+
+For a broader understanding of the system's context, refer to the [architecture documentation](https://github.com/Informasjonsforvaltning/architecture-documentation) wiki.
+
+## Getting Started
+
+These instructions will give you a copy of the project up and running on your local machine for development and testing purposes.
+
+### Prerequisites
+
+Ensure you have the following installed:
+
+- Java 21
+- Maven
+- Docker
+
+### Running locally
+
+Clone the repository
+
+```sh
+git clone https://github.com/Informasjonsforvaltning/fdk-resource-service.git
+cd fdk-resource-service
+```
+
+Start PostgreSQL, Kafka, and Schema Registry (either through your IDE using the dev profile, or via CLI):
+
+```sh
+docker compose up -d
+mvn spring-boot:run -Dspring-boot.run.profiles=dev
+```
+
+### API Documentation (OpenAPI)
+
+Once the application is running locally, the API documentation can be accessed at http://localhost:8080/swagger-ui/index.html
+
+### Running tests
+
+```sh
+mvn verify
+```
 
 ## Features
 
-- REST API for managing resources (concepts, datasets, data services, etc.)
-- Kafka event consumption for real-time updates
-- PostgreSQL database with JSONB support for flexible resource storage
-- JWT-based authentication
-- Health checks and monitoring
+- **REST API** for managing resources (concepts, datasets, data services, information models, services, events)
+- **Kafka event consumption** for real-time resource updates
+- **PostgreSQL database** with JSONB support for flexible resource storage
+- **RDF graph support** with multiple serialization formats (JSON-LD, Turtle, RDF/XML, N-Triples, N-Quads)
+- **Union graphs** for combining multiple resource graphs into a single queryable graph
+- **Content negotiation** for RDF graph endpoints
+- **JWT-based authentication** for secured endpoints
+- **Health checks and monitoring** via Spring Boot Actuator
 
 ## Technology Stack
 
 - **Language**: Kotlin
-- **Framework**: Spring Boot 3.3.5
+- **Framework**: Spring Boot 3.5.6
 - **Database**: PostgreSQL with JSONB
 - **Message Queue**: Apache Kafka with Avro serialization
+- **Schema Registry**: Confluent Schema Registry
 - **Authentication**: OAuth2 JWT
 - **Build Tool**: Maven
-
-## Database Design Decision: JPA vs Plain SQL
-
-For this application, we use **JPA with custom SQL queries** for the following reasons:
-
-### Why JPA + Custom SQL:
-
-1. **JSONB Support**: PostgreSQL's JSONB is well-supported by Hibernate with `@JdbcTypeCode(SqlTypes.JSON)`
-2. **Type Safety**: JPA provides compile-time type safety and reduces boilerplate
-3. **Transaction Management**: Spring's `@Transactional` provides declarative transaction management
-4. **Custom Queries**: We can use `@Query` annotations for complex PostgreSQL-specific queries
-5. **Performance**: Custom SQL queries allow us to optimize for PostgreSQL's JSONB capabilities
-
-### When to Use Plain SQL:
-
-- Complex analytical queries
-- Performance-critical operations requiring raw SQL optimization
-- Database-specific features not supported by JPA
-
-## Getting Started
-
-### Prerequisites
-
-- Java 21
-- Maven 3.8+
-- Docker and Docker Compose
-
-### Running Locally
-
-1. **Start infrastructure services:**
-
-   ```bash
-   docker-compose up -d postgres schema-registry kafka
-   ```
-
-2. **Run the application:**
-
-   ```bash
-   mvn spring-boot:run -Dspring-boot.run.profiles=dev
-   ```
-
-3. **Access the API:**
-   - Health check: http://localhost:8080/v1/health
-   - Concepts: http://localhost:8080/v1/concepts
-   - Datasets: http://localhost:8080/v1/datasets
-   - Data Services: http://localhost:8080/v1/data-services
-   - **Swagger UI**: http://localhost:8080/swagger-ui.html
-   - **OpenAPI JSON**: http://localhost:8080/api-docs
-
-### Running with Docker
-
-```bash
-docker-compose up --build
-```
-
-## API Documentation
-
-The API is fully documented with OpenAPI 3.0 (Swagger) specifications:
-
-- **Swagger UI**: http://localhost:8080/swagger-ui.html
-- **OpenAPI JSON**: http://localhost:8080/api-docs
 
 ## API Endpoints
 
@@ -138,6 +123,16 @@ The API is fully documented with OpenAPI 3.0 (Swagger) specifications:
 - `GET /v1/information-models/by-uri/graph?uri={uri}` - Get information model RDF graph by URI (supports content negotiation)
 - `DELETE /v1/information-models/{id}` - Delete information model
 
+### Union Graphs
+
+- `POST /v1/union-graphs` - Create a union graph order
+- `GET /v1/union-graphs` - List all union graphs
+- `GET /v1/union-graphs/{id}` - Get union graph details
+- `GET /v1/union-graphs/{id}/status` - Get union graph status
+- `GET /v1/union-graphs/{id}/graph` - Get union graph (supports content negotiation)
+- `POST /v1/union-graphs/{id}/reset` - Reset union graph to pending
+- `DELETE /v1/union-graphs/{id}` - Delete union graph
+
 ### Health
 
 - `GET /v1/health` - Health check endpoint
@@ -160,19 +155,13 @@ Use the `Accept` header to specify the desired RDF format:
 
 ```bash
 # Get as JSON-LD (default)
-curl -H "Accept: application/ld+json" /v1/datasets/123/graph
+curl -H "Accept: application/ld+json" http://localhost:8080/v1/datasets/123/graph
 
 # Get as Turtle
-curl -H "Accept: text/turtle" /v1/datasets/123/graph
+curl -H "Accept: text/turtle" http://localhost:8080/v1/datasets/123/graph
 
 # Get as RDF/XML
-curl -H "Accept: application/rdf+xml" /v1/datasets/123/graph
-
-# Get as N-Triples
-curl -H "Accept: application/n-triples" /v1/datasets/123/graph
-
-# Get as N-Quads
-curl -H "Accept: application/n-quads" /v1/datasets/123/graph
+curl -H "Accept: application/rdf+xml" http://localhost:8080/v1/datasets/123/graph
 ```
 
 If no `Accept` header is provided, the endpoint defaults to JSON-LD format.
@@ -181,11 +170,13 @@ If no `Accept` header is provided, the endpoint defaults to JSON-LD format.
 
 The application uses environment variables for configuration:
 
-- `DATABASE_URL` - PostgreSQL connection string
-- `DATABASE_USERNAME` - Database username
-- `DATABASE_PASSWORD` - Database password
-- `KAFKA_BOOTSTRAP_SERVERS` - Kafka bootstrap servers
-- `SCHEMA_REGISTRY_URL` - Schema registry URL
+- `POSTGRES_HOST` - PostgreSQL host (default: localhost)
+- `POSTGRES_PORT` - PostgreSQL port (default: 5432)
+- `POSTGRES_DB` - Database name (default: fdk_resource)
+- `POSTGRES_USERNAME` - Database username (default: postgres)
+- `POSTGRES_PASSWORD` - Database password (default: postgres)
+- `KAFKA_BOOTSTRAP_SERVERS` - Kafka bootstrap servers (default: kafka:9092)
+- `SCHEMA_REGISTRY_URL` - Schema registry URL (default: http://schema-registry:8081)
 - `JWT_ISSUER_URI` - JWT issuer URI
 - `JWT_JWK_SET_URI` - JWT JWK set URI
 
@@ -194,9 +185,9 @@ The application uses environment variables for configuration:
 ### Project Structure
 
 ```
-src/main/kotlin/no/fdk/fdk_resource_service/
+src/main/kotlin/no/fdk/resourceservice/
 ├── controller/          # REST controllers
-├── model/              # Data models and DTOs
+├── model/              # Data models and entities
 ├── repository/         # Data access layer
 ├── service/           # Business logic
 ├── kafka/             # Kafka consumers
@@ -209,42 +200,37 @@ Database migrations are handled by Flyway and located in `src/main/resources/db/
 
 ### Testing
 
+The project includes both unit tests and integration tests using Testcontainers:
+
 ```bash
+# Run all tests
+mvn verify
+
+# Run only unit tests
 mvn test
+
+# Run only integration tests
+mvn verify -Dtest=*IntegrationTest
 ```
 
-## Migration from Go
-
-The original Go code has been moved to the `legacy/` folder. The new Kotlin implementation provides:
-
-1. **Same API endpoints** as the original Go service
-2. **Enhanced type safety** with Kotlin's type system
-3. **Better error handling** with Spring's exception handling
-4. **Improved maintainability** with Spring Boot's conventions
-5. **Better testing support** with Spring Boot Test
-
-### Legacy Endpoint Support
-
-Temporary redirects (HTTP 307) are provided for legacy endpoints to ensure backward compatibility during migration:
-
-- Legacy endpoints (e.g., `/concepts`, `/datasets`) redirect to v1 endpoints (e.g., `/v1/concepts`, `/v1/datasets`)
-- Legacy health endpoints (`/ping`, `/ready`) redirect to `/health`
-- All redirects are logged for monitoring purposes
-
-**Note**: These redirects should be removed after clients have migrated to v1 endpoints.
+See [TESTING.md](TESTING.md) for more details on testing.
 
 ## Monitoring
 
 The application includes:
 
-- Health checks at `/health`
-- Actuator endpoints for monitoring
+- Health checks at `/actuator/health`
+- Actuator endpoints for monitoring (`/actuator/metrics`, `/actuator/prometheus`)
 - Structured logging with SLF4J
-- Metrics collection
+- Metrics collection via Micrometer
 
 ## Security
 
-- OAuth2 JWT authentication
+- OAuth2 JWT authentication for secured endpoints
 - Input validation and sanitization
 - SQL injection prevention through parameterized queries
 - CORS configuration for cross-origin requests
+
+## License
+
+See [LICENSE](LICENSE) file for details.
