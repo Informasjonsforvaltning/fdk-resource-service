@@ -58,6 +58,11 @@ spec:
                 secretKeyRef:
                   name: kafka
                   key: SCHEMA_REGISTRY
+            - name: UNION_GRAPHS_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: fdk-resource-service
+                  key: UNION_GRAPHS_API_KEY
           image: fdk-resource-service
           imagePullPolicy: Always
           ports:
