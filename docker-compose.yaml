@@ -84,6 +84,7 @@ services:
       SCHEMA_REGISTRY_URL: http://schema-registry:8081
       UNION_GRAPHS_DELETE_ENABLED: true
       UNION_GRAPHS_RESET_ENABLED: true
+      UNION_GRAPHS_API_KEY: test-api-key
 
 volumes:
   postgres_data:

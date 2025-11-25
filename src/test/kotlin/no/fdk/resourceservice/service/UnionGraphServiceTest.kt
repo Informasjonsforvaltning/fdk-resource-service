@@ -6,6 +6,7 @@ import io.mockk.mockk
 import io.mockk.verify
 import no.fdk.resourceservice.model.ResourceType
 import no.fdk.resourceservice.model.UnionGraphOrder
+import no.fdk.resourceservice.model.UnionGraphResourceFilters
 import no.fdk.resourceservice.repository.ResourceRepository
 import no.fdk.resourceservice.repository.UnionGraphOrderRepository
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -48,7 +49,7 @@ class UnionGraphServiceTest {
         val updateTtlHours = 24
         val webhookUrl = "https://example.com/webhook"
 
-        every { unionGraphOrderRepository.findByConfiguration(any(), any(), any()) } returns null
+        every { unionGraphOrderRepository.findByConfiguration(any(), any(), any(), any()) } returns null
         every { unionGraphOrderRepository.save(any()) } answers { firstArg() }
 
         // When
@@ -81,6 +82,7 @@ class UnionGraphServiceTest {
                 "{CONCEPT}",
                 12,
                 "https://example.com/webhook",
+                null,
             )
         } returns existingOrder
 
@@ -108,7 +110,7 @@ class UnionGraphServiceTest {
     @Test
     fun `createOrder should accept null webhook URL`() {
         // Given
-        every { unionGraphOrderRepository.findByConfiguration(any(), any(), any()) } returns null
+        every { unionGraphOrderRepository.findByConfiguration(any(), any(), any(), any()) } returns null
         every { unionGraphOrderRepository.save(any()) } answers { firstArg() }
 
         // When
@@ -122,7 +124,7 @@ class UnionGraphServiceTest {
     @Test
     fun `createOrder should accept empty resource types list`() {
         // Given
-        every { unionGraphOrderRepository.findByConfiguration(null, any(), any()) } returns null
+        every { unionGraphOrderRepository.findByConfiguration(null, any(), any(), any()) } returns null
         every { unionGraphOrderRepository.save(any()) } answers { firstArg() }
 
         // When
@@ -138,7 +140,7 @@ class UnionGraphServiceTest {
     fun `createOrder should sort resource types for consistency`() {
         // Given
         val resourceTypes = listOf(ResourceType.DATASET, ResourceType.CONCEPT)
-        every { unionGraphOrderRepository.findByConfiguration(any(), any(), any()) } returns null
+        every { unionGraphOrderRepository.findByConfiguration(any(), any(), any(), any()) } returns null
         every { unionGraphOrderRepository.save(any()) } answers { firstArg() }
 
         // When
@@ -146,6 +148,59 @@ class UnionGraphServiceTest {
 
         // Then
         assertEquals(listOf("CONCEPT", "DATASET"), result.order.resourceTypes)
+    }
+
+    @Test
+    fun `createOrder should persist dataset filters`() {
+        // Given
+        val filters =
+            UnionGraphResourceFilters(
+                dataset =
+                    UnionGraphResourceFilters.DatasetFilters(
+                        isOpenData = true,
+                        isRelatedToTransportportal = null,
+                    ),
+            )
+        every { unionGraphOrderRepository.findByConfiguration(any(), any(), any(), any()) } returns null
+        every { unionGraphOrderRepository.save(any()) } answers { firstArg() }
+
+        // When
+        val result =
+            unionGraphService.createOrder(
+                resourceTypes = listOf(ResourceType.DATASET),
+                resourceFilters = filters,
+            )
+
+        // Then
+        assertTrue(result.isNew)
+        assertEquals(
+            true,
+            result.order.resourceFilters
+                ?.dataset
+                ?.isOpenData,
+        )
+        assertNull(
+            result.order.resourceFilters
+                ?.dataset
+                ?.isRelatedToTransportportal,
+        )
+    }
+
+    @Test
+    fun `createOrder should throw when dataset filters used without dataset type`() {
+        // Given
+        val filters =
+            UnionGraphResourceFilters(
+                dataset = UnionGraphResourceFilters.DatasetFilters(isOpenData = true),
+            )
+
+        // When & Then
+        assertThrows<IllegalArgumentException> {
+            unionGraphService.createOrder(
+                resourceTypes = listOf(ResourceType.CONCEPT),
+                resourceFilters = filters,
+            )
+        }
     }
 
     @Test
@@ -293,6 +348,26 @@ class UnionGraphServiceTest {
 
         // Then
         assertNull(result)
+    }
+
+    @Test
+    fun `buildUnionGraph should apply dataset filters`() {
+        // Given
+        every { resourceRepository.countDatasetsByFilters("true", null) } returns 0L
+
+        // When
+        val result =
+            unionGraphService.buildUnionGraph(
+                listOf(ResourceType.DATASET),
+                UnionGraphResourceFilters(
+                    dataset = UnionGraphResourceFilters.DatasetFilters(isOpenData = true),
+                ),
+            )
+
+        // Then
+        assertNull(result)
+        verify { resourceRepository.countDatasetsByFilters("true", null) }
+        verify(exactly = 0) { resourceRepository.countByResourceTypeAndDeletedFalse("DATASET") }
     }
 
     @Test

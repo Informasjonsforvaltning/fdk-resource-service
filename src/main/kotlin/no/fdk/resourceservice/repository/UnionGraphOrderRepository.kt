@@ -200,6 +200,12 @@ interface UnionGraphOrderRepository : JpaRepository<UnionGraphOrder, String> {
                 ELSE webhook_url = :webhookUrl
             END
         )
+        AND (
+            CASE
+                WHEN :resourceFilters IS NULL THEN resource_filters IS NULL
+                ELSE resource_filters = CAST(:resourceFilters AS jsonb)
+            END
+        )
         ORDER BY 
             CASE status 
                 WHEN 'COMPLETED' THEN 1
@@ -216,5 +222,6 @@ interface UnionGraphOrderRepository : JpaRepository<UnionGraphOrder, String> {
         @Param("resourceTypes") resourceTypes: String?,
         @Param("updateTtlHours") updateTtlHours: Int,
         @Param("webhookUrl") webhookUrl: String?,
+        @Param("resourceFilters") resourceFilters: String?,
     ): UnionGraphOrder?
 }

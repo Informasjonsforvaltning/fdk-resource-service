@@ -31,8 +31,8 @@ class UnionGraphProcessor(
      */
     private val instanceId: String =
         try {
-            "${InetAddress.getLocalHost().hostName}-${System.getProperty("user.name")}-${Thread.currentThread().id}"
-        } catch (e: Exception) {
+            "${InetAddress.getLocalHost().hostName}-${System.getProperty("user.name")}-${Thread.currentThread().threadId()}"
+        } catch (_: Exception) {
             "unknown-${System.currentTimeMillis()}"
         }
 
@@ -175,7 +175,7 @@ class UnionGraphProcessor(
             val staleOrders =
                 unionGraphOrderRepository
                     .findByStatus(UnionGraphOrder.GraphStatus.PROCESSING)
-                    .filter { it.lockedAt != null && it.lockedAt!!.isBefore(lockTimeout) }
+                    .filter { it.lockedAt != null && it.lockedAt.isBefore(lockTimeout) }
 
             for (order in staleOrders) {
                 logger.warn(

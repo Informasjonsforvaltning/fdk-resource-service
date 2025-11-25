@@ -1,5 +1,6 @@
 package no.fdk.resourceservice.service
 
+import com.fasterxml.jackson.core.type.TypeReference
 import com.fasterxml.jackson.databind.ObjectMapper
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker
 import io.micrometer.core.instrument.Metrics
@@ -77,7 +78,10 @@ class CircuitBreakerService(
 
                     val resourceJson =
                         try {
-                            objectMapper.readValue(event.data, Map::class.java) as Map<String, Any>
+                            objectMapper.readValue(
+                                event.data,
+                                object : TypeReference<Map<String, Any>>() {},
+                            )
                         } catch (e: Exception) {
                             logger.error("JSON parse failed: id=${event.fdkId}, error=${e.message}", e)
                             Metrics

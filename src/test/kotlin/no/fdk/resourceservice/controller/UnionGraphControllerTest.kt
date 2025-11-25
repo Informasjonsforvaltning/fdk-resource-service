@@ -5,6 +5,7 @@ import io.mockk.every
 import no.fdk.resourceservice.config.UnionGraphFeatureConfig
 import no.fdk.resourceservice.model.ResourceType
 import no.fdk.resourceservice.model.UnionGraphOrder
+import no.fdk.resourceservice.model.UnionGraphResourceFilters
 import no.fdk.resourceservice.service.RdfService
 import no.fdk.resourceservice.service.UnionGraphService
 import org.junit.jupiter.api.Test
@@ -64,6 +65,7 @@ class UnionGraphControllerTest : BaseControllerTest() {
                 listOf(ResourceType.CONCEPT),
                 24,
                 "https://example.com/webhook",
+                null,
             )
         } returns UnionGraphService.CreateOrderResult(order, isNew = true)
 
@@ -106,6 +108,7 @@ class UnionGraphControllerTest : BaseControllerTest() {
                 listOf(ResourceType.DATASET),
                 0,
                 null,
+                null,
             )
         } returns UnionGraphService.CreateOrderResult(order, isNew = false)
 
@@ -134,6 +137,7 @@ class UnionGraphControllerTest : BaseControllerTest() {
                 null,
                 0,
                 "http://example.com/webhook",
+                null,
             )
         } throws IllegalArgumentException("Webhook URL must use HTTPS protocol")
 
@@ -162,7 +166,7 @@ class UnionGraphControllerTest : BaseControllerTest() {
             )
 
         every {
-            unionGraphService.createOrder(null, 0, null)
+            unionGraphService.createOrder(null, 0, null, null)
         } returns UnionGraphService.CreateOrderResult(order, isNew = true)
 
         // When & Then
@@ -170,6 +174,94 @@ class UnionGraphControllerTest : BaseControllerTest() {
             .perform(post("/v1/union-graphs"))
             .andExpect(status().isCreated)
             .andExpect(jsonPath("$.id").value("test-order-2"))
+    }
+
+    @Test
+    fun `createOrder should accept dataset filters`() {
+        // Given
+        val filters =
+            UnionGraphResourceFilters(
+                dataset =
+                    UnionGraphResourceFilters.DatasetFilters(
+                        isOpenData = true,
+                        isRelatedToTransportportal = false,
+                    ),
+            )
+        val order =
+            UnionGraphOrder(
+                id = "dataset-order",
+                status = UnionGraphOrder.GraphStatus.PENDING,
+                resourceTypes = listOf("DATASET"),
+                resourceFilters = filters,
+            )
+
+        every {
+            unionGraphService.createOrder(
+                listOf(ResourceType.DATASET),
+                0,
+                null,
+                filters,
+            )
+        } returns UnionGraphService.CreateOrderResult(order, isNew = true)
+
+        // When & Then
+        mockMvc
+            .perform(
+                post("/v1/union-graphs")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(
+                        """
+                        {
+                            "resourceTypes": ["DATASET"],
+                            "resourceFilters": {
+                                "dataset": {
+                                    "isOpenData": true,
+                                    "isRelatedToTransportportal": false
+                                }
+                            }
+                        }
+                        """.trimIndent(),
+                    ),
+            ).andExpect(status().isCreated)
+            .andExpect(jsonPath("$.resourceFilters.dataset.isOpenData").value(true))
+            .andExpect(jsonPath("$.resourceFilters.dataset.isRelatedToTransportportal").value(false))
+    }
+
+    @Test
+    fun `createOrder should return 400 when dataset filters lack dataset type`() {
+        // Given
+        val filters =
+            UnionGraphResourceFilters(
+                dataset = UnionGraphResourceFilters.DatasetFilters(isOpenData = true),
+            )
+
+        every {
+            unionGraphService.createOrder(
+                listOf(ResourceType.CONCEPT),
+                0,
+                null,
+                filters,
+            )
+        } throws IllegalArgumentException("Dataset filters require the DATASET resource type")
+
+        // When & Then
+        mockMvc
+            .perform(
+                post("/v1/union-graphs")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(
+                        """
+                        {
+                            "resourceTypes": ["CONCEPT"],
+                            "resourceFilters": {
+                                "dataset": {
+                                    "isOpenData": true
+                                }
+                            }
+                        }
+                        """.trimIndent(),
+                    ),
+            ).andExpect(status().isBadRequest)
     }
 
     @Test

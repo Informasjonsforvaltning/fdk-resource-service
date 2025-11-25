@@ -37,6 +37,21 @@ data class UnionGraphOrder(
     @Column(name = "resource_types", columnDefinition = "text[]")
     val resourceTypes: List<String>? = null,
     /**
+     * Optional per-resource-type filters that should be applied when
+     * collecting resources for the union graph.
+     *
+     * Filters allow you to include only resources that match specific criteria.
+     * For example, dataset filters can filter by isOpenData and isRelatedToTransportportal fields.
+     * Filters are part of the order configuration, so orders with different filters
+     * are considered different orders.
+     *
+     * Stored as JSONB in the database to allow flexible evolution of filter structures
+     * without requiring schema changes.
+     */
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "resource_filters", columnDefinition = "jsonb")
+    val resourceFilters: UnionGraphResourceFilters? = null,
+    /**
      * Time to live in hours for automatic graph updates.
      * 0 means never update automatically.
      * Otherwise, the graph will be automatically updated after this many hours.

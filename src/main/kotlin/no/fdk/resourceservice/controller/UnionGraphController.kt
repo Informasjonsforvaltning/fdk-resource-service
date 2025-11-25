@@ -6,10 +6,12 @@ import io.swagger.v3.oas.annotations.media.Content
 import io.swagger.v3.oas.annotations.parameters.RequestBody
 import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.responses.ApiResponses
+import io.swagger.v3.oas.annotations.security.SecurityRequirement
 import io.swagger.v3.oas.annotations.tags.Tag
 import no.fdk.resourceservice.config.UnionGraphFeatureConfig
 import no.fdk.resourceservice.model.ResourceType
 import no.fdk.resourceservice.model.UnionGraphOrder
+import no.fdk.resourceservice.model.UnionGraphResourceFilters
 import no.fdk.resourceservice.service.RdfService
 import no.fdk.resourceservice.service.RdfService.RdfFormatStyle
 import no.fdk.resourceservice.service.UnionGraphService
@@ -34,7 +36,7 @@ import org.springframework.web.bind.annotation.RestController
  */
 @RestController
 @RequestMapping("/v1/union-graphs")
-@Tag(name = "Union Graphs", description = "API for ordering and retrieving union graphs")
+@Tag(name = "Union Graphs", description = "API for creating and retrieving union graphs")
 class UnionGraphController(
     private val unionGraphService: UnionGraphService,
     private val rdfService: RdfService,
@@ -43,28 +45,33 @@ class UnionGraphController(
     private val logger = org.slf4j.LoggerFactory.getLogger(UnionGraphController::class.java)
 
     /**
-     * Creates a new union graph order.
+     * Creates a new union graph.
      *
-     * @param requestBody Optional request body with resource types to include.
-     *                    If not provided or empty, all resource types will be included.
-     * @return The created order with PENDING status.
+     * @param requestBody Optional request body with resource types to include and optional filters.
+     *                    If resource types are not provided or empty, all resource types will be included.
+     *                    Resource filters allow filtering resources by type-specific criteria (e.g., dataset filters).
+     * @return The created union graph with PENDING status.
      */
     @PostMapping
     @Operation(
-        summary = "Order a union graph",
+        summary = "Create a union graph",
         description =
-            "Create a new order for a union graph, or return an existing order if one with the same " +
+            "Create a new union graph, or return an existing one if one with the same " +
                 "configuration already exists. The graph will be built asynchronously in the background. " +
                 "You can specify which resource types to include, or leave empty to include all types. " +
-                "If an order with the same graph key already exists, it will be returned with HTTP 409 Conflict. " +
-                "The response includes a Location header pointing to the order resource. " +
+                "Optionally, you can provide resource filters to filter resources by type-specific criteria. " +
+                "For example, dataset filters can filter by isOpenData and isRelatedToTransportportal fields. " +
+                "If a union graph with the same configuration (resource types, update TTL, webhook URL, and filters) " +
+                "already exists, it will be returned with HTTP 409 Conflict. " +
+                "The response includes a Location header pointing to the union graph resource. " +
                 "If a webhook URL is provided, it must use HTTPS protocol.",
+        security = [SecurityRequirement(name = "ApiKeyAuth")],
     )
     @ApiResponses(
         value = [
             ApiResponse(
                 responseCode = "201",
-                description = "New order created successfully",
+                description = "New union graph created successfully",
                 content = [Content(mediaType = "application/json")],
             ),
             ApiResponse(
@@ -75,8 +82,8 @@ class UnionGraphController(
             ApiResponse(
                 responseCode = "409",
                 description =
-                    "An order with the same configuration already exists (any status). " +
-                        "The existing order is returned in the response body.",
+                    "A union graph with the same configuration already exists (any status). " +
+                        "The existing union graph is returned in the response body.",
                 content = [Content(mediaType = "application/json")],
             ),
         ],
@@ -104,10 +111,11 @@ class UnionGraphController(
 
         val updateTtlHours = requestBody?.updateTtlHours ?: 0
         val webhookUrl = requestBody?.webhookUrl
+        val resourceFilters = requestBody?.toDomainFilters()
 
         val result =
             try {
-                unionGraphService.createOrder(resourceTypes, updateTtlHours, webhookUrl)
+                unionGraphService.createOrder(resourceTypes, updateTtlHours, webhookUrl, resourceFilters)
             } catch (e: IllegalArgumentException) {
                 // Handle validation errors (e.g., invalid webhook URL)
                 logger.warn("Invalid request: {}", e.message)
@@ -124,9 +132,10 @@ class UnionGraphController(
                 updateTtlHours = order.updateTtlHours,
                 webhookUrl = order.webhookUrl,
                 createdAt = order.createdAt.toString(),
+                resourceFilters = toResponseFilters(order.resourceFilters),
             )
 
-        // Return 201 Created for new orders, 409 Conflict for existing ones
+        // Return 201 Created for new union graphs, 409 Conflict for existing ones
         val httpStatus =
             if (result.isNew) {
                 org.springframework.http.HttpStatus.CREATED // 201
@@ -144,26 +153,27 @@ class UnionGraphController(
     }
 
     /**
-     * Gets all union graph orders (without graph data).
+     * Gets all union graphs (without graph data).
      *
-     * Returns a list of all orders with their metadata (status, resource types, timestamps)
+     * Returns a list of all union graphs with their metadata (status, resource types, timestamps)
      * but excludes the actual graph data to keep the response lightweight.
      *
-     * @return List of union graph orders (without graph data)
+     * @return List of union graphs (without graph data)
      */
     @GetMapping
     @Operation(
-        summary = "List all union graph orders",
+        summary = "List all union graphs",
         description =
-            "Retrieve a list of all union graph orders with their metadata. " +
+            "Retrieve a list of all union graphs with their metadata. " +
                 "The actual graph data is excluded to keep the response lightweight. " +
-                "Use the individual order endpoints to retrieve the graph data.",
+                "Use the individual graph endpoints to retrieve the graph data.",
+        security = [SecurityRequirement(name = "ApiKeyAuth")],
     )
     @ApiResponses(
         value = [
             ApiResponse(
                 responseCode = "200",
-                description = "Successfully retrieved list of orders",
+                description = "Successfully retrieved list of union graphs",
                 content = [Content(mediaType = "application/json")],
             ),
         ],
@@ -185,6 +195,7 @@ class UnionGraphController(
                     createdAt = order.createdAt.toString(),
                     updatedAt = order.updatedAt.toString(),
                     processedAt = order.processedAt?.toString(),
+                    resourceFilters = toResponseFilters(order.resourceFilters),
                 )
             }
 
@@ -195,28 +206,29 @@ class UnionGraphController(
     }
 
     /**
-     * Resets a union graph order to PENDING status for retry.
+     * Resets a union graph to PENDING status for retry.
      *
-     * This endpoint allows manually resetting a failed or stuck order
+     * This endpoint allows manually resetting a failed or stuck union graph
      * to PENDING so it can be processed again.
      *
-     * @param id The order ID to reset.
-     * @return The reset order with PENDING status.
+     * @param id The union graph ID to reset.
+     * @return The reset union graph with PENDING status.
      */
     @PostMapping("/{id}/reset")
     @Operation(
-        summary = "Reset union graph order to PENDING",
+        summary = "Reset union graph to PENDING",
         description =
-            "Reset a union graph order to PENDING status for retry. " +
+            "Reset a union graph to PENDING status for retry. " +
                 "This clears error messages and releases any locks. " +
-                "Useful for retrying failed orders or restarting stuck orders. " +
+                "Useful for retrying failed union graphs or restarting stuck ones. " +
                 "This endpoint must be explicitly enabled in configuration (app.union-graphs.reset-enabled).",
+        security = [SecurityRequirement(name = "ApiKeyAuth")],
     )
     @ApiResponses(
         value = [
             ApiResponse(
                 responseCode = "200",
-                description = "Order reset to PENDING successfully",
+                description = "Union graph reset to PENDING successfully",
                 content = [Content(mediaType = "application/json")],
             ),
             ApiResponse(
@@ -225,12 +237,12 @@ class UnionGraphController(
             ),
             ApiResponse(
                 responseCode = "404",
-                description = "Order not found",
+                description = "Union graph not found",
             ),
         ],
     )
     fun resetOrder(
-        @Parameter(description = "Order ID")
+        @Parameter(description = "Union graph ID")
         @PathVariable id: String,
     ): ResponseEntity<UnionGraphOrderResponse> {
         if (!unionGraphFeatureConfig.resetEnabled) {
@@ -252,6 +264,7 @@ class UnionGraphController(
                 updateTtlHours = order.updateTtlHours,
                 webhookUrl = order.webhookUrl,
                 createdAt = order.createdAt.toString(),
+                resourceFilters = toResponseFilters(order.resourceFilters),
             )
 
         return ResponseEntity
@@ -261,31 +274,32 @@ class UnionGraphController(
     }
 
     /**
-     * Gets the status of a union graph order.
+     * Gets the status of a union graph.
      *
-     * @param id The order ID.
-     * @return The order status.
+     * @param id The union graph ID.
+     * @return The union graph status.
      */
     @GetMapping("/{id}/status")
     @Operation(
-        summary = "Get union graph order status",
-        description = "Retrieve the current status of a union graph order.",
+        summary = "Get union graph status",
+        description = "Retrieve the current status of a union graph.",
+        security = [SecurityRequirement(name = "ApiKeyAuth")],
     )
     @ApiResponses(
         value = [
             ApiResponse(
                 responseCode = "200",
-                description = "Order status retrieved successfully",
+                description = "Union graph status retrieved successfully",
                 content = [Content(mediaType = "application/json")],
             ),
             ApiResponse(
                 responseCode = "404",
-                description = "Order not found",
+                description = "Union graph not found",
             ),
         ],
     )
     fun getStatus(
-        @Parameter(description = "Order ID")
+        @Parameter(description = "Union graph ID")
         @PathVariable id: String,
     ): ResponseEntity<UnionGraphOrderStatusResponse> {
         logger.debug("Getting status for order: {}", id)
@@ -305,6 +319,7 @@ class UnionGraphController(
                 createdAt = order.createdAt.toString(),
                 updatedAt = order.updatedAt.toString(),
                 processedAt = order.processedAt?.toString(),
+                resourceFilters = toResponseFilters(order.resourceFilters),
             )
 
         return ResponseEntity
@@ -323,7 +338,7 @@ class UnionGraphController(
      * - application/n-triples (N-Triples)
      * - application/n-quads (N-Quads)
      *
-     * @param id The order ID.
+     * @param id The union graph ID.
      * @param acceptHeader The Accept header for content negotiation.
      * @param style Optional RDF format style (pretty or standard, defaults to pretty).
      * @param expandUris Whether to expand URIs (defaults to true).
@@ -344,7 +359,7 @@ class UnionGraphController(
         description =
             "Retrieve the built union graph. " +
                 "Supports content negotiation for multiple RDF formats (JSON-LD, Turtle, RDF/XML, N-Triples, N-Quads). " +
-                "The graph must be in COMPLETED status.",
+                "The graph must be in COMPLETED status. This endpoint is publicly accessible.",
     )
     @ApiResponses(
         value = [
@@ -361,7 +376,7 @@ class UnionGraphController(
             ),
             ApiResponse(
                 responseCode = "404",
-                description = "Order not found or graph not yet built",
+                description = "Union graph not found or graph not yet built",
             ),
             ApiResponse(
                 responseCode = "400",
@@ -374,7 +389,7 @@ class UnionGraphController(
         ],
     )
     fun getGraph(
-        @Parameter(description = "Order ID")
+        @Parameter(description = "Union graph ID")
         @PathVariable id: String,
         @RequestHeader(HttpHeaders.ACCEPT, required = false) acceptHeader: String?,
         @Parameter(description = "RDF format style (pretty or standard)")
@@ -427,27 +442,28 @@ class UnionGraphController(
     }
 
     /**
-     * Deletes a union graph order.
+     * Deletes a union graph.
      *
-     * This endpoint permanently removes the order and its associated graph data.
+     * This endpoint permanently removes the union graph and its associated graph data.
      * Requires the delete endpoint to be enabled in configuration.
      *
-     * @param id The order ID to delete.
-     * @return No content on success, or 404 if order not found.
+     * @param id The union graph ID to delete.
+     * @return No content on success, or 404 if union graph not found.
      */
     @DeleteMapping("/{id}")
     @Operation(
-        summary = "Delete union graph order",
+        summary = "Delete union graph",
         description =
-            "Delete a union graph order. This permanently removes the order and its associated graph data. " +
+            "Delete a union graph. This permanently removes the union graph and its associated graph data. " +
                 "Use with caution as this action cannot be undone. " +
                 "This endpoint must be explicitly enabled in configuration (app.union-graphs.delete-enabled).",
+        security = [SecurityRequirement(name = "ApiKeyAuth")],
     )
     @ApiResponses(
         value = [
             ApiResponse(
                 responseCode = "204",
-                description = "Order deleted successfully",
+                description = "Union graph deleted successfully",
             ),
             ApiResponse(
                 responseCode = "403",
@@ -455,12 +471,12 @@ class UnionGraphController(
             ),
             ApiResponse(
                 responseCode = "404",
-                description = "Order not found",
+                description = "Union graph not found",
             ),
         ],
     )
     fun deleteOrder(
-        @Parameter(description = "Order ID")
+        @Parameter(description = "Union graph ID")
         @PathVariable id: String,
     ): ResponseEntity<Void> {
         if (!unionGraphFeatureConfig.deleteEnabled) {
@@ -479,9 +495,14 @@ class UnionGraphController(
     }
 
     /**
-     * Request DTO for creating a union graph order.
+     * Request DTO for creating a union graph.
      */
     data class UnionGraphOrderRequest(
+        /**
+         * List of resource types to include in the union graph.
+         * If null or empty, all resource types will be included.
+         * Valid values: CONCEPT, DATASET, DATA_SERVICE, INFORMATION_MODEL, SERVICE, EVENT
+         */
         val resourceTypes: List<String>? = null,
         /**
          * Time to live in hours for automatic graph updates.
@@ -490,15 +511,73 @@ class UnionGraphController(
          */
         val updateTtlHours: Int? = null,
         /**
-         * Webhook URL to call when the order status changes.
-         * The webhook will be called with a POST request containing the order status.
+         * Webhook URL to call when the union graph status changes.
+         * The webhook will be called with a POST request containing the union graph status.
          * Must use HTTPS protocol.
          */
         val webhookUrl: String? = null,
-    )
+        /**
+         * Optional per-resource-type filters to apply when building the union graph.
+         * Filters allow you to include only resources that match specific criteria.
+         * For example, dataset filters can filter by isOpenData and isRelatedToTransportportal.
+         * Filters are part of the union graph configuration, so union graphs with different filters are considered different.
+         */
+        val resourceFilters: ResourceFiltersRequest? = null,
+    ) {
+        fun toDomainFilters(): UnionGraphResourceFilters? = resourceFilters?.toDomain()
+    }
 
     /**
-     * Response DTO for a union graph order.
+     * Request DTO for resource type-specific filters.
+     * Each resource type can define its own filter structure.
+     */
+    data class ResourceFiltersRequest(
+        /**
+         * Filters for DATASET resource type.
+         * Only datasets matching these criteria will be included in the union graph.
+         */
+        val dataset: DatasetFiltersRequest? = null,
+    ) {
+        fun toDomain(): UnionGraphResourceFilters? {
+            val datasetFilters = dataset?.toDomain()
+            return if (datasetFilters == null) {
+                null
+            } else {
+                UnionGraphResourceFilters(dataset = datasetFilters).normalized()
+            }
+        }
+    }
+
+    /**
+     * Request DTO for dataset-specific filters.
+     * Filters datasets based on their metadata fields.
+     */
+    data class DatasetFiltersRequest(
+        /**
+         * Filter datasets by the isOpenData field.
+         * If true, only open data datasets are included.
+         * If false, only non-open data datasets are included.
+         * If null, this filter is not applied.
+         */
+        val isOpenData: Boolean? = null,
+        /**
+         * Filter datasets by the isRelatedToTransportportal field.
+         * If true, only datasets related to transport portal are included.
+         * If false, only datasets not related to transport portal are included.
+         * If null, this filter is not applied.
+         */
+        val isRelatedToTransportportal: Boolean? = null,
+    ) {
+        fun toDomain(): UnionGraphResourceFilters.DatasetFilters? =
+            if (isOpenData == null && isRelatedToTransportportal == null) {
+                null
+            } else {
+                UnionGraphResourceFilters.DatasetFilters(isOpenData, isRelatedToTransportportal)
+            }
+    }
+
+    /**
+     * Response DTO for a union graph.
      */
     data class UnionGraphOrderResponse(
         val id: String,
@@ -507,10 +586,15 @@ class UnionGraphController(
         val updateTtlHours: Int,
         val webhookUrl: String?,
         val createdAt: String,
+        /**
+         * The resource filters that were applied when creating this union graph.
+         * Null if no filters were specified.
+         */
+        val resourceFilters: ResourceFiltersResponse?,
     )
 
     /**
-     * Response DTO for union graph order status.
+     * Response DTO for union graph status.
      */
     data class UnionGraphOrderStatusResponse(
         val id: String,
@@ -522,11 +606,16 @@ class UnionGraphController(
         val createdAt: String,
         val updatedAt: String,
         val processedAt: String?,
+        /**
+         * The resource filters that were applied when creating this union graph.
+         * Null if no filters were specified.
+         */
+        val resourceFilters: ResourceFiltersResponse?,
     )
 
     /**
-     * Response DTO for union graph order summary (without graph data).
-     * Used for listing all orders without loading the potentially large graph data.
+     * Response DTO for union graph summary (without graph data).
+     * Used for listing all union graphs without loading the potentially large graph data.
      */
     data class UnionGraphOrderSummaryResponse(
         val id: String,
@@ -538,5 +627,50 @@ class UnionGraphController(
         val createdAt: String,
         val updatedAt: String,
         val processedAt: String?,
+        /**
+         * The resource filters that were applied when creating this union graph.
+         * Null if no filters were specified.
+         */
+        val resourceFilters: ResourceFiltersResponse?,
     )
+
+    /**
+     * Response DTO for resource type-specific filters.
+     */
+    data class ResourceFiltersResponse(
+        /**
+         * Dataset filters that were applied.
+         * Present only if dataset filters were specified when creating the union graph.
+         */
+        val dataset: DatasetFiltersResponse?,
+    )
+
+    /**
+     * Response DTO for dataset-specific filters.
+     */
+    data class DatasetFiltersResponse(
+        /**
+         * The isOpenData filter value that was applied.
+         * Null if this filter was not specified.
+         */
+        val isOpenData: Boolean?,
+        /**
+         * The isRelatedToTransportportal filter value that was applied.
+         * Null if this filter was not specified.
+         */
+        val isRelatedToTransportportal: Boolean?,
+    )
+
+    private fun toResponseFilters(filters: UnionGraphResourceFilters?): ResourceFiltersResponse? {
+        val normalized = filters?.normalized() ?: return null
+        val dataset = normalized.dataset ?: return null
+
+        return ResourceFiltersResponse(
+            dataset =
+                DatasetFiltersResponse(
+                    isOpenData = dataset.isOpenData,
+                    isRelatedToTransportportal = dataset.isRelatedToTransportportal,
+                ),
+        )
+    }
 }

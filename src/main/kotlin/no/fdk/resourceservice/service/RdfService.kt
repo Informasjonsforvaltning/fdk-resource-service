@@ -1,5 +1,6 @@
 package no.fdk.resourceservice.service
 
+import com.fasterxml.jackson.core.type.TypeReference
 import com.fasterxml.jackson.databind.ObjectMapper
 import no.fdk.resourceservice.model.ResourceType
 import org.apache.jena.rdf.model.Model
@@ -210,8 +211,11 @@ class RdfService(
 
             if (jsonLdString != null) {
                 // Parse JSON-LD string to Map
-                @Suppress("UNCHECKED_CAST")
-                val jsonLdMap = objectMapper.readValue(jsonLdString, Map::class.java) as Map<String, Any>
+                val jsonLdMap =
+                    objectMapper.readValue(
+                        jsonLdString,
+                        object : TypeReference<Map<String, Any>>() {},
+                    )
                 logger.debug("Successfully converted Turtle to JSON-LD Map")
                 jsonLdMap
             } else {

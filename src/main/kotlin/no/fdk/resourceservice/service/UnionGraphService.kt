@@ -1,9 +1,11 @@
 package no.fdk.resourceservice.service
 
+import com.fasterxml.jackson.core.type.TypeReference
 import com.fasterxml.jackson.databind.ObjectMapper
 import no.fdk.resourceservice.config.UnionGraphConfig
 import no.fdk.resourceservice.model.ResourceType
 import no.fdk.resourceservice.model.UnionGraphOrder
+import no.fdk.resourceservice.model.UnionGraphResourceFilters
 import no.fdk.resourceservice.repository.ResourceRepository
 import no.fdk.resourceservice.repository.UnionGraphOrderRepository
 import org.apache.jena.rdf.model.ModelFactory
@@ -17,7 +19,7 @@ import java.io.StringWriter
 import java.util.UUID
 
 /**
- * Service for managing union graph orders and building union graphs.
+ * Service for managing union graphs and building union graphs.
  *
  * Union graphs are built from multiple resource graphs by combining them.
  * The service handles the asynchronous building of these graphs.
@@ -33,7 +35,7 @@ class UnionGraphService(
     private val logger = LoggerFactory.getLogger(UnionGraphService::class.java)
 
     /**
-     * Result of creating an order, indicating whether it's new or existing.
+     * Result of creating a union graph, indicating whether it's new or existing.
      */
     data class CreateOrderResult(
         val order: UnionGraphOrder,
@@ -41,27 +43,34 @@ class UnionGraphService(
     )
 
     /**
-     * Creates a new union graph order, or returns an existing order if one already exists.
+     * Creates a new union graph, or returns an existing one if one already exists.
      *
-     * This method prevents duplicate graph building by checking if an order
-     * with the same resource types and update TTL already exists (any status).
-     * If found, the existing order is returned. Otherwise, a new order is created.
+     * This method prevents duplicate graph building by checking if a union graph
+     * with the same configuration (resource types, update TTL, webhook URL, and filters)
+     * already exists (any status). If found, the existing union graph is returned.
+     * Otherwise, a new union graph is created.
      *
      * @param resourceTypes Optional list of resource types to include. If null or empty, all types are included.
      * @param updateTtlHours Time to live in hours for automatic updates. 0 means never update automatically.
-     * @param webhookUrl Optional webhook URL to call when order status changes. Must be HTTPS if provided.
-     * @return CreateOrderResult containing the order and a flag indicating if it's new or existing.
-     * @throws IllegalArgumentException if webhookUrl is provided but not HTTPS
+     * @param webhookUrl Optional webhook URL to call when union graph status changes. Must be HTTPS if provided.
+     * @param resourceFilters Optional per-resource-type filters to apply when building the graph.
+     *                        For example, dataset filters can filter by isOpenData and isRelatedToTransportportal.
+     *                        Filters are part of the union graph configuration, so union graphs with different filters
+     *                        are considered different union graphs.
+     * @return CreateOrderResult containing the union graph and a flag indicating if it's new or existing.
+     * @throws IllegalArgumentException if webhookUrl is provided but not HTTPS, or if filters are invalid
      */
     fun createOrder(
         resourceTypes: List<ResourceType>? = null,
         updateTtlHours: Int = 0,
         webhookUrl: String? = null,
+        resourceFilters: UnionGraphResourceFilters? = null,
     ): CreateOrderResult {
         // Validate webhook URL if provided
         if (!webhookUrl.isNullOrBlank() && !webhookUrl.startsWith("https://")) {
             throw IllegalArgumentException("Webhook URL must use HTTPS protocol")
         }
+        validateResourceFilters(resourceTypes, resourceFilters)
 
         logger.info(
             "Creating union graph order with resource types: {}, updateTtlHours: {}, webhookUrl: {}",
@@ -80,11 +89,13 @@ class UnionGraphService(
             }
 
         // Check if an order with this configuration already exists (any status)
+        val filtersPayload = resourceFilters?.normalized()
         val existingOrder =
             unionGraphOrderRepository.findByConfiguration(
                 resourceTypesString,
                 updateTtlHours,
                 webhookUrl,
+                filtersPayload?.let { objectMapper.writeValueAsString(it) },
             )
         if (existingOrder != null) {
             logger.info(
@@ -104,6 +115,7 @@ class UnionGraphService(
                 resourceTypes = resourceTypes?.map { it.name }?.sorted(),
                 updateTtlHours = updateTtlHours,
                 webhookUrl = webhookUrl,
+                resourceFilters = filtersPayload,
             )
 
         val saved = unionGraphOrderRepository.save(order)
@@ -112,11 +124,11 @@ class UnionGraphService(
     }
 
     /**
-     * Resets an order to PENDING status for retry.
+     * Resets a union graph to PENDING status for retry.
      * Clears error messages and releases any locks.
      *
-     * @param id The order ID to reset
-     * @return The reset order, or null if not found
+     * @param id The union graph ID to reset
+     * @return The reset union graph, or null if not found
      */
     fun resetOrderToPending(id: String): UnionGraphOrder? {
         logger.info("Resetting order {} to PENDING", id)
@@ -152,15 +164,15 @@ class UnionGraphService(
     }
 
     /**
-     * Gets a union graph order by ID.
+     * Gets a union graph by ID.
      */
     fun getOrder(id: String): UnionGraphOrder? = unionGraphOrderRepository.findById(id).orElse(null)
 
     /**
-     * Gets all union graph orders without the graph data.
-     * Orders are returned sorted by creation date (newest first).
+     * Gets all union graphs without the graph data.
+     * Union graphs are returned sorted by creation date (newest first).
      *
-     * @return List of union graph orders (without graph_json_ld field)
+     * @return List of union graphs (without graph_json_ld field)
      */
     fun getAllOrders(): List<UnionGraphOrder> {
         logger.debug("Getting all union graph orders")
@@ -168,10 +180,10 @@ class UnionGraphService(
     }
 
     /**
-     * Deletes a union graph order.
+     * Deletes a union graph.
      *
-     * @param id The order ID to delete
-     * @return true if the order was deleted, false if not found
+     * @param id The union graph ID to delete
+     * @return true if the union graph was deleted, false if not found
      */
     fun deleteOrder(id: String): Boolean {
         logger.info("Deleting union graph order: {}", id)
@@ -192,25 +204,41 @@ class UnionGraphService(
      *
      * This method:
      * 1. Retrieves resources of the specified types in batches (or all types if none specified)
-     * 2. Merges their JSON-LD graphs into a single union graph incrementally
-     * 3. Returns the merged graph as a Map<String, Any>
+     * 2. Applies resource type-specific filters if provided (e.g., dataset filters)
+     * 3. Merges their JSON-LD graphs into a single union graph incrementally
+     * 4. Returns the merged graph as a Map<String, Any>
      *
      * Resources are processed in batches to avoid loading all resources into memory at once,
      * which is important for memory-intensive graph operations.
      *
      * @param resourceTypes Optional list of resource types to include. If null or empty, all types are included.
+     * @param resourceFilters Optional per-resource-type filters to apply when collecting resources.
+     *                        For example, dataset filters can filter by isOpenData and isRelatedToTransportportal.
+     *                        Only resources matching the filters will be included in the union graph.
      * @return The merged union graph as JSON-LD Map, or null if no resources found.
      */
-    fun buildUnionGraph(resourceTypes: List<ResourceType>? = null): Map<String, Any>? {
+    fun buildUnionGraph(
+        resourceTypes: List<ResourceType>? = null,
+        resourceFilters: UnionGraphResourceFilters? = null,
+    ): Map<String, Any>? {
         logger.info("Building union graph for resource types: {}", resourceTypes)
 
         // Determine which resource types to process
         val typesToProcess = resourceTypes?.ifEmpty { null } ?: ResourceType.entries
+        val datasetFilters = resourceFilters?.dataset
 
         // Count total resources to process
         var totalResources = 0L
         for (type in typesToProcess) {
-            totalResources += resourceRepository.countByResourceTypeAndDeletedFalse(type.name)
+            totalResources +=
+                when {
+                    type == ResourceType.DATASET && datasetFilters != null ->
+                        resourceRepository.countDatasetsByFilters(
+                            datasetFilters.isOpenData.toSqlBooleanText(),
+                            datasetFilters.isRelatedToTransportportal.toSqlBooleanText(),
+                        )
+                    else -> resourceRepository.countByResourceTypeAndDeletedFalse(type.name)
+                }
         }
 
         if (totalResources == 0L) {
@@ -238,11 +266,21 @@ class UnionGraphService(
                 // Process resources in batches
                 while (hasMore) {
                     val batch =
-                        resourceRepository.findByResourceTypeAndDeletedFalsePaginated(
-                            type.name,
-                            offset,
-                            batchSize,
-                        )
+                        when {
+                            type == ResourceType.DATASET && datasetFilters != null ->
+                                resourceRepository.findDatasetsByFiltersPaginated(
+                                    offset,
+                                    batchSize,
+                                    datasetFilters.isOpenData.toSqlBooleanText(),
+                                    datasetFilters.isRelatedToTransportportal.toSqlBooleanText(),
+                                )
+                            else ->
+                                resourceRepository.findByResourceTypeAndDeletedFalsePaginated(
+                                    type.name,
+                                    offset,
+                                    batchSize,
+                                )
+                        }
 
                     if (batch.isEmpty()) {
                         hasMore = false
@@ -301,8 +339,11 @@ class UnionGraphService(
                     writer.toString()
                 }
 
-            @Suppress("UNCHECKED_CAST")
-            val jsonLdMap = objectMapper.readValue(jsonLdString, Map::class.java) as Map<String, Any>
+            val jsonLdMap =
+                objectMapper.readValue(
+                    jsonLdString,
+                    object : TypeReference<Map<String, Any>>() {},
+                )
 
             logger.info("Successfully built union graph with {} statements from {} resources", unionModel.size(), processedCount)
             return jsonLdMap
@@ -315,10 +356,10 @@ class UnionGraphService(
     }
 
     /**
-     * Processes a union graph order by building the union graph and updating the order.
+     * Processes a union graph by building the union graph and updating it.
      *
-     * @param order The order to process.
-     * @param instanceId The identifier of the instance processing this order.
+     * @param order The union graph to process.
+     * @param instanceId The identifier of the instance processing this union graph.
      */
     fun processOrder(
         order: UnionGraphOrder,
@@ -345,7 +386,7 @@ class UnionGraphService(
                     }
                 }
 
-            val unionGraph = buildUnionGraph(resourceTypes)
+            val unionGraph = buildUnionGraph(resourceTypes, order.resourceFilters)
 
             val previousStatus = order.status
 
@@ -391,4 +432,20 @@ class UnionGraphService(
             }
         }
     }
+
+    private fun validateResourceFilters(
+        resourceTypes: List<ResourceType>?,
+        resourceFilters: UnionGraphResourceFilters?,
+    ) {
+        val filters = resourceFilters?.normalized() ?: return
+
+        if (filters.dataset != null) {
+            val includesDataset = resourceTypes.isNullOrEmpty() || resourceTypes.contains(ResourceType.DATASET)
+            if (!includesDataset) {
+                throw IllegalArgumentException("Dataset filters require the DATASET resource type")
+            }
+        }
+    }
 }
+
+private fun Boolean?.toSqlBooleanText(): String? = this?.toString()

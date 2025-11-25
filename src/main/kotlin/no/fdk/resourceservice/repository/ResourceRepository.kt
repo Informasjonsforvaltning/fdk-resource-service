@@ -215,6 +215,25 @@ interface ResourceRepository : JpaRepository<ResourceEntity, String> {
         @Param("limit") limit: Int,
     ): List<ResourceEntity>
 
+    @Query(
+        value = """
+        SELECT * FROM resources
+        WHERE resource_type = 'DATASET'
+        AND deleted = false
+        AND (:isOpenData IS NULL OR resource_json->>'isOpenData' = :isOpenData)
+        AND (:isRelatedToTransportportal IS NULL OR resource_json->>'isRelatedToTransportportal' = :isRelatedToTransportportal)
+        ORDER BY id ASC
+        LIMIT :limit OFFSET :offset
+    """,
+        nativeQuery = true,
+    )
+    fun findDatasetsByFiltersPaginated(
+        @Param("offset") offset: Int,
+        @Param("limit") limit: Int,
+        @Param("isOpenData") isOpenData: String?,
+        @Param("isRelatedToTransportportal") isRelatedToTransportportal: String?,
+    ): List<ResourceEntity>
+
     /**
      * Counts resources by type (non-deleted only).
      * Used to determine total number of resources for pagination.
@@ -232,5 +251,20 @@ interface ResourceRepository : JpaRepository<ResourceEntity, String> {
     )
     fun countByResourceTypeAndDeletedFalse(
         @Param("resourceType") resourceType: String,
+    ): Long
+
+    @Query(
+        value = """
+        SELECT COUNT(*) FROM resources
+        WHERE resource_type = 'DATASET'
+        AND deleted = false
+        AND (:isOpenData IS NULL OR resource_json->>'isOpenData' = :isOpenData)
+        AND (:isRelatedToTransportportal IS NULL OR resource_json->>'isRelatedToTransportportal' = :isRelatedToTransportportal)
+    """,
+        nativeQuery = true,
+    )
+    fun countDatasetsByFilters(
+        @Param("isOpenData") isOpenData: String?,
+        @Param("isRelatedToTransportportal") isRelatedToTransportportal: String?,
     ): Long
 }
