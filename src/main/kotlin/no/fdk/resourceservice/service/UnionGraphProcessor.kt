@@ -74,8 +74,9 @@ class UnionGraphProcessor(
 
             // Process each order asynchronously
             // The thread pool will handle queuing if all threads are busy
+            // Pass only the order ID to avoid detached entity issues
             for (order in orders) {
-                processOrderAsync(order)
+                processOrderAsync(order.id)
             }
         } catch (e: Exception) {
             logger.error("Error in processPendingOrders scheduler", e)
@@ -85,22 +86,31 @@ class UnionGraphProcessor(
     /**
      * Processes a union graph order asynchronously.
      *
-     * @param order The order to process.
+     * Fetches the order fresh from the database to avoid detached entity issues
+     * when called from a transactional context.
+     *
+     * @param orderId The ID of the order to process.
      */
     @Async("unionGraphTaskExecutor")
-    fun processOrderAsync(order: UnionGraphOrder) {
+    fun processOrderAsync(orderId: String) {
         try {
-            logger.info("Processing order {} asynchronously", order.id)
+            logger.info("Processing order {} asynchronously", orderId)
+            // Fetch the order fresh from the database to ensure it's managed
+            val order = unionGraphOrderRepository.findById(orderId).orElse(null)
+            if (order == null) {
+                logger.warn("Order {} not found when trying to process asynchronously", orderId)
+                return
+            }
             unionGraphService.processOrder(order, instanceId)
         } catch (e: Exception) {
-            logger.error("Error processing order {} asynchronously", order.id, e)
+            logger.error("Error processing order {} asynchronously", orderId, e)
             try {
                 unionGraphOrderRepository.markAsFailed(
-                    order.id,
+                    orderId,
                     "Error during async processing: ${e.message}",
                 )
             } catch (updateException: Exception) {
-                logger.error("Failed to mark order {} as failed", order.id, updateException)
+                logger.error("Failed to mark order {} as failed", orderId, updateException)
             }
         }
     }
@@ -111,6 +121,9 @@ class UnionGraphProcessor(
      *
      * Finds completed orders where the TTL has expired (processed_at + update_ttl_hours < now)
      * and resets them to PENDING so they get rebuilt.
+     *
+     * Note: Only COMPLETED orders with processedAt set are checked. PENDING orders are not
+     * affected by TTL expiration.
      */
     @Scheduled(fixedDelay = 3600000) // 1 hour
     @Transactional
@@ -118,7 +131,8 @@ class UnionGraphProcessor(
         try {
             logger.debug("Checking for expired orders that need updating")
 
-            // Find all completed orders with TTL > 0
+            // Find all completed orders with TTL > 0 and processedAt set
+            // Only COMPLETED orders can expire - PENDING orders don't have processedAt set
             val completedOrders =
                 unionGraphOrderRepository
                     .findByStatus(UnionGraphOrder.GraphStatus.COMPLETED)

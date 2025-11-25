@@ -6,3 +6,4 @@ COMMENT ON COLUMN union_graphs.resource_filters IS
 
 CREATE INDEX idx_union_graphs_resource_filters ON union_graphs USING GIN (resource_filters);
 
+
