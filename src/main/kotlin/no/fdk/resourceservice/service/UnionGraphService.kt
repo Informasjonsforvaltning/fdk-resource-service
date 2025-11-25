@@ -13,6 +13,7 @@ import org.apache.jena.riot.Lang
 import org.apache.jena.riot.RDFDataMgr
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Propagation
 import org.springframework.transaction.annotation.Transactional
 import java.io.ByteArrayInputStream
 import java.io.StringWriter
@@ -356,6 +357,23 @@ class UnionGraphService(
     }
 
     /**
+     * Locks an order for processing in a new transaction to ensure the status update commits immediately.
+     * This ensures the PROCESSING status is visible before starting the long-running graph build.
+     *
+     * @param orderId The order ID to lock
+     * @param instanceId The instance ID locking the order
+     * @return true if the lock was successful, false otherwise
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    fun lockOrderInNewTransaction(
+        orderId: String,
+        instanceId: String,
+    ): Boolean {
+        val locked = unionGraphOrderRepository.lockOrderForProcessing(orderId, instanceId)
+        return locked > 0
+    }
+
+    /**
      * Processes a union graph by building the union graph and updating it.
      *
      * @param order The union graph to process.
@@ -368,16 +386,25 @@ class UnionGraphService(
         logger.info("Processing union graph order {} by instance {}", order.id, instanceId)
 
         try {
-            // Lock the order for processing
-            val locked = unionGraphOrderRepository.lockOrderForProcessing(order.id, instanceId)
-            if (locked == 0) {
+            // Lock the order for processing in a NEW transaction to ensure status update commits immediately
+            // This ensures the PROCESSING status is visible before starting the long-running graph build
+            val locked = lockOrderInNewTransaction(order.id, instanceId)
+            if (!locked) {
                 logger.warn("Failed to lock order {} for processing (may have been locked by another instance)", order.id)
                 return
             }
 
-            // Build the union graph
+            // Fetch the order fresh to get the updated status (PROCESSING) after the lock transaction commits
+            // This ensures the status update is visible and committed before starting the long-running graph build
+            val lockedOrder = unionGraphOrderRepository.findById(order.id).orElse(null)
+            if (lockedOrder == null) {
+                logger.warn("Order {} not found after locking", order.id)
+                return
+            }
+
+            // Build the union graph using the locked order's configuration
             val resourceTypes =
-                order.resourceTypes?.mapNotNull { typeName ->
+                lockedOrder.resourceTypes?.mapNotNull { typeName ->
                     try {
                         ResourceType.valueOf(typeName)
                     } catch (e: IllegalArgumentException) {
@@ -386,33 +413,33 @@ class UnionGraphService(
                     }
                 }
 
-            val unionGraph = buildUnionGraph(resourceTypes, order.resourceFilters)
+            val unionGraph = buildUnionGraph(resourceTypes, lockedOrder.resourceFilters)
 
-            val previousStatus = order.status
+            val previousStatus = lockedOrder.status
 
             if (unionGraph != null) {
                 // Convert to JSON string for database storage
                 val graphJsonLdString = objectMapper.writeValueAsString(unionGraph)
 
                 // Mark as completed
-                unionGraphOrderRepository.markAsCompleted(order.id, graphJsonLdString)
-                logger.info("Successfully processed union graph order {}", order.id)
+                unionGraphOrderRepository.markAsCompleted(lockedOrder.id, graphJsonLdString)
+                logger.info("Successfully processed union graph order {}", lockedOrder.id)
 
                 // Call webhook if configured
-                val updatedOrder = unionGraphOrderRepository.findById(order.id).orElse(null)
+                val updatedOrder = unionGraphOrderRepository.findById(lockedOrder.id).orElse(null)
                 if (updatedOrder != null) {
                     webhookService.callWebhook(updatedOrder, previousStatus)
                 }
             } else {
                 // Mark as failed if no graph was built
                 unionGraphOrderRepository.markAsFailed(
-                    order.id,
+                    lockedOrder.id,
                     "No resources found or failed to build union graph",
                 )
-                logger.warn("Failed to build union graph for order {}", order.id)
+                logger.warn("Failed to build union graph for order {}", lockedOrder.id)
 
                 // Call webhook if configured
-                val updatedOrder = unionGraphOrderRepository.findById(order.id).orElse(null)
+                val updatedOrder = unionGraphOrderRepository.findById(lockedOrder.id).orElse(null)
                 if (updatedOrder != null) {
                     webhookService.callWebhook(updatedOrder, previousStatus)
                 }
