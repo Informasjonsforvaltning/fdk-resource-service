@@ -17,6 +17,7 @@ import org.springframework.test.context.TestPropertySource
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.transaction.support.TransactionTemplate
 import java.time.Instant
+import java.time.temporal.ChronoUnit
 
 /**
  * Integration tests for union graph functionality.
@@ -575,14 +576,14 @@ class UnionGraphIntegrationTest : BaseIntegrationTest() {
             )
 
         // When - process and complete
-        val initialCreatedAt = order.createdAt
+        val initialCreatedAt = order.createdAt.truncatedTo(ChronoUnit.MICROS) // PostgreSQL stores timestamps with microsecond precision
         val initialId = order.id
 
         // Lock for processing
         unionGraphService.lockOrderInNewTransaction(order.id, "test-instance")
         val lockedOrder = unionGraphOrderRepository.findById(order.id).get()
         assertEquals(initialId, lockedOrder.id)
-        assertEquals(initialCreatedAt, lockedOrder.createdAt)
+        assertEquals(initialCreatedAt, lockedOrder.createdAt.truncatedTo(ChronoUnit.MICROS))
         assertEquals(listOf("CONCEPT", "DATASET"), lockedOrder.resourceTypes)
         assertEquals(48, lockedOrder.updateTtlHours)
         assertEquals("https://example.com/webhook", lockedOrder.webhookUrl)
@@ -593,7 +594,7 @@ class UnionGraphIntegrationTest : BaseIntegrationTest() {
         unionGraphOrderRepository.markAsCompleted(order.id, objectMapper.writeValueAsString(graphJsonLd))
         val completedOrder = unionGraphOrderRepository.findById(order.id).get()
         assertEquals(initialId, completedOrder.id)
-        assertEquals(initialCreatedAt, completedOrder.createdAt)
+        assertEquals(initialCreatedAt, completedOrder.createdAt.truncatedTo(ChronoUnit.MICROS))
         assertEquals(listOf("CONCEPT", "DATASET"), completedOrder.resourceTypes)
         assertEquals(48, completedOrder.updateTtlHours)
         assertEquals("https://example.com/webhook", completedOrder.webhookUrl)
@@ -603,7 +604,7 @@ class UnionGraphIntegrationTest : BaseIntegrationTest() {
         unionGraphService.resetOrderToPending(order.id)
         val resetOrder = unionGraphOrderRepository.findById(order.id).get()
         assertEquals(initialId, resetOrder.id)
-        assertEquals(initialCreatedAt, resetOrder.createdAt)
+        assertEquals(initialCreatedAt, resetOrder.createdAt.truncatedTo(ChronoUnit.MICROS))
         assertEquals(listOf("CONCEPT", "DATASET"), resetOrder.resourceTypes)
         assertEquals(48, resetOrder.updateTtlHours)
         assertEquals("https://example.com/webhook", resetOrder.webhookUrl)
