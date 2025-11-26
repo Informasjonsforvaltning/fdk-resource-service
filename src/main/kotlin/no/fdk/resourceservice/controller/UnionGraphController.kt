@@ -3,6 +3,7 @@ package no.fdk.resourceservice.controller
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.Parameter
 import io.swagger.v3.oas.annotations.media.Content
+import io.swagger.v3.oas.annotations.media.Schema
 import io.swagger.v3.oas.annotations.parameters.RequestBody
 import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.responses.ApiResponses
@@ -91,7 +92,47 @@ class UnionGraphController(
         ],
     )
     fun createOrder(
-        @RequestBody(required = false)
+        @RequestBody(
+            required = false,
+            description = "Union graph configuration",
+            content = [
+                Content(
+                    mediaType = "application/json",
+                    schema = Schema(implementation = UnionGraphOrderRequest::class),
+                    examples = [
+                        io.swagger.v3.oas.annotations.media.ExampleObject(
+                            name = "Basic example",
+                            value =
+                                """
+                                {
+                                    "resourceTypes": ["DATASET", "DATA_SERVICE"],
+                                    "updateTtlHours": 24,
+                                    "webhookUrl": "https://example.com/webhook"
+                                }
+                                """,
+                        ),
+                        io.swagger.v3.oas.annotations.media.ExampleObject(
+                            name = "With filters and expansion",
+                            value =
+                                """
+                                {
+                                    "resourceTypes": ["DATASET"],
+                                    "updateTtlHours": 24,
+                                    "webhookUrl": "https://example.com/webhook",
+                                    "resourceFilters": {
+                                        "dataset": {
+                                            "isOpenData": true,
+                                            "isRelatedToTransportportal": false
+                                        }
+                                    },
+                                    "expandDistributionAccessServices": true
+                                }
+                                """,
+                        ),
+                    ],
+                ),
+            ],
+        )
         @org.springframework.web.bind.annotation.RequestBody(required = false)
         requestBody: UnionGraphOrderRequest?,
     ): ResponseEntity<UnionGraphOrderResponse> {
