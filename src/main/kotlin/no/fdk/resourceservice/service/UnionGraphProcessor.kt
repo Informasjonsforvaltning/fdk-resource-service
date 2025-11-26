@@ -7,7 +7,6 @@ import org.slf4j.LoggerFactory
 import org.springframework.scheduling.annotation.Async
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
-import org.springframework.transaction.annotation.Transactional
 import java.net.InetAddress
 import java.time.Instant
 import java.time.temporal.ChronoUnit
@@ -48,9 +47,14 @@ class UnionGraphProcessor(
      * - Processing multiple orders per cycle (up to available thread capacity)
      * - Limiting concurrent processing via thread pool configuration
      * - Gracefully handling when no tasks are available (simply returns)
+     *
+     * Note: This method is NOT transactional because:
+     * 1. The database query uses FOR UPDATE SKIP LOCKED which handles locking at the DB level
+     * 2. The async processing runs in its own transaction context
+     * 3. Wrapping this in a transaction can cause visibility issues where the async method
+     *    doesn't see the committed state, preventing orders from being processed
      */
     @Scheduled(fixedDelay = 5000)
-    @Transactional
     fun processPendingOrders() {
         try {
             // Lock timeout: release locks older than 60 minutes (in case of crashed instances)
@@ -62,6 +66,8 @@ class UnionGraphProcessor(
             val maxOrdersPerCycle = UnionGraphConfig.UNION_GRAPH_MAX_POOL_SIZE
 
             // Find pending orders (with pessimistic locking)
+            // The query uses FOR UPDATE SKIP LOCKED which locks rows at the database level
+            // This happens in a read-only transaction managed by Spring Data JPA
             val orders = unionGraphOrderRepository.findNextPendingOrders(lockTimeout, maxOrdersPerCycle)
 
             if (orders.isEmpty()) {
@@ -75,6 +81,8 @@ class UnionGraphProcessor(
             // Process each order asynchronously
             // The thread pool will handle queuing if all threads are busy
             // Pass only the order ID to avoid detached entity issues
+            // The async method runs in its own transaction context, so it can see
+            // the committed state and properly lock the order for processing
             for (order in orders) {
                 processOrderAsync(order.id)
             }
@@ -124,9 +132,13 @@ class UnionGraphProcessor(
      *
      * Note: Only COMPLETED orders with processedAt set are checked. PENDING orders are not
      * affected by TTL expiration.
+     *
+     * Note: This method is NOT transactional because:
+     * 1. Each repository method (resetToPending) is already @Transactional
+     * 2. We want each order reset to be independent (if one fails, others should still succeed)
+     * 3. Avoids long-running transactions that could cause issues
      */
     @Scheduled(fixedDelay = 3600000) // 1 hour
-    @Transactional
     fun processExpiredOrders() {
         try {
             logger.debug("Checking for expired orders that need updating")
@@ -175,9 +187,13 @@ class UnionGraphProcessor(
      *
      * Only resets orders to PENDING if they've been locked for more than 60 minutes
      * (the lock timeout), to avoid interfering with long-running graph building operations.
+     *
+     * Note: This method is NOT transactional because:
+     * 1. Each repository method (releaseLock, resetToPending) is already @Transactional
+     * 2. We want each order cleanup to be independent (if one fails, others should still succeed)
+     * 3. Avoids long-running transactions that could cause issues
      */
     @Scheduled(fixedDelay = 600000) // 10 minutes
-    @Transactional
     fun cleanupStaleLocks() {
         try {
             // Use 60 minutes as the lock timeout (matching processPendingOrders)
