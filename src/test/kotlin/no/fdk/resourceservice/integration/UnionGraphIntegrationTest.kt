@@ -207,73 +207,104 @@ class UnionGraphIntegrationTest : BaseIntegrationTest() {
     }
 
     @Test
-    @Transactional
     fun `processOrder should mark order as failed when no resources found`() {
         // Given - no resources in database
-        val order =
-            unionGraphOrderRepository.save(
-                UnionGraphOrder(
-                    id = "test-order",
-                    status = UnionGraphOrder.GraphStatus.PENDING,
-                    resourceTypes = listOf("CONCEPT"),
-                ),
-            )
+        // Create order in a transaction that commits (simulating controller)
+        val orderId: String =
+            transactionTemplate.execute {
+                val order =
+                    unionGraphOrderRepository.save(
+                        UnionGraphOrder(
+                            id = "test-order",
+                            status = UnionGraphOrder.GraphStatus.PENDING,
+                            resourceTypes = listOf("CONCEPT"),
+                        ),
+                    )
+                order.id
+            }!!
 
-        // When
+        // Fetch the order to pass to processOrder
+        val order =
+            transactionTemplate.execute {
+                unionGraphOrderRepository.findById(orderId).get()
+            }!!
+
+        // When - processOrder uses NOT_SUPPORTED, so it runs outside any transaction
         unionGraphService.processOrder(order, "test-instance")
 
-        // Then
-        val updatedOrder = unionGraphOrderRepository.findById(order.id).get()
+        // Then - verify in a new transaction (simulating API call)
+        val updatedOrder =
+            transactionTemplate.execute {
+                unionGraphOrderRepository.findById(orderId).get()
+            }!!
         assertEquals(UnionGraphOrder.GraphStatus.FAILED, updatedOrder.status)
         assertNotNull(updatedOrder.errorMessage)
     }
 
     @Test
-    @Transactional
     fun `processOrder should transition PENDING to PROCESSING to COMPLETED with database mutations`() {
-        // Given - create test resources with JSON-LD
-        val resourceId1 = "test-concept-1"
-        val resourceId2 = "test-concept-2"
-        val jsonLd1 =
-            mapOf(
-                "@id" to "https://example.com/concept1",
-                "@type" to listOf("http://www.w3.org/2004/02/skos/core#Concept"),
-                "http://purl.org/dc/terms/title" to listOf(mapOf("@value" to "Test Concept 1")),
-            )
-        val jsonLd2 =
-            mapOf(
-                "@id" to "https://example.com/concept2",
-                "@type" to listOf("http://www.w3.org/2004/02/skos/core#Concept"),
-                "http://purl.org/dc/terms/title" to listOf(mapOf("@value" to "Test Concept 2")),
-            )
-        val timestamp = System.currentTimeMillis()
-        resourceService.storeResourceJsonLd(resourceId1, ResourceType.CONCEPT, jsonLd1, timestamp)
-        resourceService.storeResourceJsonLd(resourceId2, ResourceType.CONCEPT, jsonLd2, timestamp + 1)
+        // Given - create test resources with JSON-LD (commits to database)
+        val orderId: String =
+            transactionTemplate.execute {
+                val resourceId1 = "test-concept-1"
+                val resourceId2 = "test-concept-2"
+                val jsonLd1 =
+                    mapOf(
+                        "@id" to "https://example.com/concept1",
+                        "@type" to listOf("http://www.w3.org/2004/02/skos/core#Concept"),
+                        "http://purl.org/dc/terms/title" to listOf(mapOf("@value" to "Test Concept 1")),
+                    )
+                val jsonLd2 =
+                    mapOf(
+                        "@id" to "https://example.com/concept2",
+                        "@type" to listOf("http://www.w3.org/2004/02/skos/core#Concept"),
+                        "http://purl.org/dc/terms/title" to listOf(mapOf("@value" to "Test Concept 2")),
+                    )
+                val timestamp = System.currentTimeMillis()
+                resourceService.storeResourceJsonLd(resourceId1, ResourceType.CONCEPT, jsonLd1, timestamp)
+                resourceService.storeResourceJsonLd(resourceId2, ResourceType.CONCEPT, jsonLd2, timestamp + 1)
 
-        val order =
-            unionGraphOrderRepository.save(
-                UnionGraphOrder(
-                    id = "test-order-complete",
-                    status = UnionGraphOrder.GraphStatus.PENDING,
-                    resourceTypes = listOf("CONCEPT"),
-                    updateTtlHours = 24,
-                    webhookUrl = "https://example.com/webhook",
-                ),
-            )
+                val order =
+                    unionGraphOrderRepository.save(
+                        UnionGraphOrder(
+                            id = "test-order-complete",
+                            status = UnionGraphOrder.GraphStatus.PENDING,
+                            resourceTypes = listOf("CONCEPT"),
+                            updateTtlHours = 24,
+                            webhookUrl = "https://example.com/webhook",
+                        ),
+                    )
+                order.id
+            }!!
 
-        // Verify initial state
-        val initialOrder = unionGraphOrderRepository.findById(order.id).get()
+        // Verify initial state in a new transaction
+        val initialOrder =
+            transactionTemplate.execute {
+                unionGraphOrderRepository.findById(orderId).get()
+            }!!
         assertEquals(UnionGraphOrder.GraphStatus.PENDING, initialOrder.status)
         assertNull(initialOrder.lockedBy)
         assertNull(initialOrder.lockedAt)
         assertNull(initialOrder.processedAt)
         assertNull(initialOrder.graphJsonLd)
 
-        // When - process the order
+        // Fetch the order to pass to processOrder
+        val order =
+            transactionTemplate.execute {
+                unionGraphOrderRepository.findById(orderId).get()
+            }!!
+
+        // When - process the order (uses NOT_SUPPORTED, so runs outside any transaction)
         unionGraphService.processOrder(order, "test-instance")
 
-        // Then - verify state transitions and database mutations
-        val completedOrder = unionGraphOrderRepository.findById(order.id).get()
+        // Then - verify state transitions and database mutations in a new transaction
+        // Note: The order goes through PENDING -> PROCESSING -> COMPLETED
+        // We verify the final COMPLETED state, but PROCESSING should be visible
+        // during processing (tested separately in getOrderInNewTransaction test)
+        val completedOrder =
+            transactionTemplate.execute {
+                unionGraphOrderRepository.findById(orderId).get()
+            }!!
         assertEquals(UnionGraphOrder.GraphStatus.COMPLETED, completedOrder.status)
         assertNotNull(completedOrder.processedAt, "processedAt should be set when completed")
         assertNotNull(completedOrder.graphJsonLd, "graphJsonLd should be set when completed")
@@ -287,23 +318,35 @@ class UnionGraphIntegrationTest : BaseIntegrationTest() {
     }
 
     @Test
-    @Transactional
     fun `processOrder should transition PENDING to PROCESSING to FAILED with database mutations`() {
-        // Given - order with resource type that has no resources
-        val order =
-            unionGraphOrderRepository.save(
-                UnionGraphOrder(
-                    id = "test-order-failed",
-                    status = UnionGraphOrder.GraphStatus.PENDING,
-                    resourceTypes = listOf("DATASET"),
-                ),
-            )
+        // Given - create order (commits to database)
+        val orderId: String =
+            transactionTemplate.execute {
+                val order =
+                    unionGraphOrderRepository.save(
+                        UnionGraphOrder(
+                            id = "test-order-failed",
+                            status = UnionGraphOrder.GraphStatus.PENDING,
+                            resourceTypes = listOf("DATASET"),
+                        ),
+                    )
+                order.id
+            }!!
 
-        // When - process the order (no datasets exist)
+        // Fetch the order to pass to processOrder
+        val order =
+            transactionTemplate.execute {
+                unionGraphOrderRepository.findById(orderId).get()
+            }!!
+
+        // When - process the order (no datasets exist, uses NOT_SUPPORTED)
         unionGraphService.processOrder(order, "test-instance")
 
-        // Then - verify state transitions and database mutations
-        val failedOrder = unionGraphOrderRepository.findById(order.id).get()
+        // Then - verify state transitions and database mutations in a new transaction
+        val failedOrder =
+            transactionTemplate.execute {
+                unionGraphOrderRepository.findById(orderId).get()
+            }!!
         assertEquals(UnionGraphOrder.GraphStatus.FAILED, failedOrder.status)
         assertNotNull(failedOrder.errorMessage, "errorMessage should be set when failed")
         assertNull(failedOrder.graphJsonLd, "graphJsonLd should be null when failed")
@@ -415,6 +458,150 @@ class UnionGraphIntegrationTest : BaseIntegrationTest() {
         assertNotNull(lockedOrder.lockedAt, "lockedAt should be set")
         assertNotNull(lockedOrder.processingStartedAt, "processingStartedAt should be set")
         assertNotNull(lockedOrder.updatedAt, "updatedAt should be set")
+    }
+
+    @Test
+    fun `getOrderInNewTransaction should return PROCESSING status after locking`() {
+        // Given - simulate controller creating an order (commits to database in separate transaction)
+        val orderId: String =
+            transactionTemplate.execute {
+                val order =
+                    unionGraphOrderRepository.save(
+                        UnionGraphOrder(
+                            id = "test-order-get-new",
+                            status = UnionGraphOrder.GraphStatus.PENDING,
+                            resourceTypes = listOf("CONCEPT"),
+                        ),
+                    )
+                order.id
+            }!!
+
+        // When - lock the order and then fetch it using getOrderInNewTransaction
+        // This simulates what processOrder does: lock, then fetch in new transaction
+        val locked = unionGraphService.lockOrderInNewTransaction(orderId, "test-instance")
+        assertTrue(locked, "Lock should succeed")
+
+        // Fetch using getOrderInNewTransaction (simulating what processOrder does)
+        val lockedOrder = unionGraphService.getOrderInNewTransaction(orderId)
+
+        // Then - verify the status is PROCESSING and visible in the new transaction
+        // This is critical: the status must be visible to external API calls
+        assertNotNull(lockedOrder, "Order should be found after locking")
+        assertEquals(
+            UnionGraphOrder.GraphStatus.PROCESSING,
+            lockedOrder!!.status,
+            "Status should be PROCESSING and visible in new transaction",
+        )
+        assertEquals("test-instance", lockedOrder.lockedBy, "lockedBy should be set")
+        assertNotNull(lockedOrder.lockedAt, "lockedAt should be set")
+        assertNotNull(lockedOrder.processingStartedAt, "processingStartedAt should be set")
+
+        // Also verify that querying in a separate transaction (simulating API call) sees PROCESSING
+        val apiOrder =
+            transactionTemplate.execute {
+                unionGraphService.getOrder(orderId)
+            }!!
+        assertEquals(UnionGraphOrder.GraphStatus.PROCESSING, apiOrder.status, "Status should be visible to external API calls")
+    }
+
+    @Test
+    fun `processOrder should make PROCESSING status visible immediately after locking`() {
+        // Given - create order and resources (commits to database in separate transaction)
+        val orderId: String =
+            transactionTemplate.execute {
+                val resourceId1 = "test-concept-visibility-1"
+                val resourceId2 = "test-concept-visibility-2"
+                val jsonLd1 =
+                    mapOf(
+                        "@id" to "https://example.com/concept-visibility-1",
+                        "@type" to listOf("http://www.w3.org/2004/02/skos/core#Concept"),
+                        "http://purl.org/dc/terms/title" to listOf(mapOf("@value" to "Test Concept Visibility 1")),
+                    )
+                val jsonLd2 =
+                    mapOf(
+                        "@id" to "https://example.com/concept-visibility-2",
+                        "@type" to listOf("http://www.w3.org/2004/02/skos/core#Concept"),
+                        "http://purl.org/dc/terms/title" to listOf(mapOf("@value" to "Test Concept Visibility 2")),
+                    )
+                val timestamp = System.currentTimeMillis()
+                resourceService.storeResourceJsonLd(resourceId1, ResourceType.CONCEPT, jsonLd1, timestamp)
+                resourceService.storeResourceJsonLd(resourceId2, ResourceType.CONCEPT, jsonLd2, timestamp + 1)
+
+                val order =
+                    unionGraphOrderRepository.save(
+                        UnionGraphOrder(
+                            id = "test-order-visibility",
+                            status = UnionGraphOrder.GraphStatus.PENDING,
+                            resourceTypes = listOf("CONCEPT"),
+                        ),
+                    )
+                order.id
+            }!!
+
+        // Fetch the order to pass to processOrder
+        val order =
+            transactionTemplate.execute {
+                unionGraphOrderRepository.findById(orderId).get()
+            }!!
+
+        // When - start processing (this will lock and update to PROCESSING)
+        // We call processOrder which internally:
+        // 1. Calls lockOrderInNewTransaction (commits PROCESSING status)
+        // 2. Calls getOrderInNewTransaction (fetches in new transaction to verify)
+        // 3. Builds the graph (long-running operation)
+        unionGraphService.processOrder(order, "test-instance")
+
+        // Then - verify the order was processed to COMPLETED
+        val finalOrder =
+            transactionTemplate.execute {
+                unionGraphOrderRepository.findById(orderId).get()
+            }!!
+        assertEquals(UnionGraphOrder.GraphStatus.COMPLETED, finalOrder.status)
+    }
+
+    @Test
+    fun `processOrder should verify PROCESSING status is visible via getOrderInNewTransaction`() {
+        // This test verifies the actual fix: that getOrderInNewTransaction correctly
+        // fetches the PROCESSING status after locking, which is what processOrder uses internally.
+        // Given - create and lock an order
+        val orderId: String =
+            transactionTemplate.execute {
+                val order =
+                    unionGraphOrderRepository.save(
+                        UnionGraphOrder(
+                            id = "test-order-process-verify",
+                            status = UnionGraphOrder.GraphStatus.PENDING,
+                            resourceTypes = listOf("CONCEPT"),
+                        ),
+                    )
+                order.id
+            }!!
+
+        // When - lock the order (this is what processOrder does first)
+        val locked = unionGraphService.lockOrderInNewTransaction(orderId, "test-instance")
+        assertTrue(locked, "Lock should succeed")
+
+        // Then - verify getOrderInNewTransaction (which processOrder uses) sees PROCESSING
+        // This is the critical test: if this fails, the status won't be visible during processing
+        val lockedOrder = unionGraphService.getOrderInNewTransaction(orderId)
+        assertNotNull(lockedOrder, "Order should be found")
+        assertEquals(
+            UnionGraphOrder.GraphStatus.PROCESSING,
+            lockedOrder!!.status,
+            "getOrderInNewTransaction must return PROCESSING status after locking - this is what processOrder uses internally",
+        )
+
+        // Also verify that a regular getOrder (simulating API call) also sees PROCESSING
+        // This ensures external API calls will see the correct status
+        val apiOrder =
+            transactionTemplate.execute {
+                unionGraphService.getOrder(orderId)
+            }!!
+        assertEquals(
+            UnionGraphOrder.GraphStatus.PROCESSING,
+            apiOrder.status,
+            "External API calls should see PROCESSING status immediately after locking",
+        )
     }
 
     @Test

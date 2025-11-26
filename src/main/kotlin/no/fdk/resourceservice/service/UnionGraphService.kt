@@ -491,11 +491,25 @@ class UnionGraphService(
     }
 
     /**
+     * Fetches an order in a new transaction to ensure we see the committed state.
+     * This is used after locking to get the updated status (PROCESSING).
+     *
+     * @param orderId The order ID to fetch
+     * @return The order if found, null otherwise
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = true)
+    fun getOrderInNewTransaction(orderId: String): UnionGraphOrder? = unionGraphOrderRepository.findById(orderId).orElse(null)
+
+    /**
      * Processes a union graph by building the union graph and updating it.
+     *
+     * This method is NOT transactional to avoid issues with long-running operations.
+     * Each repository method handles its own transaction boundaries.
      *
      * @param order The union graph to process.
      * @param instanceId The identifier of the instance processing this union graph.
      */
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     fun processOrder(
         order: UnionGraphOrder,
         instanceId: String,
@@ -511,11 +525,21 @@ class UnionGraphService(
                 return
             }
 
-            // Fetch the order fresh to get the updated status (PROCESSING) after the lock transaction commits
-            // This ensures the status update is visible and committed before starting the long-running graph build
-            val lockedOrder = unionGraphOrderRepository.findById(order.id).orElse(null)
+            // Fetch the order fresh in a NEW transaction to get the updated status (PROCESSING) after the lock commits
+            // Using REQUIRES_NEW ensures we see the committed state, not a cached entity from the current transaction
+            val lockedOrder = getOrderInNewTransaction(order.id)
             if (lockedOrder == null) {
                 logger.warn("Order {} not found after locking", order.id)
+                return
+            }
+
+            // Verify the status was actually updated to PROCESSING
+            if (lockedOrder.status != UnionGraphOrder.GraphStatus.PROCESSING) {
+                logger.warn(
+                    "Order {} status is {} after locking, expected PROCESSING. Lock may have failed or been overridden.",
+                    order.id,
+                    lockedOrder.status,
+                )
                 return
             }
 

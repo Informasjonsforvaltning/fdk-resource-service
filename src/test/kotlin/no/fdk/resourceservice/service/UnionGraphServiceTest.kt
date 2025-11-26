@@ -451,17 +451,30 @@ class UnionGraphServiceTest {
                 status = UnionGraphOrder.GraphStatus.PENDING,
                 resourceTypes = listOf("CONCEPT"),
             )
+        // After locking, the order should have PROCESSING status
+        val lockedOrder =
+            UnionGraphOrder(
+                id = orderId,
+                status = UnionGraphOrder.GraphStatus.PROCESSING,
+                resourceTypes = listOf("CONCEPT"),
+                lockedBy = instanceId,
+            )
         val unionGraph = mapOf("@graph" to listOf(mapOf("@id" to "https://example.com/resource")))
 
         every { unionGraphOrderRepository.lockOrderForProcessing(orderId, instanceId) } returns 1
+        // getOrderInNewTransaction calls findById in a new transaction
+        // It should return the locked order with PROCESSING status
+        every { unionGraphOrderRepository.findById(orderId) } returns Optional.of(lockedOrder)
         every { resourceRepository.countByResourceTypeAndDeletedFalse("CONCEPT") } returns 0L
-        every { unionGraphOrderRepository.findById(orderId) } returns Optional.of(order)
 
         // When
         unionGraphService.processOrder(order, instanceId)
 
         // Then
         verify { unionGraphOrderRepository.lockOrderForProcessing(orderId, instanceId) }
+        // Verify getOrderInNewTransaction is called (via findById in the new transaction)
+        // This ensures we fetch the order after locking to verify PROCESSING status
+        verify(atLeast = 1) { unionGraphOrderRepository.findById(orderId) }
     }
 
     @Test
