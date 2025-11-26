@@ -92,7 +92,7 @@ class KafkaIntegrationTest : BaseIntegrationTest() {
                 ConceptEvent
                     .newBuilder()
                     .setFdkId(resourceId)
-                    .setType(ConceptEventType.CONCEPT_HARVESTED)
+                    .setType(ConceptEventType.CONCEPT_REASONED)
                     .setTimestamp(timestamp)
                     .setGraph(turtleData)
                     .build()
@@ -138,27 +138,14 @@ class KafkaIntegrationTest : BaseIntegrationTest() {
             ConceptEvent
                 .newBuilder()
                 .setFdkId(resourceId)
-                .setType(ConceptEventType.CONCEPT_HARVESTED)
+                .setType(ConceptEventType.CONCEPT_REASONED)
                 .setTimestamp(System.currentTimeMillis())
                 .setGraph(turtleData)
                 .build()
 
-        // Call the circuit breaker service directly for HARVESTED event
-        println("🔧 Testing HARVESTED event...")
-        circuitBreakerService.handleConceptEvent(event)
-
-        // Now simulate the REASONED event to set the resourceGraph
-        val reasonedEvent =
-            ConceptEvent
-                .newBuilder()
-                .setFdkId(resourceId)
-                .setType(ConceptEventType.CONCEPT_REASONED)
-                .setTimestamp(System.currentTimeMillis() + 1000) // Slightly later timestamp
-                .setGraph(turtleData)
-                .build()
-
+        // Call the circuit breaker service directly for REASONED event
         println("🔧 Testing REASONED event...")
-        circuitBreakerService.handleConceptEvent(reasonedEvent)
+        circuitBreakerService.handleConceptEvent(event)
 
         // Wait a bit for transaction to commit
         Thread.sleep(1000)
@@ -218,7 +205,7 @@ class KafkaIntegrationTest : BaseIntegrationTest() {
                 ConceptEvent
                     .newBuilder()
                     .setFdkId(resourceId)
-                    .setType(ConceptEventType.CONCEPT_HARVESTED)
+                    .setType(ConceptEventType.CONCEPT_REASONED)
                     .setTimestamp(System.currentTimeMillis())
                     .setGraph(turtleData)
                     .build()
@@ -286,7 +273,7 @@ class KafkaIntegrationTest : BaseIntegrationTest() {
                 ResourceTestData(
                     "dataset-events",
                     ResourceType.DATASET,
-                    "DATASET_HARVESTED",
+                    "DATASET_REASONED",
                     """
                     @prefix dc: <http://purl.org/dc/elements/1.1/> .
                     @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
@@ -299,7 +286,7 @@ class KafkaIntegrationTest : BaseIntegrationTest() {
                 ResourceTestData(
                     "data-service-events",
                     ResourceType.DATA_SERVICE,
-                    "DATA_SERVICE_HARVESTED",
+                    "DATA_SERVICE_REASONED",
                     """
                     @prefix dc: <http://purl.org/dc/elements/1.1/> .
                     @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
@@ -312,7 +299,7 @@ class KafkaIntegrationTest : BaseIntegrationTest() {
                 ResourceTestData(
                     "service-events",
                     ResourceType.SERVICE,
-                    "SERVICE_HARVESTED",
+                    "SERVICE_REASONED",
                     """
                     @prefix dc: <http://purl.org/dc/elements/1.1/> .
                     @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
@@ -365,7 +352,7 @@ class KafkaIntegrationTest : BaseIntegrationTest() {
                             DatasetEvent
                                 .newBuilder()
                                 .setFdkId(resourceId)
-                                .setType(DatasetEventType.DATASET_HARVESTED)
+                                .setType(DatasetEventType.DATASET_REASONED)
                                 .setTimestamp(timestamp)
                                 .setGraph(graph)
                                 .build()
@@ -374,7 +361,7 @@ class KafkaIntegrationTest : BaseIntegrationTest() {
                             DataServiceEvent
                                 .newBuilder()
                                 .setFdkId(resourceId)
-                                .setType(DataServiceEventType.DATA_SERVICE_HARVESTED)
+                                .setType(DataServiceEventType.DATA_SERVICE_REASONED)
                                 .setTimestamp(timestamp)
                                 .setGraph(graph)
                                 .build()
@@ -383,7 +370,7 @@ class KafkaIntegrationTest : BaseIntegrationTest() {
                             ServiceEvent
                                 .newBuilder()
                                 .setFdkId(resourceId)
-                                .setType(ServiceEventType.SERVICE_HARVESTED)
+                                .setType(ServiceEventType.SERVICE_REASONED)
                                 .setTimestamp(timestamp)
                                 .setGraph(graph)
                                 .build()
@@ -470,7 +457,7 @@ class KafkaIntegrationTest : BaseIntegrationTest() {
                 ConceptEvent
                     .newBuilder()
                     .setFdkId(resourceId)
-                    .setType(ConceptEventType.CONCEPT_HARVESTED)
+                    .setType(ConceptEventType.CONCEPT_REASONED)
                     .setTimestamp(System.currentTimeMillis())
                     .setGraph(initialTurtleData)
                     .build()
@@ -491,7 +478,7 @@ class KafkaIntegrationTest : BaseIntegrationTest() {
                 ConceptEvent
                     .newBuilder()
                     .setFdkId(resourceId)
-                    .setType(ConceptEventType.CONCEPT_HARVESTED)
+                    .setType(ConceptEventType.CONCEPT_REASONED)
                     .setTimestamp(System.currentTimeMillis() + 1000)
                     .setGraph(updatedTurtleData)
                     .build()

@@ -27,8 +27,7 @@ import kotlin.time.toJavaDuration
  * and the JSON-LD graph representation (resourceGraph) of RDF resources.
  *
  * Key responsibilities:
- * - Process HARVESTED events: Store both resourceJson and resourceGraph (JSON-LD 1.1 in pretty format)
- * - Process REASONED events: Update resourceJson and resourceGraph
+ * - Process REASONED events: Store both resourceJson and resourceGraph (JSON-LD 1.1 in pretty format)
  * - Handle circuit breaker failures with fallback methods
  * - Convert Turtle RDF to JSON-LD 1.1 for resourceGraph storage
  */
@@ -243,13 +242,13 @@ class CircuitBreakerService(
         logger.debug("Processing event: id=$fdkId, type=$resourceType, event=$eventType, graphLen=${graph.length}")
         val action =
             when {
-                eventType.endsWith("_HARVESTED") -> "HARVESTED"
+                eventType.endsWith("_REASONED") -> "REASONED"
                 eventType.endsWith("_REMOVED") -> "REMOVED"
                 else -> eventType.substringAfter("_")
             }
 
         when (action) {
-            "HARVESTED" -> {
+            "REASONED" -> {
                 // Check timestamp early to avoid expensive conversion
                 if (!resourceService.shouldUpdateResource(fdkId, timestamp)) {
                     logger.debug("Skipped (older timestamp): id=$fdkId, type=$resourceType")
