@@ -57,6 +57,8 @@ class UnionGraphProcessor(
     @Scheduled(fixedDelay = 5000)
     fun processPendingOrders() {
         try {
+            logger.debug("Scheduler running: checking for pending orders")
+            
             // Lock timeout: release locks older than 60 minutes (in case of crashed instances)
             val lockTimeout = Instant.now().minus(60, ChronoUnit.MINUTES)
 
@@ -72,7 +74,8 @@ class UnionGraphProcessor(
 
             if (orders.isEmpty()) {
                 // No tasks available - this is normal, scheduler will retry in 5 seconds
-                logger.debug("No pending orders found")
+                // Log at debug level to avoid spam, but visible when debug logging is enabled
+                logger.debug("No pending orders found (scheduler will retry in 5 seconds)")
                 return
             }
 

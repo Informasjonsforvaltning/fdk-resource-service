@@ -95,6 +95,134 @@ class UnionGraphControllerTest : BaseControllerTest() {
     }
 
     @Test
+    fun `createOrder should return 400 when updateTtlHours is 1`() {
+        // When & Then
+        mockMvc
+            .perform(
+                post("/v1/union-graphs")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(
+                        """
+                        {
+                            "resourceTypes": ["CONCEPT"],
+                            "updateTtlHours": 1
+                        }
+                        """.trimIndent(),
+                    ),
+            ).andExpect(status().isBadRequest)
+    }
+
+    @Test
+    fun `createOrder should return 400 when updateTtlHours is 2`() {
+        // When & Then
+        mockMvc
+            .perform(
+                post("/v1/union-graphs")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(
+                        """
+                        {
+                            "resourceTypes": ["CONCEPT"],
+                            "updateTtlHours": 2
+                        }
+                        """.trimIndent(),
+                    ),
+            ).andExpect(status().isBadRequest)
+    }
+
+    @Test
+    fun `createOrder should return 400 when updateTtlHours is 3`() {
+        // When & Then
+        mockMvc
+            .perform(
+                post("/v1/union-graphs")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(
+                        """
+                        {
+                            "resourceTypes": ["CONCEPT"],
+                            "updateTtlHours": 3
+                        }
+                        """.trimIndent(),
+                    ),
+            ).andExpect(status().isBadRequest)
+    }
+
+    @Test
+    fun `createOrder should accept updateTtlHours of 0`() {
+        // Given
+        val order =
+            UnionGraphOrder(
+                id = "test-order-0",
+                status = UnionGraphOrder.GraphStatus.PENDING,
+                resourceTypes = listOf("CONCEPT"),
+                updateTtlHours = 0,
+            )
+
+        every {
+            unionGraphService.createOrder(
+                listOf(ResourceType.CONCEPT),
+                0,
+                null,
+                null,
+                false,
+            )
+        } returns UnionGraphService.CreateOrderResult(order, isNew = true)
+
+        // When & Then
+        mockMvc
+            .perform(
+                post("/v1/union-graphs")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(
+                        """
+                        {
+                            "resourceTypes": ["CONCEPT"],
+                            "updateTtlHours": 0
+                        }
+                        """.trimIndent(),
+                    ),
+            ).andExpect(status().isCreated)
+    }
+
+    @Test
+    fun `createOrder should accept updateTtlHours greater than 3`() {
+        // Given
+        val order =
+            UnionGraphOrder(
+                id = "test-order-4",
+                status = UnionGraphOrder.GraphStatus.PENDING,
+                resourceTypes = listOf("CONCEPT"),
+                updateTtlHours = 4,
+            )
+
+        every {
+            unionGraphService.createOrder(
+                listOf(ResourceType.CONCEPT),
+                4,
+                null,
+                null,
+                false,
+            )
+        } returns UnionGraphService.CreateOrderResult(order, isNew = true)
+
+        // When & Then
+        mockMvc
+            .perform(
+                post("/v1/union-graphs")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(
+                        """
+                        {
+                            "resourceTypes": ["CONCEPT"],
+                            "updateTtlHours": 4
+                        }
+                        """.trimIndent(),
+                    ),
+            ).andExpect(status().isCreated)
+    }
+
+    @Test
     fun `createOrder should return 409 when order already exists`() {
         // Given
         val order =

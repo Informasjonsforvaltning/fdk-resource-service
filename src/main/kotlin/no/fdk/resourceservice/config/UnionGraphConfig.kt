@@ -4,7 +4,10 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.scheduling.annotation.EnableAsync
 import org.springframework.scheduling.annotation.EnableScheduling
+import org.springframework.scheduling.annotation.SchedulingConfigurer
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor
+import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler
+import org.springframework.scheduling.config.ScheduledTaskRegistrar
 import org.springframework.web.client.RestTemplate
 import java.util.concurrent.Executor
 
@@ -17,7 +20,7 @@ import java.util.concurrent.Executor
 @Configuration
 @EnableAsync
 @EnableScheduling
-class UnionGraphConfig {
+class UnionGraphConfig : SchedulingConfigurer {
     companion object {
         /**
          * Maximum number of concurrent union graph building operations.
@@ -62,6 +65,18 @@ class UnionGraphConfig {
         executor.setAwaitTerminationSeconds(60)
         executor.initialize()
         return executor
+    }
+
+    override fun configureTasks(taskRegistrar: ScheduledTaskRegistrar) {
+        // Create scheduler directly here to avoid circular dependency
+        // This ensures scheduled methods run on separate threads and don't block each other
+        val scheduler = ThreadPoolTaskScheduler()
+        scheduler.poolSize = 3 // Enough threads for all scheduled methods
+        scheduler.setThreadNamePrefix("scheduler-")
+        scheduler.setWaitForTasksToCompleteOnShutdown(true)
+        scheduler.setAwaitTerminationSeconds(60)
+        scheduler.initialize()
+        taskRegistrar.setScheduler(scheduler)
     }
 
     @Bean

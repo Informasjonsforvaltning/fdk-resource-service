@@ -64,6 +64,7 @@ class UnionGraphController(
                 "For example, dataset filters can filter by isOpenData and isRelatedToTransportportal fields. " +
                 "You can also enable automatic expansion of DataService graphs when datasets reference them " +
                 "via distribution accessService URIs (expandDistributionAccessServices). " +
+                "The updateTtlHours must be 0 (never update) or greater than 3. " +
                 "If a union graph with the same configuration (resource types, update TTL, webhook URL, filters, " +
                 "and expansion settings) already exists, it will be returned with HTTP 409 Conflict. " +
                 "The response includes a Location header pointing to the union graph resource. " +
@@ -157,11 +158,17 @@ class UnionGraphController(
         val resourceFilters = requestBody?.toDomainFilters()
         val expandDistributionAccessServices = requestBody?.expandDistributionAccessServices ?: false
 
+        // Validate updateTtlHours: must be 0 (never update) or > 3
+        if (updateTtlHours != 0 && updateTtlHours <= 3) {
+            logger.warn("Invalid updateTtlHours: {} (must be 0 or > 3)", updateTtlHours)
+            return ResponseEntity.badRequest().build()
+        }
+
         val result =
             try {
                 unionGraphService.createOrder(resourceTypes, updateTtlHours, webhookUrl, resourceFilters, expandDistributionAccessServices)
             } catch (e: IllegalArgumentException) {
-                // Handle validation errors (e.g., invalid webhook URL)
+                // Handle validation errors (e.g., invalid webhook URL, invalid updateTtlHours)
                 logger.warn("Invalid request: {}", e.message)
                 return ResponseEntity.badRequest().build()
             }
@@ -556,6 +563,7 @@ class UnionGraphController(
          * Time to live in hours for automatic graph updates.
          * 0 means never update automatically.
          * Otherwise, the graph will be automatically updated after this many hours.
+         * Must be 0 or greater than 3.
          */
         val updateTtlHours: Int? = null,
         /**

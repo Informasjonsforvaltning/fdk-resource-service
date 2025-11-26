@@ -100,6 +100,96 @@ class UnionGraphServiceTest {
     }
 
     @Test
+    fun `createOrder should throw IllegalArgumentException when updateTtlHours is 1`() {
+        // When & Then
+        val exception =
+            assertThrows<IllegalArgumentException> {
+                unionGraphService.createOrder(
+                    resourceTypes = null,
+                    updateTtlHours = 1,
+                    webhookUrl = null,
+                    resourceFilters = null,
+                    expandDistributionAccessServices = false,
+                )
+            }
+        assertTrue(exception.message!!.contains("updateTtlHours must be 0"))
+    }
+
+    @Test
+    fun `createOrder should throw IllegalArgumentException when updateTtlHours is 2`() {
+        // When & Then
+        val exception =
+            assertThrows<IllegalArgumentException> {
+                unionGraphService.createOrder(
+                    resourceTypes = null,
+                    updateTtlHours = 2,
+                    webhookUrl = null,
+                    resourceFilters = null,
+                    expandDistributionAccessServices = false,
+                )
+            }
+        assertTrue(exception.message!!.contains("updateTtlHours must be 0"))
+    }
+
+    @Test
+    fun `createOrder should throw IllegalArgumentException when updateTtlHours is 3`() {
+        // When & Then
+        val exception =
+            assertThrows<IllegalArgumentException> {
+                unionGraphService.createOrder(
+                    resourceTypes = null,
+                    updateTtlHours = 3,
+                    webhookUrl = null,
+                    resourceFilters = null,
+                    expandDistributionAccessServices = false,
+                )
+            }
+        assertTrue(exception.message!!.contains("updateTtlHours must be 0"))
+    }
+
+    @Test
+    fun `createOrder should accept updateTtlHours of 0`() {
+        // Given
+        every { unionGraphOrderRepository.findByConfiguration(any(), any(), any(), any(), any()) } returns null
+        every { unionGraphOrderRepository.save(any()) } answers { firstArg() }
+
+        // When
+        val result =
+            unionGraphService.createOrder(
+                resourceTypes = null,
+                updateTtlHours = 0,
+                webhookUrl = null,
+                resourceFilters = null,
+                expandDistributionAccessServices = false,
+            )
+
+        // Then
+        assertNotNull(result)
+        assertEquals(0, result.order.updateTtlHours)
+    }
+
+    @Test
+    fun `createOrder should accept updateTtlHours greater than 3`() {
+        // Given
+        every { unionGraphOrderRepository.findByConfiguration(any(), any(), any(), any(), any()) } returns null
+        every { unionGraphOrderRepository.save(any()) } answers { firstArg() }
+
+        // When
+        val result =
+            unionGraphService.createOrder(
+                resourceTypes = null,
+                updateTtlHours = 4,
+                webhookUrl = null,
+                resourceFilters = null,
+                expandDistributionAccessServices = false,
+            )
+
+        // Then
+        assertNotNull(result)
+        assertEquals(4, result.order.updateTtlHours)
+    }
+
+    @Test
     fun `createOrder should throw exception for non-HTTPS webhook URL`() {
         // Given
         val webhookUrl = "http://example.com/webhook"

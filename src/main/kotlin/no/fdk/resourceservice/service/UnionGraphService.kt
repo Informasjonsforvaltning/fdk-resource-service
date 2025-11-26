@@ -53,7 +53,7 @@ class UnionGraphService(
      * Otherwise, a new union graph is created.
      *
      * @param resourceTypes Optional list of resource types to include. If null or empty, all types are included.
-     * @param updateTtlHours Time to live in hours for automatic updates. 0 means never update automatically.
+     * @param updateTtlHours Time to live in hours for automatic updates. 0 means never update automatically. Must be 0 or > 3.
      * @param webhookUrl Optional webhook URL to call when union graph status changes. Must be HTTPS if provided.
      * @param resourceFilters Optional per-resource-type filters to apply when building the graph.
      *                        For example, dataset filters can filter by isOpenData and isRelatedToTransportportal.
@@ -73,6 +73,10 @@ class UnionGraphService(
         resourceFilters: UnionGraphResourceFilters? = null,
         expandDistributionAccessServices: Boolean = false,
     ): CreateOrderResult {
+        // Validate updateTtlHours: must be 0 (never update) or > 3
+        if (updateTtlHours != 0 && updateTtlHours <= 3) {
+            throw IllegalArgumentException("updateTtlHours must be 0 (never update) or greater than 3")
+        }
         // Validate webhook URL if provided
         if (!webhookUrl.isNullOrBlank() && !webhookUrl.startsWith("https://")) {
             throw IllegalArgumentException("Webhook URL must use HTTPS protocol")
