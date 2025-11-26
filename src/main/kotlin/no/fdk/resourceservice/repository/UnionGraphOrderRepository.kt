@@ -206,6 +206,7 @@ interface UnionGraphOrderRepository : JpaRepository<UnionGraphOrder, String> {
                 ELSE resource_filters = CAST(:resourceFilters AS jsonb)
             END
         )
+        AND expand_distribution_access_services = :expandDistributionAccessServices
         ORDER BY 
             CASE status 
                 WHEN 'COMPLETED' THEN 1
@@ -223,5 +224,6 @@ interface UnionGraphOrderRepository : JpaRepository<UnionGraphOrder, String> {
         @Param("updateTtlHours") updateTtlHours: Int,
         @Param("webhookUrl") webhookUrl: String?,
         @Param("resourceFilters") resourceFilters: String?,
+        @Param("expandDistributionAccessServices") expandDistributionAccessServices: Boolean,
     ): UnionGraphOrder?
 }

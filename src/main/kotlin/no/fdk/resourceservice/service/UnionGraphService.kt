@@ -30,6 +30,7 @@ import java.util.UUID
 class UnionGraphService(
     private val unionGraphOrderRepository: UnionGraphOrderRepository,
     private val resourceRepository: ResourceRepository,
+    private val resourceService: ResourceService,
     private val objectMapper: ObjectMapper,
     private val webhookService: WebhookService,
 ) {
@@ -58,6 +59,10 @@ class UnionGraphService(
      *                        For example, dataset filters can filter by isOpenData and isRelatedToTransportportal.
      *                        Filters are part of the union graph configuration, so union graphs with different filters
      *                        are considered different union graphs.
+     * @param expandDistributionAccessServices If true, datasets with distributions that reference DataService URIs
+     *                                          will have those DataService graphs automatically included in the union graph.
+     *                                          This allows creating union graphs that include both datasets and their related
+     *                                          data services in a single graph.
      * @return CreateOrderResult containing the union graph and a flag indicating if it's new or existing.
      * @throws IllegalArgumentException if webhookUrl is provided but not HTTPS, or if filters are invalid
      */
@@ -66,6 +71,7 @@ class UnionGraphService(
         updateTtlHours: Int = 0,
         webhookUrl: String? = null,
         resourceFilters: UnionGraphResourceFilters? = null,
+        expandDistributionAccessServices: Boolean = false,
     ): CreateOrderResult {
         // Validate webhook URL if provided
         if (!webhookUrl.isNullOrBlank() && !webhookUrl.startsWith("https://")) {
@@ -97,6 +103,7 @@ class UnionGraphService(
                 updateTtlHours,
                 webhookUrl,
                 filtersPayload?.let { objectMapper.writeValueAsString(it) },
+                expandDistributionAccessServices,
             )
         if (existingOrder != null) {
             logger.info(
@@ -117,6 +124,7 @@ class UnionGraphService(
                 updateTtlHours = updateTtlHours,
                 webhookUrl = webhookUrl,
                 resourceFilters = filtersPayload,
+                expandDistributionAccessServices = expandDistributionAccessServices,
             )
 
         val saved = unionGraphOrderRepository.save(order)
@@ -216,13 +224,21 @@ class UnionGraphService(
      * @param resourceFilters Optional per-resource-type filters to apply when collecting resources.
      *                        For example, dataset filters can filter by isOpenData and isRelatedToTransportportal.
      *                        Only resources matching the filters will be included in the union graph.
+     * @param expandDistributionAccessServices If true, datasets with distributions that reference DataService URIs
+     *                                          (via distribution[].accessService[].uri) will have those DataService
+     *                                          graphs automatically included in the union graph.
      * @return The merged union graph as JSON-LD Map, or null if no resources found.
      */
     fun buildUnionGraph(
         resourceTypes: List<ResourceType>? = null,
         resourceFilters: UnionGraphResourceFilters? = null,
+        expandDistributionAccessServices: Boolean = false,
     ): Map<String, Any>? {
-        logger.info("Building union graph for resource types: {}", resourceTypes)
+        logger.info(
+            "Building union graph for resource types: {}, expandDistributionAccessServices: {}",
+            resourceTypes,
+            expandDistributionAccessServices,
+        )
 
         // Determine which resource types to process
         val typesToProcess = resourceTypes?.ifEmpty { null } ?: ResourceType.entries
@@ -257,6 +273,8 @@ class UnionGraphService(
         val unionModel = ModelFactory.createDefaultModel()
         var processedCount = 0L
         val batchSize = UnionGraphConfig.UNION_GRAPH_RESOURCE_BATCH_SIZE
+        // Track expanded DataService URIs to avoid duplicates
+        val expandedDataServiceUris = mutableSetOf<String>()
 
         try {
             // Process each resource type
@@ -304,6 +322,12 @@ class UnionGraphService(
                                     unionModel.add(resourceModel)
                                     resourceModel.close()
                                     processedCount++
+
+                                    // If expanding distribution access services and this is a dataset,
+                                    // extract DataService URIs and add their graphs
+                                    if (expandDistributionAccessServices && type == ResourceType.DATASET) {
+                                        extractAndAddDataServices(jsonLd, unionModel, expandedDataServiceUris)
+                                    }
                                 } catch (e: Exception) {
                                     logger.warn("Failed to merge resource {}: {}", resource.id, e.message)
                                     // Continue with other resources
@@ -331,6 +355,13 @@ class UnionGraphService(
                 return null
             }
 
+            if (expandDistributionAccessServices && expandedDataServiceUris.isNotEmpty()) {
+                logger.info(
+                    "Expanded {} DataService graph(s) from dataset distribution accessService references",
+                    expandedDataServiceUris.size,
+                )
+            }
+
             logger.info("Processed {} resources, building final union graph...", processedCount)
 
             // Convert merged model back to JSON-LD Map
@@ -353,6 +384,92 @@ class UnionGraphService(
             return null
         } finally {
             unionModel.close()
+        }
+    }
+
+    /**
+     * Extracts DataService URIs from a dataset JSON-LD and adds their graphs to the union model.
+     *
+     * Follows the path: distribution[*].accessService[*].uri
+     * Only adds DataServices that haven't been expanded yet to avoid duplicates.
+     *
+     * @param datasetJsonLd The dataset JSON-LD map
+     * @param unionModel The union model to add DataService graphs to
+     * @param expandedUris Set of URIs that have already been expanded (modified in place)
+     */
+    private fun extractAndAddDataServices(
+        datasetJsonLd: Map<String, Any>,
+        unionModel: org.apache.jena.rdf.model.Model,
+        expandedUris: MutableSet<String>,
+    ) {
+        try {
+            // Extract distributions from the dataset
+            val distributions =
+                when (val distValue = datasetJsonLd["distribution"]) {
+                    is List<*> -> distValue.filterIsInstance<Map<String, Any>>()
+                    is Map<*, *> -> listOf(distValue as Map<String, Any>)
+                    else -> emptyList()
+                }
+
+            // Extract DataService URIs from distributions
+            val dataServiceUris = mutableSetOf<String>()
+            for (distribution in distributions) {
+                val accessServices =
+                    when (val accessServiceValue = distribution["accessService"]) {
+                        is List<*> -> accessServiceValue.filterIsInstance<Map<String, Any>>()
+                        is Map<*, *> -> listOf(accessServiceValue as Map<String, Any>)
+                        else -> emptyList()
+                    }
+
+                for (accessService in accessServices) {
+                    when (val uriValue = accessService["uri"]) {
+                        is String -> {
+                            if (uriValue.isNotBlank()) {
+                                dataServiceUris.add(uriValue)
+                            }
+                        }
+                        is List<*> -> {
+                            uriValue
+                                .filterIsInstance<String>()
+                                .filter { it.isNotBlank() }
+                                .forEach { dataServiceUris.add(it) }
+                        }
+                    }
+                }
+            }
+
+            // Add DataService graphs for URIs that haven't been expanded yet
+            for (uri in dataServiceUris) {
+                if (uri !in expandedUris) {
+                    try {
+                        val dataServiceJsonLd = resourceService.getResourceJsonLdByUri(uri, ResourceType.DATA_SERVICE)
+                        if (dataServiceJsonLd != null) {
+                            // Convert JSON-LD Map to JSON string
+                            val jsonString = objectMapper.writeValueAsString(dataServiceJsonLd)
+
+                            // Parse JSON-LD into Jena Model
+                            val dataServiceModel = ModelFactory.createDefaultModel()
+                            ByteArrayInputStream(jsonString.toByteArray()).use { inputStream ->
+                                RDFDataMgr.read(dataServiceModel, inputStream, Lang.JSONLD)
+                            }
+
+                            // Merge into union model
+                            unionModel.add(dataServiceModel)
+                            dataServiceModel.close()
+                            expandedUris.add(uri)
+                            logger.debug("Added DataService graph for URI: {}", uri)
+                        } else {
+                            logger.debug("DataService not found for URI: {}", uri)
+                        }
+                    } catch (e: Exception) {
+                        logger.warn("Failed to add DataService graph for URI {}: {}", uri, e.message)
+                        // Continue with other URIs
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            logger.warn("Failed to extract DataService URIs from dataset: {}", e.message)
+            // Continue processing other resources
         }
     }
 
@@ -413,7 +530,7 @@ class UnionGraphService(
                     }
                 }
 
-            val unionGraph = buildUnionGraph(resourceTypes, lockedOrder.resourceFilters)
+            val unionGraph = buildUnionGraph(resourceTypes, lockedOrder.resourceFilters, lockedOrder.expandDistributionAccessServices)
 
             val previousStatus = lockedOrder.status
 

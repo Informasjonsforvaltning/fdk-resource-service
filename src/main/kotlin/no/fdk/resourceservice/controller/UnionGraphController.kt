@@ -61,8 +61,10 @@ class UnionGraphController(
                 "You can specify which resource types to include, or leave empty to include all types. " +
                 "Optionally, you can provide resource filters to filter resources by type-specific criteria. " +
                 "For example, dataset filters can filter by isOpenData and isRelatedToTransportportal fields. " +
-                "If a union graph with the same configuration (resource types, update TTL, webhook URL, and filters) " +
-                "already exists, it will be returned with HTTP 409 Conflict. " +
+                "You can also enable automatic expansion of DataService graphs when datasets reference them " +
+                "via distribution accessService URIs (expandDistributionAccessServices). " +
+                "If a union graph with the same configuration (resource types, update TTL, webhook URL, filters, " +
+                "and expansion settings) already exists, it will be returned with HTTP 409 Conflict. " +
                 "The response includes a Location header pointing to the union graph resource. " +
                 "If a webhook URL is provided, it must use HTTPS protocol.",
         security = [SecurityRequirement(name = "ApiKeyAuth")],
@@ -112,10 +114,11 @@ class UnionGraphController(
         val updateTtlHours = requestBody?.updateTtlHours ?: 0
         val webhookUrl = requestBody?.webhookUrl
         val resourceFilters = requestBody?.toDomainFilters()
+        val expandDistributionAccessServices = requestBody?.expandDistributionAccessServices ?: false
 
         val result =
             try {
-                unionGraphService.createOrder(resourceTypes, updateTtlHours, webhookUrl, resourceFilters)
+                unionGraphService.createOrder(resourceTypes, updateTtlHours, webhookUrl, resourceFilters, expandDistributionAccessServices)
             } catch (e: IllegalArgumentException) {
                 // Handle validation errors (e.g., invalid webhook URL)
                 logger.warn("Invalid request: {}", e.message)
@@ -133,6 +136,7 @@ class UnionGraphController(
                 webhookUrl = order.webhookUrl,
                 createdAt = order.createdAt.toString(),
                 resourceFilters = toResponseFilters(order.resourceFilters),
+                expandDistributionAccessServices = order.expandDistributionAccessServices,
             )
 
         // Return 201 Created for new union graphs, 409 Conflict for existing ones
@@ -196,6 +200,7 @@ class UnionGraphController(
                     updatedAt = order.updatedAt.toString(),
                     processedAt = order.processedAt?.toString(),
                     resourceFilters = toResponseFilters(order.resourceFilters),
+                    expandDistributionAccessServices = order.expandDistributionAccessServices,
                 )
             }
 
@@ -265,6 +270,7 @@ class UnionGraphController(
                 webhookUrl = order.webhookUrl,
                 createdAt = order.createdAt.toString(),
                 resourceFilters = toResponseFilters(order.resourceFilters),
+                expandDistributionAccessServices = order.expandDistributionAccessServices,
             )
 
         return ResponseEntity
@@ -320,6 +326,7 @@ class UnionGraphController(
                 updatedAt = order.updatedAt.toString(),
                 processedAt = order.processedAt?.toString(),
                 resourceFilters = toResponseFilters(order.resourceFilters),
+                expandDistributionAccessServices = order.expandDistributionAccessServices,
             )
 
         return ResponseEntity
@@ -523,6 +530,18 @@ class UnionGraphController(
          * Filters are part of the union graph configuration, so union graphs with different filters are considered different.
          */
         val resourceFilters: ResourceFiltersRequest? = null,
+        /**
+         * If true, when building union graphs, datasets with distributions that reference
+         * DataService URIs (via distribution[].accessService[].uri) will have those
+         * DataService graphs automatically included in the union graph.
+         *
+         * This allows creating union graphs that include both datasets and their related
+         * data services in a single graph, making it easier to query and navigate the
+         * relationships between datasets and data services.
+         *
+         * Default: false
+         */
+        val expandDistributionAccessServices: Boolean? = null,
     ) {
         fun toDomainFilters(): UnionGraphResourceFilters? = resourceFilters?.toDomain()
     }
@@ -591,6 +610,10 @@ class UnionGraphController(
          * Null if no filters were specified.
          */
         val resourceFilters: ResourceFiltersResponse?,
+        /**
+         * Whether DataService graphs are automatically included when datasets reference them via distribution accessService.
+         */
+        val expandDistributionAccessServices: Boolean,
     )
 
     /**
@@ -611,6 +634,10 @@ class UnionGraphController(
          * Null if no filters were specified.
          */
         val resourceFilters: ResourceFiltersResponse?,
+        /**
+         * Whether DataService graphs are automatically included when datasets reference them via distribution accessService.
+         */
+        val expandDistributionAccessServices: Boolean,
     )
 
     /**
@@ -632,6 +659,10 @@ class UnionGraphController(
          * Null if no filters were specified.
          */
         val resourceFilters: ResourceFiltersResponse?,
+        /**
+         * Whether DataService graphs are automatically included when datasets reference them via distribution accessService.
+         */
+        val expandDistributionAccessServices: Boolean,
     )
 
     /**

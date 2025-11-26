@@ -66,6 +66,7 @@ class UnionGraphControllerTest : BaseControllerTest() {
                 24,
                 "https://example.com/webhook",
                 null,
+                false,
             )
         } returns UnionGraphService.CreateOrderResult(order, isNew = true)
 
@@ -109,6 +110,7 @@ class UnionGraphControllerTest : BaseControllerTest() {
                 0,
                 null,
                 null,
+                false,
             )
         } returns UnionGraphService.CreateOrderResult(order, isNew = false)
 
@@ -138,6 +140,7 @@ class UnionGraphControllerTest : BaseControllerTest() {
                 0,
                 "http://example.com/webhook",
                 null,
+                false,
             )
         } throws IllegalArgumentException("Webhook URL must use HTTPS protocol")
 
@@ -166,7 +169,7 @@ class UnionGraphControllerTest : BaseControllerTest() {
             )
 
         every {
-            unionGraphService.createOrder(null, 0, null, null)
+            unionGraphService.createOrder(null, 0, null, null, false)
         } returns UnionGraphService.CreateOrderResult(order, isNew = true)
 
         // When & Then
@@ -201,6 +204,7 @@ class UnionGraphControllerTest : BaseControllerTest() {
                 0,
                 null,
                 filters,
+                false,
             )
         } returns UnionGraphService.CreateOrderResult(order, isNew = true)
 
@@ -241,6 +245,7 @@ class UnionGraphControllerTest : BaseControllerTest() {
                 0,
                 null,
                 filters,
+                false,
             )
         } throws IllegalArgumentException("Dataset filters require the DATASET resource type")
 

@@ -100,6 +100,17 @@ data class UnionGraphOrder(
      */
     @Column(name = "webhook_url", columnDefinition = "text")
     val webhookUrl: String? = null,
+    /**
+     * If true, when building union graphs, datasets with distributions that reference
+     * DataService URIs (via distribution[].accessService[].uri) will have those
+     * DataService graphs automatically included in the union graph.
+     *
+     * This allows creating union graphs that include both datasets and their related
+     * data services in a single graph, making it easier to query and navigate the
+     * relationships between datasets and data services.
+     */
+    @Column(name = "expand_distribution_access_services", nullable = false)
+    val expandDistributionAccessServices: Boolean = false,
 ) {
     @PreUpdate
     fun preUpdate() {

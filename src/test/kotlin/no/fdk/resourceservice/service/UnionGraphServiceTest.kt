@@ -31,12 +31,14 @@ class UnionGraphServiceTest {
     fun setUp() {
         unionGraphOrderRepository = mockk(relaxed = true)
         resourceRepository = mockk(relaxed = true)
+        val resourceService = mockk<ResourceService>(relaxed = true)
         objectMapper = ObjectMapper()
         webhookService = mockk(relaxed = true)
         unionGraphService =
             UnionGraphService(
                 unionGraphOrderRepository,
                 resourceRepository,
+                resourceService,
                 objectMapper,
                 webhookService,
             )
@@ -49,11 +51,11 @@ class UnionGraphServiceTest {
         val updateTtlHours = 24
         val webhookUrl = "https://example.com/webhook"
 
-        every { unionGraphOrderRepository.findByConfiguration(any(), any(), any(), any()) } returns null
+        every { unionGraphOrderRepository.findByConfiguration(any(), any(), any(), any(), any()) } returns null
         every { unionGraphOrderRepository.save(any()) } answers { firstArg() }
 
         // When
-        val result = unionGraphService.createOrder(resourceTypes, updateTtlHours, webhookUrl)
+        val result = unionGraphService.createOrder(resourceTypes, updateTtlHours, webhookUrl, null, false)
 
         // Then
         assertTrue(result.isNew)
@@ -83,11 +85,12 @@ class UnionGraphServiceTest {
                 12,
                 "https://example.com/webhook",
                 null,
+                false,
             )
         } returns existingOrder
 
         // When
-        val result = unionGraphService.createOrder(resourceTypes, 12, "https://example.com/webhook")
+        val result = unionGraphService.createOrder(resourceTypes, 12, "https://example.com/webhook", null, false)
 
         // Then
         assertFalse(result.isNew)
@@ -110,7 +113,7 @@ class UnionGraphServiceTest {
     @Test
     fun `createOrder should accept null webhook URL`() {
         // Given
-        every { unionGraphOrderRepository.findByConfiguration(any(), any(), any(), any()) } returns null
+        every { unionGraphOrderRepository.findByConfiguration(any(), any(), any(), any(), any()) } returns null
         every { unionGraphOrderRepository.save(any()) } answers { firstArg() }
 
         // When
@@ -124,7 +127,7 @@ class UnionGraphServiceTest {
     @Test
     fun `createOrder should accept empty resource types list`() {
         // Given
-        every { unionGraphOrderRepository.findByConfiguration(null, any(), any(), any()) } returns null
+        every { unionGraphOrderRepository.findByConfiguration(null, any(), any(), any(), any()) } returns null
         every { unionGraphOrderRepository.save(any()) } answers { firstArg() }
 
         // When
@@ -140,7 +143,7 @@ class UnionGraphServiceTest {
     fun `createOrder should sort resource types for consistency`() {
         // Given
         val resourceTypes = listOf(ResourceType.DATASET, ResourceType.CONCEPT)
-        every { unionGraphOrderRepository.findByConfiguration(any(), any(), any(), any()) } returns null
+        every { unionGraphOrderRepository.findByConfiguration(any(), any(), any(), any(), any()) } returns null
         every { unionGraphOrderRepository.save(any()) } answers { firstArg() }
 
         // When
@@ -161,7 +164,7 @@ class UnionGraphServiceTest {
                         isRelatedToTransportportal = null,
                     ),
             )
-        every { unionGraphOrderRepository.findByConfiguration(any(), any(), any(), any()) } returns null
+        every { unionGraphOrderRepository.findByConfiguration(any(), any(), any(), any(), any()) } returns null
         every { unionGraphOrderRepository.save(any()) } answers { firstArg() }
 
         // When
@@ -199,8 +202,75 @@ class UnionGraphServiceTest {
             unionGraphService.createOrder(
                 resourceTypes = listOf(ResourceType.CONCEPT),
                 resourceFilters = filters,
+                expandDistributionAccessServices = false,
             )
         }
+    }
+
+    @Test
+    fun `createOrder should persist expandDistributionAccessServices flag`() {
+        // Given
+        every { unionGraphOrderRepository.findByConfiguration(any(), any(), any(), any(), any()) } returns null
+        every { unionGraphOrderRepository.save(any()) } answers { firstArg() }
+
+        // When
+        val result =
+            unionGraphService.createOrder(
+                resourceTypes = listOf(ResourceType.DATASET),
+                expandDistributionAccessServices = true,
+            )
+
+        // Then
+        assertTrue(result.isNew)
+        assertTrue(result.order.expandDistributionAccessServices)
+    }
+
+    @Test
+    fun `createOrder should treat different expandDistributionAccessServices as different orders`() {
+        // Given
+        val order1 =
+            UnionGraphOrder(
+                id = "order-1",
+                resourceTypes = listOf("DATASET"),
+                expandDistributionAccessServices = false,
+            )
+        val order2 =
+            UnionGraphOrder(
+                id = "order-2",
+                resourceTypes = listOf("DATASET"),
+                expandDistributionAccessServices = true,
+            )
+
+        every {
+            unionGraphOrderRepository.findByConfiguration(
+                "{DATASET}",
+                0,
+                null,
+                null,
+                false,
+            )
+        } returns order1
+        every {
+            unionGraphOrderRepository.findByConfiguration(
+                "{DATASET}",
+                0,
+                null,
+                null,
+                true,
+            )
+        } returns order2
+
+        // When
+        val result1 = unionGraphService.createOrder(listOf(ResourceType.DATASET), expandDistributionAccessServices = false)
+        val result2 = unionGraphService.createOrder(listOf(ResourceType.DATASET), expandDistributionAccessServices = true)
+
+        // Then
+        assertFalse(result1.isNew)
+        assertFalse(result2.isNew)
+        assertEquals("order-1", result1.order.id)
+        assertEquals("order-2", result2.order.id)
+        assertFalse(result1.order.expandDistributionAccessServices)
+        assertTrue(result2.order.expandDistributionAccessServices)
     }
 
     @Test
