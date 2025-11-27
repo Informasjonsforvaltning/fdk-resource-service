@@ -330,7 +330,10 @@ class UnionGraphService(
                                     // If expanding distribution access services and this is a dataset,
                                     // extract DataService URIs and add their graphs
                                     if (expandDistributionAccessServices && type == ResourceType.DATASET) {
-                                        extractAndAddDataServices(jsonLd, unionModel, expandedDataServiceUris)
+                                        val datasetJson = resource.resourceJson
+                                        if (datasetJson != null) {
+                                            extractAndAddDataServices(datasetJson, unionModel, expandedDataServiceUris)
+                                        }
                                     }
                                 } catch (e: Exception) {
                                     logger.warn("Failed to merge resource {}: {}", resource.id, e.message)
@@ -392,24 +395,24 @@ class UnionGraphService(
     }
 
     /**
-     * Extracts DataService URIs from a dataset JSON-LD and adds their graphs to the union model.
+     * Extracts DataService URIs from a dataset JSON payload and adds their graphs to the union model.
      *
      * Follows the path: distribution[*].accessService[*].uri
      * Only adds DataServices that haven't been expanded yet to avoid duplicates.
      *
-     * @param datasetJsonLd The dataset JSON-LD map
+     * @param datasetJson The dataset JSON map
      * @param unionModel The union model to add DataService graphs to
      * @param expandedUris Set of URIs that have already been expanded (modified in place)
      */
     private fun extractAndAddDataServices(
-        datasetJsonLd: Map<String, Any>,
+        datasetJson: Map<String, Any>,
         unionModel: org.apache.jena.rdf.model.Model,
         expandedUris: MutableSet<String>,
     ) {
         try {
             // Extract distributions from the dataset
             val distributions =
-                when (val distValue = datasetJsonLd["distribution"]) {
+                when (val distValue = datasetJson["distribution"]) {
                     is List<*> -> distValue.filterIsInstance<Map<String, Any>>()
                     is Map<*, *> -> listOf(distValue as Map<String, Any>)
                     else -> emptyList()
