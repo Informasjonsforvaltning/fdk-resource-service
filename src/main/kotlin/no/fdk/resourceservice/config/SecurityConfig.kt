@@ -33,8 +33,11 @@ class SecurityConfig(
             .cors { it.configurationSource(corsConfigurationSource()) }
             .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
             .authorizeHttpRequests { authz ->
-                // Union graph endpoints require API key (except GET /{id}/graph for graph data)
+                // Actuator endpoints are public
                 authz
+                    .requestMatchers("/actuator/**")
+                    .permitAll()
+                    // Union graph endpoints require API key (except GET /{id}/graph for graph data)
                     .requestMatchers("GET", "/v1/union-graphs/{id}/graph")
                     .permitAll() // Graph endpoint is public
                     .requestMatchers("/v1/union-graphs", "/v1/union-graphs/**")
