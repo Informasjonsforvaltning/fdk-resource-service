@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import no.fdk.resourceservice.config.UnionGraphConfig
 import no.fdk.resourceservice.model.ResourceType
 import no.fdk.resourceservice.model.UnionGraphOrder
 import no.fdk.resourceservice.model.UnionGraphResourceFilters
@@ -27,6 +28,7 @@ class UnionGraphServiceTest {
     private lateinit var webhookService: WebhookService
     private lateinit var rdfService: RdfService
     private lateinit var metricsService: UnionGraphMetricsService
+    private lateinit var unionGraphConfig: UnionGraphConfig
     private lateinit var unionGraphService: UnionGraphService
 
     @BeforeEach
@@ -38,6 +40,7 @@ class UnionGraphServiceTest {
         webhookService = mockk(relaxed = true)
         rdfService = mockk(relaxed = true)
         metricsService = mockk<UnionGraphMetricsService>(relaxed = true)
+        unionGraphConfig = UnionGraphConfig(50) // Default batch size for tests
         unionGraphService =
             UnionGraphService(
                 unionGraphOrderRepository,
@@ -47,6 +50,7 @@ class UnionGraphServiceTest {
                 webhookService,
                 rdfService,
                 metricsService,
+                unionGraphConfig,
             )
     }
 

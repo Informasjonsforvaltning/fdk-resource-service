@@ -1,5 +1,6 @@
 package no.fdk.resourceservice.config
 
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.scheduling.annotation.EnableAsync
@@ -20,7 +21,10 @@ import java.util.concurrent.Executor
 @Configuration
 @EnableAsync
 @EnableScheduling
-class UnionGraphConfig : SchedulingConfigurer {
+class UnionGraphConfig(
+    @Value("\${app.union-graphs.resource-batch-size:25}")
+    val resourceBatchSize: Int,
+) : SchedulingConfigurer {
     companion object {
         /**
          * Maximum number of concurrent union graph building operations.
@@ -39,16 +43,10 @@ class UnionGraphConfig : SchedulingConfigurer {
         const val UNION_GRAPH_QUEUE_CAPACITY = 5
 
         /**
-         * Batch size for processing resources when building union graphs.
-         * Resources are fetched and processed in batches to prevent memory exhaustion.
-         */
-        const val UNION_GRAPH_RESOURCE_BATCH_SIZE = 100
-
-        /**
          * Progress update interval - update progress metrics every N resources.
          * This reduces the overhead of frequent metric updates during processing.
          */
-        const val UNION_GRAPH_PROGRESS_UPDATE_INTERVAL = 50
+        const val UNION_GRAPH_PROGRESS_UPDATE_INTERVAL = 25
     }
 
     /**

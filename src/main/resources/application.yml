@@ -79,6 +79,11 @@ app:
     reset-enabled: ${UNION_GRAPHS_RESET_ENABLED:false}
     # API key for securing union graph endpoints (except GET /{id} graph endpoint)
     api-key: ${UNION_GRAPHS_API_KEY:}
+    # Resource batch size for processing union graphs
+    # Lower values reduce memory usage and contention but increase database queries
+    # Recommended: 20-30 for better performance with parallel processing, 50+ for high-memory systems
+    # Note: parallelStream() processes all items concurrently, so smaller batches reduce contention
+    resource-batch-size: ${UNION_GRAPHS_RESOURCE_BATCH_SIZE:25}
 
 # SpringDoc OpenAPI configuration
 springdoc:

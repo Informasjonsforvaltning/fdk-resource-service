@@ -20,9 +20,9 @@ import org.testcontainers.junit.jupiter.Testcontainers
 abstract class BaseIntegrationTest {
     companion object {
         // Use shared containers to prevent one test from terminating containers needed by another
-        val postgresContainer = SharedTestContainers.postgresContainer
-        val kafkaContainer = SharedTestContainers.kafkaContainer
-        val schemaRegistryContainer = SharedTestContainers.schemaRegistryContainer
+        val postgresContainer by lazy { SharedTestContainers.postgresContainer }
+        val kafkaContainer by lazy { SharedTestContainers.kafkaContainer }
+        val schemaRegistryContainer by lazy { SharedTestContainers.schemaRegistryContainer }
 
         class Initializer : ApplicationContextInitializer<ConfigurableApplicationContext> {
             override fun initialize(context: ConfigurableApplicationContext) {

@@ -16,6 +16,9 @@ import org.springframework.transaction.annotation.Propagation
 import org.springframework.transaction.annotation.Transactional
 import java.io.ByteArrayInputStream
 import java.util.UUID
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicLong
 
 /**
  * Service for managing union graphs and building union graphs.
@@ -33,6 +36,7 @@ class UnionGraphService(
     private val webhookService: WebhookService,
     private val rdfService: RdfService,
     private val metricsService: UnionGraphMetricsService,
+    private val unionGraphConfig: UnionGraphConfig,
 ) {
     private val logger = LoggerFactory.getLogger(UnionGraphService::class.java)
 
@@ -313,13 +317,13 @@ class UnionGraphService(
         logger.info(
             "Found {} total resources to merge (processing in batches of {})",
             totalResources,
-            UnionGraphConfig.UNION_GRAPH_RESOURCE_BATCH_SIZE,
+            unionGraphConfig.resourceBatchSize,
         )
 
         // Merge all JSON-LD graphs using Apache Jena
         val unionModel = ModelFactory.createDefaultModel()
         var processedCount = 0L
-        val batchSize = UnionGraphConfig.UNION_GRAPH_RESOURCE_BATCH_SIZE
+        val batchSize = unionGraphConfig.resourceBatchSize
         val progressUpdateInterval = UnionGraphConfig.UNION_GRAPH_PROGRESS_UPDATE_INTERVAL
         // Track expanded DataService URIs to avoid duplicates (thread-safe)
         val expandedDataServiceUris = java.util.Collections.synchronizedSet(mutableSetOf<String>())
@@ -354,56 +358,73 @@ class UnionGraphService(
                     if (batch.isEmpty()) {
                         hasMore = false
                     } else {
-                        // Process resources in parallel within the batch for better performance
-                        val batchProcessedCount =
-                            batch
-                                .parallelStream()
-                                .mapToLong { resource ->
-                                    val jsonLd = resource.resourceJsonLd
-                                    if (jsonLd != null) {
-                                        try {
-                                            // Convert JSON-LD Map to JSON string
-                                            val jsonString = objectMapper.writeValueAsString(jsonLd)
+                        // Process resources in parallel, but batch the merges to reduce lock contention
+                        // Use limited parallelism (4-8 threads) to reduce contention
+                        val parallelism = minOf(8, batch.size, Runtime.getRuntime().availableProcessors())
+                        val executor = Executors.newFixedThreadPool(parallelism)
+                        val modelsToMerge = java.util.Collections.synchronizedList(mutableListOf<org.apache.jena.rdf.model.Model>())
+                        val batchProcessedCount = AtomicLong(0)
 
-                                            // Parse JSON-LD into Jena Model
-                                            val resourceModel = ModelFactory.createDefaultModel()
-                                            ByteArrayInputStream(jsonString.toByteArray()).use { inputStream ->
-                                                RDFDataMgr.read(resourceModel, inputStream, Lang.JSONLD)
-                                            }
+                        try {
+                            // Process all resources in parallel, collecting models
+                            val futures =
+                                batch.map { resource ->
+                                    executor.submit {
+                                        val jsonLd = resource.resourceJsonLd
+                                        if (jsonLd != null) {
+                                            try {
+                                                // Convert JSON-LD Map to JSON string
+                                                val jsonString = objectMapper.writeValueAsString(jsonLd)
 
-                                            // Thread-safe merge into union model
-                                            synchronized(modelLock) {
-                                                unionModel.add(resourceModel)
-                                            }
-                                            resourceModel.close()
-
-                                            // If expanding distribution access services and this is a dataset,
-                                            // extract DataService URIs (will be processed after batch)
-                                            if (expandDistributionAccessServices && type == ResourceType.DATASET) {
-                                                val datasetJson = resource.resourceJson
-                                                if (datasetJson != null) {
-                                                    // Extract URIs (thread-safe set)
-                                                    extractDataServiceUris(datasetJson, expandedDataServiceUris)
+                                                // Parse JSON-LD into Jena Model
+                                                val resourceModel = ModelFactory.createDefaultModel()
+                                                ByteArrayInputStream(jsonString.toByteArray()).use { inputStream ->
+                                                    RDFDataMgr.read(resourceModel, inputStream, Lang.JSONLD)
                                                 }
-                                            }
-                                            1L
-                                        } catch (e: Exception) {
-                                            logger.warn("Failed to merge resource {}: {}", resource.id, e.message)
-                                            0L
-                                        }
-                                    } else {
-                                        0L
-                                    }
-                                }.sum()
 
-                        processedCount += batchProcessedCount
+                                                // Collect model for batch merge (no lock contention here)
+                                                modelsToMerge.add(resourceModel)
+                                                batchProcessedCount.incrementAndGet()
+
+                                                // If expanding distribution access services and this is a dataset,
+                                                // extract DataService URIs (will be processed after batch)
+                                                if (expandDistributionAccessServices && type == ResourceType.DATASET) {
+                                                    val datasetJson = resource.resourceJson
+                                                    if (datasetJson != null) {
+                                                        // Extract URIs (thread-safe set)
+                                                        extractDataServiceUris(datasetJson, expandedDataServiceUris)
+                                                    }
+                                                }
+                                            } catch (e: Exception) {
+                                                logger.warn("Failed to process resource {}: {}", resource.id, e.message)
+                                            }
+                                        }
+                                    }
+                                }
+
+                            // Wait for all processing to complete
+                            futures.forEach { it.get() }
+
+                            // Merge all models in a single synchronized block (much faster than individual merges)
+                            synchronized(modelLock) {
+                                for (model in modelsToMerge) {
+                                    unionModel.add(model)
+                                    model.close()
+                                }
+                            }
+                        } finally {
+                            executor.shutdown()
+                            executor.awaitTermination(60, TimeUnit.SECONDS)
+                        }
+
+                        processedCount += batchProcessedCount.get()
 
                         // Update progress metrics at intervals to reduce overhead
                         if (processedCount % progressUpdateInterval == 0L || batch.size < batchSize) {
                             if (orderId != null) {
                                 metricsService.updateProcessingProgress(orderId, processedCount)
                             }
-                            metricsService.recordResourcesProcessed(batchProcessedCount)
+                            metricsService.recordResourcesProcessed(batchProcessedCount.get())
                         }
 
                         // Check if we've processed all resources for this type
@@ -438,8 +459,10 @@ class UnionGraphService(
                                 RDFDataMgr.read(dataServiceModel, inputStream, Lang.JSONLD)
                             }
 
-                            // Merge into union model
-                            unionModel.add(dataServiceModel)
+                            // Merge into union model (synchronized for consistency, though sequential here)
+                            synchronized(modelLock) {
+                                unionModel.add(dataServiceModel)
+                            }
                             dataServiceModel.close()
                             logger.debug("Added DataService graph for URI: {}", uri)
                         } else {
@@ -521,92 +544,6 @@ class UnionGraphService(
                                 .filter { it.isNotBlank() }
                                 .forEach { uriSet.add(it) }
                         }
-                    }
-                }
-            }
-        } catch (e: Exception) {
-            logger.warn("Failed to extract DataService URIs from dataset: {}", e.message)
-            // Continue processing other resources
-        }
-    }
-
-    /**
-     * Extracts DataService URIs from a dataset JSON payload and adds their graphs to the union model.
-     *
-     * Follows the path: distribution[*].accessService[*].uri
-     * Only adds DataServices that haven't been expanded yet to avoid duplicates.
-     *
-     * @param datasetJson The dataset JSON map
-     * @param unionModel The union model to add DataService graphs to
-     * @param expandedUris Set of URIs that have already been expanded (modified in place)
-     */
-    private fun extractAndAddDataServices(
-        datasetJson: Map<String, Any>,
-        unionModel: org.apache.jena.rdf.model.Model,
-        expandedUris: MutableSet<String>,
-    ) {
-        try {
-            // Extract distributions from the dataset
-            val distributions =
-                when (val distValue = datasetJson["distribution"]) {
-                    is List<*> -> distValue.filterIsInstance<Map<String, Any>>()
-                    is Map<*, *> -> listOf(distValue as Map<String, Any>)
-                    else -> emptyList()
-                }
-
-            // Extract DataService URIs from distributions
-            val dataServiceUris = mutableSetOf<String>()
-            for (distribution in distributions) {
-                val accessServices =
-                    when (val accessServiceValue = distribution["accessService"]) {
-                        is List<*> -> accessServiceValue.filterIsInstance<Map<String, Any>>()
-                        is Map<*, *> -> listOf(accessServiceValue as Map<String, Any>)
-                        else -> emptyList()
-                    }
-
-                for (accessService in accessServices) {
-                    when (val uriValue = accessService["uri"]) {
-                        is String -> {
-                            if (uriValue.isNotBlank()) {
-                                dataServiceUris.add(uriValue)
-                            }
-                        }
-                        is List<*> -> {
-                            uriValue
-                                .filterIsInstance<String>()
-                                .filter { it.isNotBlank() }
-                                .forEach { dataServiceUris.add(it) }
-                        }
-                    }
-                }
-            }
-
-            // Add DataService graphs for URIs that haven't been expanded yet
-            for (uri in dataServiceUris) {
-                if (uri !in expandedUris) {
-                    try {
-                        val dataServiceJsonLd = resourceService.getResourceJsonLdByUri(uri, ResourceType.DATA_SERVICE)
-                        if (dataServiceJsonLd != null) {
-                            // Convert JSON-LD Map to JSON string
-                            val jsonString = objectMapper.writeValueAsString(dataServiceJsonLd)
-
-                            // Parse JSON-LD into Jena Model
-                            val dataServiceModel = ModelFactory.createDefaultModel()
-                            ByteArrayInputStream(jsonString.toByteArray()).use { inputStream ->
-                                RDFDataMgr.read(dataServiceModel, inputStream, Lang.JSONLD)
-                            }
-
-                            // Merge into union model
-                            unionModel.add(dataServiceModel)
-                            dataServiceModel.close()
-                            expandedUris.add(uri)
-                            logger.debug("Added DataService graph for URI: {}", uri)
-                        } else {
-                            logger.debug("DataService not found for URI: {}", uri)
-                        }
-                    } catch (e: Exception) {
-                        logger.warn("Failed to add DataService graph for URI {}: {}", uri, e.message)
-                        // Continue with other URIs
                     }
                 }
             }

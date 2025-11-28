@@ -246,8 +246,30 @@ class UnionGraphMetricsService(
      * @param orderId The order ID
      */
     fun stopProcessingProgress(orderId: String) {
+        // Remove gauges before removing from progress map
+        try {
+            meterRegistry
+                .find("union_graph_processing_progress_ratio")
+                .tag("order_id", orderId)
+                .gauges()
+                .forEach { meterRegistry.remove(it) }
+
+            meterRegistry
+                .find("union_graph_processing_resources_processed")
+                .tag("order_id", orderId)
+                .gauges()
+                .forEach { meterRegistry.remove(it) }
+
+            meterRegistry
+                .find("union_graph_processing_resources_total")
+                .tag("order_id", orderId)
+                .gauges()
+                .forEach { meterRegistry.remove(it) }
+        } catch (e: Exception) {
+            logger.warn("Failed to remove progress gauges for order $orderId", e)
+        }
+
         processingProgress.remove(orderId)
-        // Gauges will automatically return 0 when the order is not in the map
     }
 
     /**
@@ -288,26 +310,26 @@ class UnionGraphMetricsService(
         // Use a supplier-based approach for dynamic gauges
         // Remove existing gauges first if they exist
         try {
-            meterRegistry.remove(
-                meterRegistry
-                    .find("union_graph_processing_progress_ratio")
-                    .tag("order_id", orderId)
-                    .gauge(),
-            )
-            meterRegistry.remove(
-                meterRegistry
-                    .find("union_graph_processing_resources_processed")
-                    .tag("order_id", orderId)
-                    .gauge(),
-            )
-            meterRegistry.remove(
-                meterRegistry
-                    .find("union_graph_processing_resources_total")
-                    .tag("order_id", orderId)
-                    .gauge(),
-            )
+            meterRegistry
+                .find("union_graph_processing_progress_ratio")
+                .tag("order_id", orderId)
+                .gauges()
+                .forEach { meterRegistry.remove(it) }
+
+            meterRegistry
+                .find("union_graph_processing_resources_processed")
+                .tag("order_id", orderId)
+                .gauges()
+                .forEach { meterRegistry.remove(it) }
+
+            meterRegistry
+                .find("union_graph_processing_resources_total")
+                .tag("order_id", orderId)
+                .gauges()
+                .forEach { meterRegistry.remove(it) }
         } catch (e: Exception) {
             // Ignore if gauges don't exist
+            logger.debug("Failed to remove existing gauges for order $orderId", e)
         }
 
         // Register new gauges with current values using suppliers
