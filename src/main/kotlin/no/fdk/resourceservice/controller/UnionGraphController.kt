@@ -104,7 +104,10 @@ class UnionGraphController(
                                 {
                                     "resourceTypes": ["DATASET", "DATA_SERVICE"],
                                     "updateTtlHours": 24,
-                                    "webhookUrl": "https://example.com/webhook"
+                                    "webhookUrl": "https://example.com/webhook",
+                                    "graphFormat": "JSON_LD",
+                                    "graphStyle": "PRETTY",
+                                    "graphExpandUris": true
                                 }
                                 """,
                         ),
@@ -122,7 +125,23 @@ class UnionGraphController(
                                             "isRelatedToTransportportal": false
                                         }
                                     },
-                                    "expandDistributionAccessServices": true
+                                    "expandDistributionAccessServices": true,
+                                    "graphFormat": "TURTLE",
+                                    "graphStyle": "PRETTY",
+                                    "graphExpandUris": false
+                                }
+                                """,
+                        ),
+                        io.swagger.v3.oas.annotations.media.ExampleObject(
+                            name = "Turtle format example",
+                            value =
+                                """
+                                {
+                                    "resourceTypes": ["CONCEPT"],
+                                    "updateTtlHours": 0,
+                                    "graphFormat": "TURTLE",
+                                    "graphStyle": "STANDARD",
+                                    "graphExpandUris": true
                                 }
                                 """,
                         ),
