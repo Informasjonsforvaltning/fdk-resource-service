@@ -34,10 +34,12 @@ class UnionGraphProcessorTest {
             listOf(
                 UnionGraphOrder(
                     id = "order-1",
+                    name = "Order 1",
                     status = UnionGraphOrder.GraphStatus.PENDING,
                 ),
                 UnionGraphOrder(
                     id = "order-2",
+                    name = "Order 2",
                     status = UnionGraphOrder.GraphStatus.PENDING,
                 ),
             )
@@ -88,6 +90,7 @@ class UnionGraphProcessorTest {
         val expiredOrder =
             UnionGraphOrder(
                 id = "expired-order",
+                name = "Expired Order",
                 status = UnionGraphOrder.GraphStatus.COMPLETED,
                 updateTtlHours = 24,
                 processedAt = Instant.now().minus(25, ChronoUnit.HOURS),
@@ -95,6 +98,7 @@ class UnionGraphProcessorTest {
         val notExpiredOrder =
             UnionGraphOrder(
                 id = "not-expired-order",
+                name = "Not Expired Order",
                 status = UnionGraphOrder.GraphStatus.COMPLETED,
                 updateTtlHours = 24,
                 processedAt = Instant.now().minus(12, ChronoUnit.HOURS),
@@ -119,6 +123,7 @@ class UnionGraphProcessorTest {
         val orderWithNoTtl =
             UnionGraphOrder(
                 id = "no-ttl-order",
+                name = "No TTL Order",
                 status = UnionGraphOrder.GraphStatus.COMPLETED,
                 updateTtlHours = 0,
                 processedAt = Instant.now().minus(100, ChronoUnit.HOURS),
@@ -141,6 +146,7 @@ class UnionGraphProcessorTest {
         val staleOrder =
             UnionGraphOrder(
                 id = "stale-order",
+                name = "Stale Order",
                 status = UnionGraphOrder.GraphStatus.PROCESSING,
                 lockedBy = "crashed-instance",
                 lockedAt = Instant.now().minus(70, ChronoUnit.MINUTES),
@@ -148,6 +154,7 @@ class UnionGraphProcessorTest {
         val freshOrder =
             UnionGraphOrder(
                 id = "fresh-order",
+                name = "Fresh Order",
                 status = UnionGraphOrder.GraphStatus.PROCESSING,
                 lockedBy = "active-instance",
                 lockedAt = Instant.now().minus(30, ChronoUnit.MINUTES),
@@ -174,6 +181,7 @@ class UnionGraphProcessorTest {
         val orderWithoutLock =
             UnionGraphOrder(
                 id = "no-lock-order",
+                name = "No Lock Order",
                 status = UnionGraphOrder.GraphStatus.PROCESSING,
                 lockedBy = "instance",
                 lockedAt = null,

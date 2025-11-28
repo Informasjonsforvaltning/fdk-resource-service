@@ -32,6 +32,7 @@ class WebhookServiceTest {
         val order =
             UnionGraphOrder(
                 id = "test-order",
+                name = "Test Order",
                 webhookUrl = null,
             )
 
@@ -49,6 +50,7 @@ class WebhookServiceTest {
         val order =
             UnionGraphOrder(
                 id = "test-order",
+                name = "Test Order",
                 webhookUrl = "",
             )
 
@@ -70,6 +72,7 @@ class WebhookServiceTest {
                 resourceTypes = listOf("CONCEPT"),
                 updateTtlHours = 24,
                 webhookUrl = "https://example.com/webhook",
+                name = "Test Order",
                 errorMessage = null,
                 createdAt = Instant.now(),
                 updatedAt = Instant.now(),
@@ -115,6 +118,7 @@ class WebhookServiceTest {
         val order =
             UnionGraphOrder(
                 id = "test-order",
+                name = "Test Order",
                 webhookUrl = "https://example.com/webhook",
             )
 
@@ -136,6 +140,7 @@ class WebhookServiceTest {
         val order =
             UnionGraphOrder(
                 id = "test-order",
+                name = "Test Order",
                 webhookUrl = "https://example.com/webhook",
             )
 
@@ -159,6 +164,7 @@ class WebhookServiceTest {
         val order =
             UnionGraphOrder(
                 id = "test-order",
+                name = "Test Order",
                 webhookUrl = "https://example.com/webhook",
             )
 
@@ -184,6 +190,7 @@ class WebhookServiceTest {
                 resourceTypes = listOf("DATASET", "CONCEPT"),
                 updateTtlHours = 48,
                 webhookUrl = "https://example.com/webhook",
+                name = "Test Order 123",
                 errorMessage = "Test error message",
                 createdAt = Instant.parse("2024-01-01T00:00:00Z"),
                 updatedAt = Instant.parse("2024-01-02T00:00:00Z"),

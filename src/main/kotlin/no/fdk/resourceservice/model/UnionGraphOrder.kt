@@ -25,6 +25,16 @@ data class UnionGraphOrder(
     @Column(name = "id", nullable = false, length = 255)
     val id: String = UUID.randomUUID().toString(),
     /**
+     * Human-readable name for the union graph (required).
+     */
+    @Column(name = "name", nullable = false, length = 255)
+    val name: String,
+    /**
+     * Optional human-readable description of the union graph.
+     */
+    @Column(name = "description", columnDefinition = "text")
+    val description: String? = null,
+    /**
      * Status of the graph building process.
      */
     @Enumerated(EnumType.STRING)

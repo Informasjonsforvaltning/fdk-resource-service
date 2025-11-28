@@ -261,6 +261,8 @@ interface UnionGraphOrderRepository : JpaRepository<UnionGraphOrder, String> {
      * @param format New format
      * @param style New style
      * @param expandUris New expand URIs setting
+     * @param name New name for the union graph
+     * @param description New description for the union graph
      * @param resetToPending If true, reset status to PENDING and clear graph data
      * @return Number of rows affected (0 if order not found, 1 if updated)
      */
@@ -280,6 +282,8 @@ interface UnionGraphOrderRepository : JpaRepository<UnionGraphOrder, String> {
             format = :format,
             style = :style,
             expand_uris = :expandUris,
+            name = :name,
+            description = :description,
             updated_at = CURRENT_TIMESTAMP
         WHERE id = :id
     """,
@@ -295,6 +299,8 @@ interface UnionGraphOrderRepository : JpaRepository<UnionGraphOrder, String> {
         @Param("format") format: String,
         @Param("style") style: String,
         @Param("expandUris") expandUris: Boolean,
+        @Param("name") name: String?,
+        @Param("description") description: String?,
     ): Int
 
     /**
@@ -310,6 +316,8 @@ interface UnionGraphOrderRepository : JpaRepository<UnionGraphOrder, String> {
      * @param format New format
      * @param style New style
      * @param expandUris New expand URIs setting
+     * @param name New name for the union graph
+     * @param description New description for the union graph
      * @return Number of rows affected (0 if order not found, 1 if updated)
      */
     @Modifying(clearAutomatically = true)
@@ -328,6 +336,8 @@ interface UnionGraphOrderRepository : JpaRepository<UnionGraphOrder, String> {
             format = :format,
             style = :style,
             expand_uris = :expandUris,
+            name = :name,
+            description = :description,
             status = 'PENDING',
             graph_data = NULL,
             error_message = NULL,
@@ -350,6 +360,8 @@ interface UnionGraphOrderRepository : JpaRepository<UnionGraphOrder, String> {
         @Param("format") format: String,
         @Param("style") style: String,
         @Param("expandUris") expandUris: Boolean,
+        @Param("name") name: String?,
+        @Param("description") description: String?,
     ): Int
 
     /**
@@ -366,6 +378,8 @@ interface UnionGraphOrderRepository : JpaRepository<UnionGraphOrder, String> {
         format: String,
         style: String,
         expandUris: Boolean,
+        name: String?,
+        description: String?,
         resetToPending: Boolean,
     ): Int =
         if (resetToPending) {
@@ -379,6 +393,8 @@ interface UnionGraphOrderRepository : JpaRepository<UnionGraphOrder, String> {
                 format = format,
                 style = style,
                 expandUris = expandUris,
+                name = name,
+                description = description,
             )
         } else {
             updateOrderWithoutReset(
@@ -391,6 +407,8 @@ interface UnionGraphOrderRepository : JpaRepository<UnionGraphOrder, String> {
                 format = format,
                 style = style,
                 expandUris = expandUris,
+                name = name,
+                description = description,
             )
         }
 }

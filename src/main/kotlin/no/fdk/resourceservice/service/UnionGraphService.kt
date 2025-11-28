@@ -75,6 +75,8 @@ class UnionGraphService(
      * @param format The RDF format to use for the graph data (default: JSON_LD).
      * @param style The style to use for the graph format (PRETTY or STANDARD, default: PRETTY).
      * @param expandUris Whether to expand URIs in the graph data (default: true).
+     * @param name Human-readable name for the union graph (required).
+     * @param description Optional human-readable description of the union graph.
      * @return CreateOrderResult containing the union graph and a flag indicating if it's new or existing.
      * @throws IllegalArgumentException if webhookUrl is provided but not HTTPS, or if filters are invalid
      */
@@ -87,7 +89,13 @@ class UnionGraphService(
         format: UnionGraphOrder.GraphFormat = UnionGraphOrder.GraphFormat.JSON_LD,
         style: UnionGraphOrder.GraphStyle = UnionGraphOrder.GraphStyle.PRETTY,
         expandUris: Boolean = true,
+        name: String,
+        description: String? = null,
     ): CreateOrderResult {
+        // Validate name is not blank
+        if (name.isBlank()) {
+            throw IllegalArgumentException("name is required and cannot be blank")
+        }
         // Validate updateTtlHours: must be 0 (never update) or > 3
         if (updateTtlHours != 0 && updateTtlHours <= 3) {
             throw IllegalArgumentException("updateTtlHours must be 0 (never update) or greater than 3")
@@ -150,6 +158,8 @@ class UnionGraphService(
                 format = format,
                 style = style,
                 expandUris = expandUris,
+                name = name,
+                description = description,
             )
 
         val saved = unionGraphOrderRepository.save(order)
@@ -258,6 +268,8 @@ class UnionGraphService(
      * @param format Optional new format. If provided, triggers rebuild.
      * @param style Optional new style. If provided, triggers rebuild.
      * @param expandUris Optional new expand URIs setting. If provided, triggers rebuild.
+     * @param name Optional new name for the union graph. If not provided, keeps existing name.
+     * @param description Optional new description for the union graph.
      * @return The updated union graph order, or null if not found
      * @throws IllegalArgumentException if validation fails (e.g., invalid webhook URL or TTL)
      */
@@ -271,6 +283,8 @@ class UnionGraphService(
         format: UnionGraphOrder.GraphFormat? = null,
         style: UnionGraphOrder.GraphStyle? = null,
         expandUris: Boolean? = null,
+        name: String? = null,
+        description: String? = null,
     ): UnionGraphOrder? {
         logger.info("Updating union graph order: {}", id)
 
@@ -317,6 +331,8 @@ class UnionGraphService(
         val newFormat = format ?: existingOrder.format
         val newStyle = style ?: existingOrder.style
         val newExpandUris = expandUris ?: existingOrder.expandUris
+        val newName = name ?: existingOrder.name // name is required, so if not provided, keep existing
+        val newDescription = description ?: existingOrder.description
 
         // Validate resource filters if provided
         validateResourceFilters(newResourceTypes?.map { ResourceType.valueOf(it) }, newResourceFilters)
@@ -335,6 +351,8 @@ class UnionGraphService(
                 format = newFormat.name,
                 style = newStyle.name,
                 expandUris = newExpandUris,
+                name = newName,
+                description = newDescription,
                 resetToPending = requiresRebuild,
             )
 

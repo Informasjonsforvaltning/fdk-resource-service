@@ -66,6 +66,7 @@ class UnionGraphIntegrationTest : BaseIntegrationTest() {
                 listOf(ResourceType.CONCEPT),
                 updateTtlHours = 24,
                 webhookUrl = "https://example.com/webhook",
+                name = "Test Order",
             )
 
         // Then
@@ -86,6 +87,7 @@ class UnionGraphIntegrationTest : BaseIntegrationTest() {
             unionGraphService.createOrder(
                 listOf(ResourceType.DATASET),
                 updateTtlHours = 12,
+                name = "Test Order",
             )
 
         // When
@@ -93,6 +95,7 @@ class UnionGraphIntegrationTest : BaseIntegrationTest() {
             unionGraphService.createOrder(
                 listOf(ResourceType.DATASET),
                 updateTtlHours = 12,
+                name = "Test Order",
             )
 
         // Then
@@ -108,6 +111,7 @@ class UnionGraphIntegrationTest : BaseIntegrationTest() {
             unionGraphService.createOrder(
                 listOf(ResourceType.CONCEPT),
                 webhookUrl = "https://example.com/webhook1",
+                name = "Test Order 1",
             )
 
         // When
@@ -115,6 +119,7 @@ class UnionGraphIntegrationTest : BaseIntegrationTest() {
             unionGraphService.createOrder(
                 listOf(ResourceType.CONCEPT),
                 webhookUrl = "https://example.com/webhook2",
+                name = "Test Order 2",
             )
 
         // Then
@@ -131,6 +136,7 @@ class UnionGraphIntegrationTest : BaseIntegrationTest() {
             unionGraphOrderRepository.save(
                 UnionGraphOrder(
                     id = "test-order",
+                    name = "Test Order",
                     status = UnionGraphOrder.GraphStatus.FAILED,
                     errorMessage = "Test error",
                 ),
@@ -154,6 +160,7 @@ class UnionGraphIntegrationTest : BaseIntegrationTest() {
             unionGraphOrderRepository.save(
                 UnionGraphOrder(
                     id = "test-order",
+                    name = "Test Order",
                     status = UnionGraphOrder.GraphStatus.PENDING,
                 ),
             )
@@ -174,6 +181,7 @@ class UnionGraphIntegrationTest : BaseIntegrationTest() {
             unionGraphOrderRepository.save(
                 UnionGraphOrder(
                     id = "order-1",
+                    name = "Order 1",
                     status = UnionGraphOrder.GraphStatus.PENDING,
                 ),
             )
@@ -182,6 +190,7 @@ class UnionGraphIntegrationTest : BaseIntegrationTest() {
             unionGraphOrderRepository.save(
                 UnionGraphOrder(
                     id = "order-2",
+                    name = "Order 2",
                     status = UnionGraphOrder.GraphStatus.COMPLETED,
                 ),
             )
@@ -216,6 +225,7 @@ class UnionGraphIntegrationTest : BaseIntegrationTest() {
                     unionGraphOrderRepository.save(
                         UnionGraphOrder(
                             id = "test-order",
+                            name = "Test Order",
                             status = UnionGraphOrder.GraphStatus.PENDING,
                             resourceTypes = listOf("CONCEPT"),
                         ),
@@ -268,6 +278,7 @@ class UnionGraphIntegrationTest : BaseIntegrationTest() {
                     unionGraphOrderRepository.save(
                         UnionGraphOrder(
                             id = "test-order-complete",
+                            name = "Test Order Complete",
                             status = UnionGraphOrder.GraphStatus.PENDING,
                             resourceTypes = listOf("CONCEPT"),
                             updateTtlHours = 24,
@@ -325,6 +336,7 @@ class UnionGraphIntegrationTest : BaseIntegrationTest() {
                     unionGraphOrderRepository.save(
                         UnionGraphOrder(
                             id = "test-order-failed",
+                            name = "Test Order Failed",
                             status = UnionGraphOrder.GraphStatus.PENDING,
                             resourceTypes = listOf("DATASET"),
                         ),
@@ -361,6 +373,7 @@ class UnionGraphIntegrationTest : BaseIntegrationTest() {
             unionGraphOrderRepository.save(
                 UnionGraphOrder(
                     id = "test-order-reset-failed",
+                    name = "Test Order Reset Failed",
                     status = UnionGraphOrder.GraphStatus.FAILED,
                     errorMessage = "Test error message",
                     resourceTypes = listOf("CONCEPT"),
@@ -391,6 +404,7 @@ class UnionGraphIntegrationTest : BaseIntegrationTest() {
             unionGraphOrderRepository.save(
                 UnionGraphOrder(
                     id = "test-order-reset-completed",
+                    name = "Test Order Reset Completed",
                     status = UnionGraphOrder.GraphStatus.COMPLETED,
                     resourceTypes = listOf("CONCEPT"),
                     graphData = """{"@graph":[{"@id":"https://example.com/resource"}]}""",
@@ -425,6 +439,7 @@ class UnionGraphIntegrationTest : BaseIntegrationTest() {
                     unionGraphOrderRepository.save(
                         UnionGraphOrder(
                             id = "test-order-lock",
+                            name = "Test Order Lock",
                             status = UnionGraphOrder.GraphStatus.PENDING,
                             resourceTypes = listOf("CONCEPT"),
                         ),
@@ -468,6 +483,7 @@ class UnionGraphIntegrationTest : BaseIntegrationTest() {
                     unionGraphOrderRepository.save(
                         UnionGraphOrder(
                             id = "test-order-get-new",
+                            name = "Test Order Get New",
                             status = UnionGraphOrder.GraphStatus.PENDING,
                             resourceTypes = listOf("CONCEPT"),
                         ),
@@ -530,6 +546,7 @@ class UnionGraphIntegrationTest : BaseIntegrationTest() {
                     unionGraphOrderRepository.save(
                         UnionGraphOrder(
                             id = "test-order-visibility",
+                            name = "Test Order Visibility",
                             status = UnionGraphOrder.GraphStatus.PENDING,
                             resourceTypes = listOf("CONCEPT"),
                         ),
@@ -569,6 +586,7 @@ class UnionGraphIntegrationTest : BaseIntegrationTest() {
                     unionGraphOrderRepository.save(
                         UnionGraphOrder(
                             id = "test-order-process-verify",
+                            name = "Test Order Process Verify",
                             status = UnionGraphOrder.GraphStatus.PENDING,
                             resourceTypes = listOf("CONCEPT"),
                         ),
@@ -612,6 +630,7 @@ class UnionGraphIntegrationTest : BaseIntegrationTest() {
                     unionGraphOrderRepository.save(
                         UnionGraphOrder(
                             id = "test-order-lock-fail",
+                            name = "Test Order Lock Fail",
                             status = UnionGraphOrder.GraphStatus.COMPLETED,
                             resourceTypes = listOf("CONCEPT"),
                         ),
@@ -643,6 +662,7 @@ class UnionGraphIntegrationTest : BaseIntegrationTest() {
             unionGraphOrderRepository.save(
                 UnionGraphOrder(
                     id = "test-order-mark-complete",
+                    name = "Test Order Mark Complete",
                     status = UnionGraphOrder.GraphStatus.PROCESSING,
                     resourceTypes = listOf("CONCEPT"),
                     lockedBy = "test-instance",
@@ -679,6 +699,7 @@ class UnionGraphIntegrationTest : BaseIntegrationTest() {
             unionGraphOrderRepository.save(
                 UnionGraphOrder(
                     id = "test-order-mark-failed",
+                    name = "Test Order Mark Failed",
                     status = UnionGraphOrder.GraphStatus.PROCESSING,
                     resourceTypes = listOf("CONCEPT"),
                     lockedBy = "test-instance",
@@ -707,6 +728,7 @@ class UnionGraphIntegrationTest : BaseIntegrationTest() {
             unionGraphService.createOrder(
                 listOf(ResourceType.DATASET),
                 expandDistributionAccessServices = true,
+                name = "Test Order",
             )
 
         // Then
@@ -733,6 +755,7 @@ class UnionGraphIntegrationTest : BaseIntegrationTest() {
             unionGraphService.createOrder(
                 listOf(ResourceType.DATASET),
                 resourceFilters = filters,
+                name = "Test Order",
             )
 
         // Then
@@ -751,6 +774,7 @@ class UnionGraphIntegrationTest : BaseIntegrationTest() {
             unionGraphOrderRepository.save(
                 UnionGraphOrder(
                     id = "test-order-metadata",
+                    name = "Test Order Metadata",
                     status = UnionGraphOrder.GraphStatus.PENDING,
                     resourceTypes = listOf("CONCEPT", "DATASET"),
                     updateTtlHours = 48,

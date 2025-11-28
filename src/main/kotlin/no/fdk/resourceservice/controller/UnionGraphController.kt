@@ -190,6 +190,14 @@ class UnionGraphController(
                 }
             } ?: UnionGraphOrder.GraphStyle.PRETTY
         val expandUris = requestBody?.expandUris ?: true
+        val name = requestBody?.name
+        val description = requestBody?.description
+
+        // Validate name is provided for creation
+        if (name.isNullOrBlank()) {
+            logger.warn("name is required for creating a union graph")
+            return ResponseEntity.badRequest().build()
+        }
 
         // Validate updateTtlHours: must be 0 (never update) or > 3
         if (updateTtlHours != 0 && updateTtlHours <= 3) {
@@ -208,6 +216,8 @@ class UnionGraphController(
                     format,
                     style,
                     expandUris,
+                    name,
+                    description,
                 )
             } catch (e: IllegalArgumentException) {
                 // Handle validation errors (e.g., invalid webhook URL, invalid updateTtlHours)
@@ -230,6 +240,8 @@ class UnionGraphController(
                 format = order.format.name,
                 style = order.style.name,
                 expandUris = order.expandUris,
+                name = order.name,
+                description = order.description,
             )
 
         // Return 201 Created for new union graphs, 409 Conflict for existing ones
@@ -366,6 +378,8 @@ class UnionGraphController(
                     format = format,
                     style = style,
                     expandUris = request.expandUris,
+                    name = request.name,
+                    description = request.description,
                 )
             } catch (e: IllegalArgumentException) {
                 // Handle validation errors (e.g., invalid webhook URL, invalid updateTtlHours)
@@ -391,6 +405,8 @@ class UnionGraphController(
                 format = updatedOrder.format.name,
                 style = updatedOrder.style.name,
                 expandUris = updatedOrder.expandUris,
+                name = updatedOrder.name,
+                description = updatedOrder.description,
             )
 
         return ResponseEntity
@@ -447,6 +463,8 @@ class UnionGraphController(
                     format = order.format.name,
                     style = order.style.name,
                     expandUris = order.expandUris,
+                    name = order.name,
+                    description = order.description,
                 )
             }
 
@@ -520,6 +538,8 @@ class UnionGraphController(
                 format = order.format.name,
                 style = order.style.name,
                 expandUris = order.expandUris,
+                name = order.name,
+                description = order.description,
             )
 
         return ResponseEntity
@@ -579,6 +599,8 @@ class UnionGraphController(
                 format = order.format.name,
                 style = order.style.name,
                 expandUris = order.expandUris,
+                name = order.name,
+                description = order.description,
             )
 
         return ResponseEntity
@@ -816,6 +838,14 @@ class UnionGraphController(
             example = "true",
         )
         val expandUris: Boolean? = null,
+        /**
+         * Human-readable name for the union graph (required for creation, optional for updates).
+         */
+        val name: String? = null,
+        /**
+         * Optional human-readable description of the union graph.
+         */
+        val description: String? = null,
     ) {
         fun toDomainFilters(): UnionGraphResourceFilters? = resourceFilters?.toDomain()
     }
@@ -900,6 +930,14 @@ class UnionGraphController(
          * Whether URIs are expanded in the graph data.
          */
         val expandUris: Boolean,
+        /**
+         * Human-readable name for the union graph.
+         */
+        val name: String,
+        /**
+         * Optional human-readable description of the union graph.
+         */
+        val description: String?,
     )
 
     /**
@@ -936,6 +974,14 @@ class UnionGraphController(
          * Whether URIs are expanded in the graph data.
          */
         val expandUris: Boolean,
+        /**
+         * Human-readable name for the union graph.
+         */
+        val name: String,
+        /**
+         * Optional human-readable description of the union graph.
+         */
+        val description: String?,
     )
 
     /**
@@ -973,6 +1019,14 @@ class UnionGraphController(
          * Whether URIs are expanded in the graph data.
          */
         val expandUris: Boolean,
+        /**
+         * Human-readable name for the union graph.
+         */
+        val name: String,
+        /**
+         * Optional human-readable description of the union graph.
+         */
+        val description: String?,
     )
 
     /**

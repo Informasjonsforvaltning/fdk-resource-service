@@ -54,6 +54,7 @@ class UnionGraphControllerTest : BaseControllerTest() {
         val order =
             UnionGraphOrder(
                 id = "test-order-1",
+                name = "Test Order 1",
                 status = UnionGraphOrder.GraphStatus.PENDING,
                 resourceTypes = listOf("CONCEPT"),
                 updateTtlHours = 24,
@@ -70,6 +71,7 @@ class UnionGraphControllerTest : BaseControllerTest() {
                 UnionGraphOrder.GraphFormat.JSON_LD,
                 UnionGraphOrder.GraphStyle.PRETTY,
                 true,
+                "Test Order 1",
             )
         } returns UnionGraphService.CreateOrderResult(order, isNew = true)
 
@@ -81,6 +83,7 @@ class UnionGraphControllerTest : BaseControllerTest() {
                     .content(
                         """
                         {
+                            "name": "Test Order 1",
                             "resourceTypes": ["CONCEPT"],
                             "updateTtlHours": 24,
                             "webhookUrl": "https://example.com/webhook"
@@ -157,6 +160,7 @@ class UnionGraphControllerTest : BaseControllerTest() {
         val order =
             UnionGraphOrder(
                 id = "test-order-0",
+                name = "Test Order 0",
                 status = UnionGraphOrder.GraphStatus.PENDING,
                 resourceTypes = listOf("CONCEPT"),
                 updateTtlHours = 0,
@@ -172,6 +176,7 @@ class UnionGraphControllerTest : BaseControllerTest() {
                 UnionGraphOrder.GraphFormat.JSON_LD,
                 UnionGraphOrder.GraphStyle.PRETTY,
                 true,
+                "Test Order 0",
             )
         } returns UnionGraphService.CreateOrderResult(order, isNew = true)
 
@@ -183,6 +188,7 @@ class UnionGraphControllerTest : BaseControllerTest() {
                     .content(
                         """
                         {
+                            "name": "Test Order 0",
                             "resourceTypes": ["CONCEPT"],
                             "updateTtlHours": 0
                         }
@@ -197,6 +203,7 @@ class UnionGraphControllerTest : BaseControllerTest() {
         val order =
             UnionGraphOrder(
                 id = "test-order-4",
+                name = "Test Order 4",
                 status = UnionGraphOrder.GraphStatus.PENDING,
                 resourceTypes = listOf("CONCEPT"),
                 updateTtlHours = 4,
@@ -209,6 +216,7 @@ class UnionGraphControllerTest : BaseControllerTest() {
                 null,
                 null,
                 false,
+                name = "Test Order 4",
             )
         } returns UnionGraphService.CreateOrderResult(order, isNew = true)
 
@@ -220,6 +228,7 @@ class UnionGraphControllerTest : BaseControllerTest() {
                     .content(
                         """
                         {
+                            "name": "Test Order 4",
                             "resourceTypes": ["CONCEPT"],
                             "updateTtlHours": 4
                         }
@@ -234,6 +243,7 @@ class UnionGraphControllerTest : BaseControllerTest() {
         val order =
             UnionGraphOrder(
                 id = "existing-order",
+                name = "Existing Order",
                 status = UnionGraphOrder.GraphStatus.COMPLETED,
                 resourceTypes = listOf("DATASET"),
             )
@@ -245,6 +255,7 @@ class UnionGraphControllerTest : BaseControllerTest() {
                 null,
                 null,
                 false,
+                name = any(),
             )
         } returns UnionGraphService.CreateOrderResult(order, isNew = false)
 
@@ -256,6 +267,7 @@ class UnionGraphControllerTest : BaseControllerTest() {
                     .content(
                         """
                         {
+                            "name": "Existing Order",
                             "resourceTypes": ["DATASET"]
                         }
                         """.trimIndent(),
@@ -278,6 +290,7 @@ class UnionGraphControllerTest : BaseControllerTest() {
                 UnionGraphOrder.GraphFormat.JSON_LD,
                 UnionGraphOrder.GraphStyle.PRETTY,
                 true,
+                "Test Order",
             )
         } throws IllegalArgumentException("Webhook URL must use HTTPS protocol")
 
@@ -302,6 +315,7 @@ class UnionGraphControllerTest : BaseControllerTest() {
         val order =
             UnionGraphOrder(
                 id = "test-order-2",
+                name = "Test Order 2",
                 status = UnionGraphOrder.GraphStatus.PENDING,
             )
 
@@ -315,13 +329,23 @@ class UnionGraphControllerTest : BaseControllerTest() {
                 UnionGraphOrder.GraphFormat.JSON_LD,
                 UnionGraphOrder.GraphStyle.PRETTY,
                 true,
+                any(),
             )
         } returns UnionGraphService.CreateOrderResult(order, isNew = true)
 
         // When & Then
         mockMvc
-            .perform(post("/v1/union-graphs"))
-            .andExpect(status().isCreated)
+            .perform(
+                post("/v1/union-graphs")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(
+                        """
+                        {
+                            "name": "Test Order 2"
+                        }
+                        """.trimIndent(),
+                    ),
+            ).andExpect(status().isCreated)
             .andExpect(jsonPath("$.id").value("test-order-2"))
     }
 
@@ -339,6 +363,7 @@ class UnionGraphControllerTest : BaseControllerTest() {
         val order =
             UnionGraphOrder(
                 id = "dataset-order",
+                name = "Dataset Order",
                 status = UnionGraphOrder.GraphStatus.PENDING,
                 resourceTypes = listOf("DATASET"),
                 resourceFilters = filters,
@@ -354,6 +379,7 @@ class UnionGraphControllerTest : BaseControllerTest() {
                 UnionGraphOrder.GraphFormat.JSON_LD,
                 UnionGraphOrder.GraphStyle.PRETTY,
                 true,
+                "Dataset Order",
             )
         } returns UnionGraphService.CreateOrderResult(order, isNew = true)
 
@@ -365,6 +391,7 @@ class UnionGraphControllerTest : BaseControllerTest() {
                     .content(
                         """
                         {
+                            "name": "Dataset Order",
                             "resourceTypes": ["DATASET"],
                             "resourceFilters": {
                                 "dataset": {
@@ -398,6 +425,7 @@ class UnionGraphControllerTest : BaseControllerTest() {
                 UnionGraphOrder.GraphFormat.JSON_LD,
                 UnionGraphOrder.GraphStyle.PRETTY,
                 true,
+                "Test Order",
             )
         } throws IllegalArgumentException("Dataset filters require the DATASET resource type")
 
@@ -428,6 +456,7 @@ class UnionGraphControllerTest : BaseControllerTest() {
             listOf(
                 UnionGraphOrder(
                     id = "order-1",
+                    name = "Order 1",
                     status = UnionGraphOrder.GraphStatus.COMPLETED,
                     resourceTypes = listOf("CONCEPT"),
                     updateTtlHours = 24,
@@ -436,6 +465,7 @@ class UnionGraphControllerTest : BaseControllerTest() {
                 ),
                 UnionGraphOrder(
                     id = "order-2",
+                    name = "Order 2",
                     status = UnionGraphOrder.GraphStatus.PENDING,
                     resourceTypes = null,
                     updateTtlHours = 0,
@@ -463,6 +493,7 @@ class UnionGraphControllerTest : BaseControllerTest() {
         val order =
             UnionGraphOrder(
                 id = "test-order-3",
+                name = "Test Order 3",
                 status = UnionGraphOrder.GraphStatus.PROCESSING,
                 resourceTypes = listOf("DATASET"),
                 updateTtlHours = 12,
@@ -503,6 +534,7 @@ class UnionGraphControllerTest : BaseControllerTest() {
         val order =
             UnionGraphOrder(
                 id = "test-order-4",
+                name = "Test Order 4",
                 status = UnionGraphOrder.GraphStatus.PENDING,
             )
 
@@ -534,6 +566,7 @@ class UnionGraphControllerTest : BaseControllerTest() {
         val order =
             UnionGraphOrder(
                 id = "test-order-5",
+                name = "Test Order 5",
                 status = UnionGraphOrder.GraphStatus.COMPLETED,
                 graphData = graphData,
                 format = UnionGraphOrder.GraphFormat.JSON_LD,
@@ -568,6 +601,7 @@ class UnionGraphControllerTest : BaseControllerTest() {
         val order =
             UnionGraphOrder(
                 id = "test-order-6",
+                name = "Test Order 6",
                 status = UnionGraphOrder.GraphStatus.PENDING,
             )
 
@@ -586,6 +620,7 @@ class UnionGraphControllerTest : BaseControllerTest() {
         val order =
             UnionGraphOrder(
                 id = "test-order-7",
+                name = "Test Order 7",
                 status = UnionGraphOrder.GraphStatus.COMPLETED,
                 graphData = graphData,
                 format = UnionGraphOrder.GraphFormat.TURTLE,
@@ -610,6 +645,7 @@ class UnionGraphControllerTest : BaseControllerTest() {
         val updatedOrder =
             UnionGraphOrder(
                 id = orderId,
+                name = "Test Order",
                 status = UnionGraphOrder.GraphStatus.COMPLETED,
                 resourceTypes = listOf("CONCEPT"),
                 updateTtlHours = 24,
@@ -675,6 +711,7 @@ class UnionGraphControllerTest : BaseControllerTest() {
         val existingOrder =
             UnionGraphOrder(
                 id = orderId,
+                name = "Test Order",
                 updateTtlHours = 12,
             )
 
@@ -726,6 +763,7 @@ class UnionGraphControllerTest : BaseControllerTest() {
         val updatedOrder =
             UnionGraphOrder(
                 id = orderId,
+                name = "Test Order",
                 status = UnionGraphOrder.GraphStatus.PENDING,
                 resourceTypes = listOf("DATASET"),
                 updateTtlHours = 12,

@@ -65,7 +65,7 @@ class UnionGraphServiceTest {
         every { unionGraphOrderRepository.save(any()) } answers { firstArg() }
 
         // When
-        val result = unionGraphService.createOrder(resourceTypes, updateTtlHours, webhookUrl, null, false)
+        val result = unionGraphService.createOrder(resourceTypes, updateTtlHours, webhookUrl, null, false, name = "Test Order")
 
         // Then
         assertTrue(result.isNew)
@@ -83,6 +83,7 @@ class UnionGraphServiceTest {
         val existingOrder =
             UnionGraphOrder(
                 id = "existing-id",
+                name = "Existing Order",
                 status = UnionGraphOrder.GraphStatus.COMPLETED,
                 resourceTypes = listOf("CONCEPT"),
                 updateTtlHours = 12,
@@ -103,7 +104,7 @@ class UnionGraphServiceTest {
         } returns existingOrder
 
         // When
-        val result = unionGraphService.createOrder(resourceTypes, 12, "https://example.com/webhook", null, false)
+        val result = unionGraphService.createOrder(resourceTypes, 12, "https://example.com/webhook", null, false, name = "Test Order")
 
         // Then
         assertFalse(result.isNew)
@@ -123,6 +124,7 @@ class UnionGraphServiceTest {
                     webhookUrl = null,
                     resourceFilters = null,
                     expandDistributionAccessServices = false,
+                    name = "Test Order",
                 )
             }
         assertTrue(exception.message!!.contains("updateTtlHours must be 0"))
@@ -139,6 +141,7 @@ class UnionGraphServiceTest {
                     webhookUrl = null,
                     resourceFilters = null,
                     expandDistributionAccessServices = false,
+                    name = "Test Order",
                 )
             }
         assertTrue(exception.message!!.contains("updateTtlHours must be 0"))
@@ -155,6 +158,7 @@ class UnionGraphServiceTest {
                     webhookUrl = null,
                     resourceFilters = null,
                     expandDistributionAccessServices = false,
+                    name = "Test Order",
                 )
             }
         assertTrue(exception.message!!.contains("updateTtlHours must be 0"))
@@ -174,6 +178,7 @@ class UnionGraphServiceTest {
                 webhookUrl = null,
                 resourceFilters = null,
                 expandDistributionAccessServices = false,
+                name = "Test Order",
             )
 
         // Then
@@ -195,6 +200,7 @@ class UnionGraphServiceTest {
                 webhookUrl = null,
                 resourceFilters = null,
                 expandDistributionAccessServices = false,
+                name = "Test Order",
             )
 
         // Then
@@ -209,7 +215,7 @@ class UnionGraphServiceTest {
 
         // When & Then
         assertThrows<IllegalArgumentException> {
-            unionGraphService.createOrder(webhookUrl = webhookUrl)
+            unionGraphService.createOrder(webhookUrl = webhookUrl, name = "Test Order")
         }
     }
 
@@ -220,7 +226,7 @@ class UnionGraphServiceTest {
         every { unionGraphOrderRepository.save(any()) } answers { firstArg() }
 
         // When
-        val result = unionGraphService.createOrder(webhookUrl = null)
+        val result = unionGraphService.createOrder(webhookUrl = null, name = "Test Order")
 
         // Then
         assertTrue(result.isNew)
@@ -234,7 +240,7 @@ class UnionGraphServiceTest {
         every { unionGraphOrderRepository.save(any()) } answers { firstArg() }
 
         // When
-        val result = unionGraphService.createOrder(resourceTypes = emptyList())
+        val result = unionGraphService.createOrder(resourceTypes = emptyList(), name = "Test Order")
 
         // Then
         assertTrue(result.isNew)
@@ -250,7 +256,7 @@ class UnionGraphServiceTest {
         every { unionGraphOrderRepository.save(any()) } answers { firstArg() }
 
         // When
-        val result = unionGraphService.createOrder(resourceTypes)
+        val result = unionGraphService.createOrder(resourceTypes, name = "Test Order")
 
         // Then
         assertEquals(listOf("CONCEPT", "DATASET"), result.order.resourceTypes)
@@ -275,6 +281,7 @@ class UnionGraphServiceTest {
             unionGraphService.createOrder(
                 resourceTypes = listOf(ResourceType.DATASET),
                 resourceFilters = filters,
+                name = "Test Order",
             )
 
         // Then
@@ -306,6 +313,7 @@ class UnionGraphServiceTest {
                 resourceTypes = listOf(ResourceType.CONCEPT),
                 resourceFilters = filters,
                 expandDistributionAccessServices = false,
+                name = "Test Order",
             )
         }
     }
@@ -321,6 +329,7 @@ class UnionGraphServiceTest {
             unionGraphService.createOrder(
                 resourceTypes = listOf(ResourceType.DATASET),
                 expandDistributionAccessServices = true,
+                name = "Test Order",
             )
 
         // Then
@@ -334,12 +343,14 @@ class UnionGraphServiceTest {
         val order1 =
             UnionGraphOrder(
                 id = "order-1",
+                name = "Order 1",
                 resourceTypes = listOf("DATASET"),
                 expandDistributionAccessServices = false,
             )
         val order2 =
             UnionGraphOrder(
                 id = "order-2",
+                name = "Order 2",
                 resourceTypes = listOf("DATASET"),
                 expandDistributionAccessServices = true,
             )
@@ -370,8 +381,13 @@ class UnionGraphServiceTest {
         } returns order2
 
         // When
-        val result1 = unionGraphService.createOrder(listOf(ResourceType.DATASET), expandDistributionAccessServices = false)
-        val result2 = unionGraphService.createOrder(listOf(ResourceType.DATASET), expandDistributionAccessServices = true)
+        val result1 =
+            unionGraphService.createOrder(
+                listOf(ResourceType.DATASET),
+                expandDistributionAccessServices = false,
+                name = "Order 1",
+            )
+        val result2 = unionGraphService.createOrder(listOf(ResourceType.DATASET), expandDistributionAccessServices = true, name = "Order 2")
 
         // Then
         assertFalse(result1.isNew)
@@ -389,12 +405,14 @@ class UnionGraphServiceTest {
         val previousOrder =
             UnionGraphOrder(
                 id = orderId,
+                name = "Test Order",
                 status = UnionGraphOrder.GraphStatus.FAILED,
                 errorMessage = "Test error",
             )
         val resetOrder =
             UnionGraphOrder(
                 id = orderId,
+                name = "Test Order",
                 status = UnionGraphOrder.GraphStatus.PENDING,
                 errorMessage = null,
             )
@@ -434,6 +452,7 @@ class UnionGraphServiceTest {
         val order =
             UnionGraphOrder(
                 id = orderId,
+                name = "Test Order",
                 status = UnionGraphOrder.GraphStatus.PENDING,
             )
         every { unionGraphOrderRepository.findById(orderId) } returns Optional.of(order)
@@ -466,10 +485,12 @@ class UnionGraphServiceTest {
             listOf(
                 UnionGraphOrder(
                     id = "order-2",
+                    name = "Order 2",
                     createdAt = Instant.now(),
                 ),
                 UnionGraphOrder(
                     id = "order-1",
+                    name = "Order 1",
                     createdAt = Instant.now().minusSeconds(100),
                 ),
             )
@@ -491,6 +512,7 @@ class UnionGraphServiceTest {
         val existingOrder =
             UnionGraphOrder(
                 id = orderId,
+                name = "Test Order",
                 status = UnionGraphOrder.GraphStatus.COMPLETED,
                 resourceTypes = listOf("CONCEPT"),
                 updateTtlHours = 12,
@@ -498,7 +520,23 @@ class UnionGraphServiceTest {
             )
 
         every { unionGraphOrderRepository.findById(orderId) } returns Optional.of(existingOrder)
-        every { unionGraphOrderRepository.updateOrder(any(), any(), any(), any(), any(), any(), any(), any(), any(), false) } returns 1
+        every {
+            unionGraphOrderRepository.updateOrder(
+                any(),
+                any(),
+                any(),
+                any(),
+                any(),
+                any(),
+                any(),
+                any(),
+                any(),
+                any(),
+                any(),
+                false,
+            )
+        } returns
+            1
         every { unionGraphOrderRepository.findById(orderId) } returns
             Optional.of(
                 existingOrder.copy(
@@ -520,7 +558,7 @@ class UnionGraphServiceTest {
         assertEquals(UnionGraphOrder.GraphStatus.COMPLETED, result!!.status)
         assertEquals(24, result.updateTtlHours)
         assertEquals("https://example.com/new-webhook", result.webhookUrl)
-        verify { unionGraphOrderRepository.updateOrder(any(), any(), any(), any(), any(), any(), any(), any(), any(), false) }
+        verify { unionGraphOrderRepository.updateOrder(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), false) }
     }
 
     @Test
@@ -530,6 +568,7 @@ class UnionGraphServiceTest {
         val existingOrder =
             UnionGraphOrder(
                 id = orderId,
+                name = "Test Order",
                 status = UnionGraphOrder.GraphStatus.COMPLETED,
                 resourceTypes = listOf("CONCEPT"),
                 updateTtlHours = 12,
@@ -546,7 +585,23 @@ class UnionGraphServiceTest {
                 Optional.of(existingOrder),
                 Optional.of(updatedOrder),
             )
-        every { unionGraphOrderRepository.updateOrder(any(), any(), any(), any(), any(), any(), any(), any(), any(), true) } returns 1
+        every {
+            unionGraphOrderRepository.updateOrder(
+                any(),
+                any(),
+                any(),
+                any(),
+                any(),
+                any(),
+                any(),
+                any(),
+                any(),
+                any(),
+                any(),
+                true,
+            )
+        } returns
+            1
 
         // When
         val result =
@@ -559,7 +614,7 @@ class UnionGraphServiceTest {
         assertNotNull(result)
         assertEquals(UnionGraphOrder.GraphStatus.PENDING, result!!.status)
         assertEquals(listOf("DATASET"), result.resourceTypes)
-        verify { unionGraphOrderRepository.updateOrder(any(), any(), any(), any(), any(), any(), any(), any(), any(), true) }
+        verify { unionGraphOrderRepository.updateOrder(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), true) }
     }
 
     @Test
@@ -573,7 +628,9 @@ class UnionGraphServiceTest {
 
         // Then
         assertNull(result)
-        verify(exactly = 0) { unionGraphOrderRepository.updateOrder(any(), any(), any(), any(), any(), any(), any(), any(), any(), any()) }
+        verify(exactly = 0) {
+            unionGraphOrderRepository.updateOrder(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any())
+        }
     }
 
     @Test
@@ -583,6 +640,7 @@ class UnionGraphServiceTest {
         val existingOrder =
             UnionGraphOrder(
                 id = orderId,
+                name = "Test Order",
                 updateTtlHours = 12,
             )
 
@@ -601,6 +659,7 @@ class UnionGraphServiceTest {
         val existingOrder =
             UnionGraphOrder(
                 id = orderId,
+                name = "Test Order",
                 updateTtlHours = 12,
             )
 
@@ -619,11 +678,28 @@ class UnionGraphServiceTest {
         val existingOrder =
             UnionGraphOrder(
                 id = orderId,
+                name = "Test Order",
                 webhookUrl = "https://example.com/webhook",
             )
 
         every { unionGraphOrderRepository.findById(orderId) } returns Optional.of(existingOrder)
-        every { unionGraphOrderRepository.updateOrder(any(), any(), any(), any(), any(), any(), any(), any(), any(), false) } returns 1
+        every {
+            unionGraphOrderRepository.updateOrder(
+                any(),
+                any(),
+                any(),
+                any(),
+                any(),
+                any(),
+                any(),
+                any(),
+                any(),
+                any(),
+                any(),
+                false,
+            )
+        } returns
+            1
         every { unionGraphOrderRepository.findById(orderId) } returns
             Optional.of(
                 existingOrder.copy(webhookUrl = null),
@@ -644,6 +720,7 @@ class UnionGraphServiceTest {
         val existingOrder =
             UnionGraphOrder(
                 id = orderId,
+                name = "Test Order",
                 status = UnionGraphOrder.GraphStatus.COMPLETED,
                 format = UnionGraphOrder.GraphFormat.JSON_LD,
             )
@@ -658,7 +735,23 @@ class UnionGraphServiceTest {
                 Optional.of(existingOrder),
                 Optional.of(updatedOrder),
             )
-        every { unionGraphOrderRepository.updateOrder(any(), any(), any(), any(), any(), any(), any(), any(), any(), true) } returns 1
+        every {
+            unionGraphOrderRepository.updateOrder(
+                any(),
+                any(),
+                any(),
+                any(),
+                any(),
+                any(),
+                any(),
+                any(),
+                any(),
+                any(),
+                any(),
+                true,
+            )
+        } returns
+            1
 
         // When
         val result =
@@ -671,7 +764,7 @@ class UnionGraphServiceTest {
         assertNotNull(result)
         assertEquals(UnionGraphOrder.GraphStatus.PENDING, result!!.status)
         assertEquals(UnionGraphOrder.GraphFormat.TURTLE, result.format)
-        verify { unionGraphOrderRepository.updateOrder(any(), any(), any(), any(), any(), any(), any(), any(), any(), true) }
+        verify { unionGraphOrderRepository.updateOrder(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), true) }
     }
 
     @Test
@@ -681,6 +774,7 @@ class UnionGraphServiceTest {
         val order =
             UnionGraphOrder(
                 id = orderId,
+                name = "Test Order",
                 status = UnionGraphOrder.GraphStatus.PENDING,
             )
         every { unionGraphOrderRepository.findById(orderId) } returns Optional.of(order)
@@ -747,6 +841,7 @@ class UnionGraphServiceTest {
         val order =
             UnionGraphOrder(
                 id = orderId,
+                name = "Test Order",
                 status = UnionGraphOrder.GraphStatus.PENDING,
                 resourceTypes = listOf("CONCEPT"),
             )
@@ -754,6 +849,7 @@ class UnionGraphServiceTest {
         val lockedOrder =
             UnionGraphOrder(
                 id = orderId,
+                name = "Test Order",
                 status = UnionGraphOrder.GraphStatus.PROCESSING,
                 resourceTypes = listOf("CONCEPT"),
                 lockedBy = instanceId,
@@ -784,6 +880,7 @@ class UnionGraphServiceTest {
         val order =
             UnionGraphOrder(
                 id = orderId,
+                name = "Test Order",
                 status = UnionGraphOrder.GraphStatus.PENDING,
             )
 
