@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 
@@ -246,6 +247,156 @@ class UnionGraphController(
                 .header("Location", "/v1/union-graphs/${order.id}")
 
         return responseBuilder.body(response)
+    }
+
+    /**
+     * Updates an existing union graph.
+     *
+     * This endpoint allows updating various fields of a union graph order.
+     * If fields that affect the graph content are changed (resourceTypes, resourceFilters,
+     * expandDistributionAccessServices, format, style, expandUris), the order will be
+     * reset to PENDING status to trigger a rebuild with the new configuration.
+     *
+     * Safe fields that don't require a rebuild (updateTtlHours, webhookUrl) can be
+     * updated without affecting the graph status.
+     *
+     * @param id The union graph ID to update
+     * @param requestBody Request body with fields to update
+     * @return The updated union graph
+     */
+    @PutMapping("/{id}")
+    @Operation(
+        summary = "Update a union graph",
+        description =
+            "Update an existing union graph order. " +
+                "You can update any field of the union graph configuration. " +
+                "If fields that affect the graph content are changed (resourceTypes, resourceFilters, " +
+                "expandDistributionAccessServices, format, style, expandUris), the order will be " +
+                "reset to PENDING status to trigger a rebuild with the new configuration. " +
+                "Safe fields that don't require a rebuild (updateTtlHours, webhookUrl) can be " +
+                "updated without affecting the graph status. " +
+                "The updateTtlHours must be 0 (never update) or greater than 3. " +
+                "If a webhook URL is provided, it must use HTTPS protocol. " +
+                "To remove a webhook, set webhookUrl to an empty string.",
+        security = [SecurityRequirement(name = "ApiKeyAuth")],
+    )
+    @ApiResponses(
+        value = [
+            ApiResponse(
+                responseCode = "200",
+                description = "Union graph updated successfully",
+                content = [Content(mediaType = "application/json")],
+            ),
+            ApiResponse(
+                responseCode = "400",
+                description = "Invalid request (e.g., webhook URL not using HTTPS, invalid updateTtlHours)",
+                content = [Content(mediaType = "application/json")],
+            ),
+            ApiResponse(
+                responseCode = "404",
+                description = "Union graph not found",
+            ),
+        ],
+    )
+    fun updateOrder(
+        @Parameter(description = "Union graph ID")
+        @PathVariable id: String,
+        @RequestBody(
+            required = false,
+            description = "Union graph update configuration",
+            content = [
+                Content(
+                    mediaType = "application/json",
+                    schema = Schema(implementation = UnionGraphOrderRequest::class),
+                ),
+            ],
+        )
+        requestBody: UnionGraphOrderRequest?,
+    ): ResponseEntity<UnionGraphOrderResponse> {
+        logger.info("Updating union graph order: {}", id)
+
+        val request = requestBody ?: UnionGraphOrderRequest()
+
+        // Convert resource types from strings to ResourceType enum
+        val resourceTypes =
+            request.resourceTypes
+                ?.mapNotNull { typeName ->
+                    try {
+                        ResourceType.valueOf(typeName.uppercase())
+                    } catch (e: IllegalArgumentException) {
+                        logger.warn("Invalid resource type: {}", typeName)
+                        null
+                    }
+                }?.takeIf { it.isNotEmpty() }
+
+        // Convert resource filters
+        val resourceFilters = request.resourceFilters?.toDomain()
+
+        // Convert format
+        val format =
+            request.format?.let {
+                try {
+                    UnionGraphOrder.GraphFormat.valueOf(it.uppercase())
+                } catch (e: IllegalArgumentException) {
+                    logger.warn("Invalid format: {}", it)
+                    null
+                }
+            }
+
+        // Convert style
+        val style =
+            request.style?.let {
+                try {
+                    UnionGraphOrder.GraphStyle.valueOf(it.uppercase())
+                } catch (e: IllegalArgumentException) {
+                    logger.warn("Invalid style: {}", it)
+                    null
+                }
+            }
+
+        val updatedOrder =
+            try {
+                unionGraphService.updateOrder(
+                    id = id,
+                    updateTtlHours = request.updateTtlHours,
+                    webhookUrl = request.webhookUrl,
+                    resourceTypes = resourceTypes,
+                    resourceFilters = resourceFilters,
+                    expandDistributionAccessServices = request.expandDistributionAccessServices,
+                    format = format,
+                    style = style,
+                    expandUris = request.expandUris,
+                )
+            } catch (e: IllegalArgumentException) {
+                // Handle validation errors (e.g., invalid webhook URL, invalid updateTtlHours)
+                logger.warn("Invalid request: {}", e.message)
+                return ResponseEntity.badRequest().build()
+            }
+
+        if (updatedOrder == null) {
+            logger.warn("Order {} not found for update", id)
+            return ResponseEntity.notFound().build()
+        }
+
+        val response =
+            UnionGraphOrderResponse(
+                id = updatedOrder.id,
+                status = updatedOrder.status.name,
+                resourceTypes = updatedOrder.resourceTypes,
+                updateTtlHours = updatedOrder.updateTtlHours,
+                webhookUrl = updatedOrder.webhookUrl,
+                createdAt = updatedOrder.createdAt.toString(),
+                resourceFilters = toResponseFilters(updatedOrder.resourceFilters),
+                expandDistributionAccessServices = updatedOrder.expandDistributionAccessServices,
+                format = updatedOrder.format.name,
+                style = updatedOrder.style.name,
+                expandUris = updatedOrder.expandUris,
+            )
+
+        return ResponseEntity
+            .ok()
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(response)
     }
 
     /**

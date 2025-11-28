@@ -17,6 +17,7 @@ import org.springframework.test.context.TestPropertySource
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.content
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.header
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
@@ -600,6 +601,165 @@ class UnionGraphControllerTest : BaseControllerTest() {
             .andExpect(status().isOk)
             .andExpect(content().contentType(MediaType.valueOf("text/turtle")))
             .andExpect(content().string(graphData))
+    }
+
+    @Test
+    fun `updateOrder should return 200 when order updated successfully`() {
+        // Given
+        val orderId = "test-order-1"
+        val updatedOrder =
+            UnionGraphOrder(
+                id = orderId,
+                status = UnionGraphOrder.GraphStatus.COMPLETED,
+                resourceTypes = listOf("CONCEPT"),
+                updateTtlHours = 24,
+                webhookUrl = "https://example.com/new-webhook",
+            )
+
+        every {
+            unionGraphService.updateOrder(
+                id = orderId,
+                updateTtlHours = any(),
+                webhookUrl = any(),
+                resourceTypes = any(),
+                resourceFilters = any(),
+                expandDistributionAccessServices = any(),
+                format = any(),
+                style = any(),
+                expandUris = any(),
+            )
+        } returns updatedOrder
+
+        // When & Then
+        mockMvc
+            .perform(
+                put("/v1/union-graphs/$orderId")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(
+                        """
+                        {
+                            "updateTtlHours": 24,
+                            "webhookUrl": "https://example.com/new-webhook"
+                        }
+                        """.trimIndent(),
+                    ),
+            ).andExpect(status().isOk)
+            .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+            .andExpect(jsonPath("$.id").value(orderId))
+            .andExpect(jsonPath("$.status").value("COMPLETED"))
+            .andExpect(jsonPath("$.updateTtlHours").value(24))
+            .andExpect(jsonPath("$.webhookUrl").value("https://example.com/new-webhook"))
+    }
+
+    @Test
+    fun `updateOrder should return 404 when order not found`() {
+        // Given
+        val orderId = "non-existent-id"
+        every {
+            unionGraphService.updateOrder(id = orderId)
+        } returns null
+
+        // When & Then
+        mockMvc
+            .perform(
+                put("/v1/union-graphs/$orderId")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{}"),
+            ).andExpect(status().isNotFound)
+    }
+
+    @Test
+    fun `updateOrder should return 400 when updateTtlHours is invalid`() {
+        // Given
+        val orderId = "test-order-1"
+        val existingOrder =
+            UnionGraphOrder(
+                id = orderId,
+                updateTtlHours = 12,
+            )
+
+        every { unionGraphService.updateOrder(any(), any(), any(), any(), any(), any(), any(), any(), any()) } throws
+            IllegalArgumentException("updateTtlHours must be 0 (never update) or greater than 3")
+
+        // When & Then
+        mockMvc
+            .perform(
+                put("/v1/union-graphs/$orderId")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(
+                        """
+                        {
+                            "updateTtlHours": 2
+                        }
+                        """.trimIndent(),
+                    ),
+            ).andExpect(status().isBadRequest)
+    }
+
+    @Test
+    fun `updateOrder should return 400 when webhook URL is invalid`() {
+        // Given
+        val orderId = "test-order-1"
+
+        every { unionGraphService.updateOrder(any(), any(), any(), any(), any(), any(), any(), any(), any()) } throws
+            IllegalArgumentException("Webhook URL must use HTTPS protocol")
+
+        // When & Then
+        mockMvc
+            .perform(
+                put("/v1/union-graphs/$orderId")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(
+                        """
+                        {
+                            "webhookUrl": "http://example.com/webhook"
+                        }
+                        """.trimIndent(),
+                    ),
+            ).andExpect(status().isBadRequest)
+    }
+
+    @Test
+    fun `updateOrder should reset to PENDING when graph-affecting fields change`() {
+        // Given
+        val orderId = "test-order-1"
+        val updatedOrder =
+            UnionGraphOrder(
+                id = orderId,
+                status = UnionGraphOrder.GraphStatus.PENDING,
+                resourceTypes = listOf("DATASET"),
+                updateTtlHours = 12,
+            )
+
+        every {
+            unionGraphService.updateOrder(
+                id = orderId,
+                updateTtlHours = any(),
+                webhookUrl = any(),
+                resourceTypes = any(),
+                resourceFilters = any(),
+                expandDistributionAccessServices = any(),
+                format = any(),
+                style = any(),
+                expandUris = any(),
+            )
+        } returns updatedOrder
+
+        // When & Then
+        mockMvc
+            .perform(
+                put("/v1/union-graphs/$orderId")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(
+                        """
+                        {
+                            "resourceTypes": ["DATASET"]
+                        }
+                        """.trimIndent(),
+                    ),
+            ).andExpect(status().isOk)
+            .andExpect(jsonPath("$.status").value("PENDING"))
+            .andExpect(jsonPath("$.resourceTypes[0]").value("DATASET"))
     }
 
     @Test

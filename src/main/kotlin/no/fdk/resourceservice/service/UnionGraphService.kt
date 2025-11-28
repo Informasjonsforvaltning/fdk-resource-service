@@ -239,6 +239,132 @@ class UnionGraphService(
     }
 
     /**
+     * Updates an existing union graph order.
+     *
+     * This method allows updating various fields of a union graph order.
+     * If fields that affect the graph content are changed (resourceTypes, resourceFilters,
+     * expandDistributionAccessServices, format, style, expandUris), the order will be
+     * reset to PENDING status to trigger a rebuild with the new configuration.
+     *
+     * Safe fields that don't require a rebuild (updateTtlHours, webhookUrl) can be
+     * updated without affecting the graph status.
+     *
+     * @param id The union graph ID to update
+     * @param updateTtlHours Optional new TTL in hours. Must be 0 or > 3 if provided.
+     * @param webhookUrl Optional new webhook URL. Must be HTTPS if provided. Set to empty string to remove.
+     * @param resourceTypes Optional new resource types list. If provided, triggers rebuild.
+     * @param resourceFilters Optional new resource filters. If provided, triggers rebuild.
+     * @param expandDistributionAccessServices Optional new expansion setting. If provided, triggers rebuild.
+     * @param format Optional new format. If provided, triggers rebuild.
+     * @param style Optional new style. If provided, triggers rebuild.
+     * @param expandUris Optional new expand URIs setting. If provided, triggers rebuild.
+     * @return The updated union graph order, or null if not found
+     * @throws IllegalArgumentException if validation fails (e.g., invalid webhook URL or TTL)
+     */
+    fun updateOrder(
+        id: String,
+        updateTtlHours: Int? = null,
+        webhookUrl: String? = null,
+        resourceTypes: List<ResourceType>? = null,
+        resourceFilters: UnionGraphResourceFilters? = null,
+        expandDistributionAccessServices: Boolean? = null,
+        format: UnionGraphOrder.GraphFormat? = null,
+        style: UnionGraphOrder.GraphStyle? = null,
+        expandUris: Boolean? = null,
+    ): UnionGraphOrder? {
+        logger.info("Updating union graph order: {}", id)
+
+        val existingOrder = unionGraphOrderRepository.findById(id).orElse(null)
+        if (existingOrder == null) {
+            logger.warn("Order {} not found for update", id)
+            return null
+        }
+
+        // Validate updateTtlHours if provided
+        val newUpdateTtlHours = updateTtlHours ?: existingOrder.updateTtlHours
+        if (newUpdateTtlHours != 0 && newUpdateTtlHours <= 3) {
+            throw IllegalArgumentException("updateTtlHours must be 0 (never update) or greater than 3")
+        }
+
+        // Validate webhook URL if provided
+        val newWebhookUrl =
+            when {
+                webhookUrl == null -> existingOrder.webhookUrl
+                webhookUrl.isBlank() -> null // Empty string means remove webhook
+                else -> {
+                    if (!webhookUrl.startsWith("https://")) {
+                        throw IllegalArgumentException("Webhook URL must use HTTPS protocol")
+                    }
+                    webhookUrl
+                }
+            }
+
+        // Determine if graph-affecting fields are being changed
+        val resourceTypesChanged = resourceTypes != null && resourceTypes.map { it.name }.sorted() != existingOrder.resourceTypes?.sorted()
+        val filtersChanged = resourceFilters != null && resourceFilters.normalized() != existingOrder.resourceFilters
+        val expandChanged =
+            expandDistributionAccessServices != null && expandDistributionAccessServices != existingOrder.expandDistributionAccessServices
+        val formatChanged = format != null && format != existingOrder.format
+        val styleChanged = style != null && style != existingOrder.style
+        val expandUrisChanged = expandUris != null && expandUris != existingOrder.expandUris
+
+        val requiresRebuild = resourceTypesChanged || filtersChanged || expandChanged || formatChanged || styleChanged || expandUrisChanged
+
+        // Prepare new values
+        val newResourceTypes = resourceTypes?.map { it.name }?.sorted() ?: existingOrder.resourceTypes
+        val newResourceFilters = resourceFilters?.normalized() ?: existingOrder.resourceFilters
+        val newExpandDistributionAccessServices = expandDistributionAccessServices ?: existingOrder.expandDistributionAccessServices
+        val newFormat = format ?: existingOrder.format
+        val newStyle = style ?: existingOrder.style
+        val newExpandUris = expandUris ?: existingOrder.expandUris
+
+        // Validate resource filters if provided
+        validateResourceFilters(newResourceTypes?.map { ResourceType.valueOf(it) }, newResourceFilters)
+
+        val previousStatus = existingOrder.status
+
+        // Update the order
+        val updatedOrder =
+            unionGraphOrderRepository.updateOrder(
+                id = id,
+                updateTtlHours = newUpdateTtlHours,
+                webhookUrl = newWebhookUrl,
+                resourceTypes = newResourceTypes,
+                resourceFilters = newResourceFilters?.let { objectMapper.writeValueAsString(it) },
+                expandDistributionAccessServices = newExpandDistributionAccessServices,
+                format = newFormat.name,
+                style = newStyle.name,
+                expandUris = newExpandUris,
+                resetToPending = requiresRebuild,
+            )
+
+        if (updatedOrder == 0) {
+            logger.warn("Order {} not found for update", id)
+            return null
+        }
+
+        // Reload the order to get updated status
+        val reloadedOrder = unionGraphOrderRepository.findById(id).orElse(null)
+        if (reloadedOrder != null) {
+            logger.info(
+                "Successfully updated order {} (requiresRebuild: {}, newStatus: {})",
+                id,
+                requiresRebuild,
+                reloadedOrder.status,
+            )
+
+            // Call webhook if status changed or webhook URL changed
+            if (previousStatus != reloadedOrder.status || newWebhookUrl != existingOrder.webhookUrl) {
+                webhookService.callWebhook(reloadedOrder, previousStatus)
+            }
+        } else {
+            logger.warn("Order {} was updated but could not be reloaded", id)
+        }
+
+        return reloadedOrder
+    }
+
+    /**
      * Deletes a union graph.
      *
      * @param id The union graph ID to delete

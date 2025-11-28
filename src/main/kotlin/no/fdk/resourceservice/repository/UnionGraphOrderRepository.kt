@@ -247,4 +247,150 @@ interface UnionGraphOrderRepository : JpaRepository<UnionGraphOrder, String> {
         @Param("style") style: String,
         @Param("expandUris") expandUris: Boolean,
     ): UnionGraphOrder?
+
+    /**
+     * Updates an order with new configuration values.
+     * If resetToPending is true, the order status is reset to PENDING and graph data is cleared.
+     *
+     * @param id The order ID to update
+     * @param updateTtlHours New TTL in hours
+     * @param webhookUrl New webhook URL (null to remove)
+     * @param resourceTypes New resource types array (null means all types)
+     * @param resourceFilters New resource filters JSON (null to remove)
+     * @param expandDistributionAccessServices New expansion setting
+     * @param format New format
+     * @param style New style
+     * @param expandUris New expand URIs setting
+     * @param resetToPending If true, reset status to PENDING and clear graph data
+     * @return Number of rows affected (0 if order not found, 1 if updated)
+     */
+    @Modifying(clearAutomatically = true)
+    @Transactional
+    @Query(
+        value = """
+        UPDATE union_graphs 
+        SET update_ttl_hours = :updateTtlHours,
+            webhook_url = :webhookUrl,
+            resource_types = CAST(:resourceTypes AS text[]),
+            resource_filters = CASE 
+                WHEN :resourceFilters IS NULL THEN NULL 
+                ELSE CAST(:resourceFilters AS jsonb) 
+            END,
+            expand_distribution_access_services = :expandDistributionAccessServices,
+            format = :format,
+            style = :style,
+            expand_uris = :expandUris,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = :id
+    """,
+        nativeQuery = true,
+    )
+    fun updateOrderWithoutReset(
+        @Param("id") id: String,
+        @Param("updateTtlHours") updateTtlHours: Int,
+        @Param("webhookUrl") webhookUrl: String?,
+        @Param("resourceTypes") resourceTypes: List<String>?,
+        @Param("resourceFilters") resourceFilters: String?,
+        @Param("expandDistributionAccessServices") expandDistributionAccessServices: Boolean,
+        @Param("format") format: String,
+        @Param("style") style: String,
+        @Param("expandUris") expandUris: Boolean,
+    ): Int
+
+    /**
+     * Updates an order with new configuration values and resets to PENDING status.
+     * This clears graph data and releases any locks.
+     *
+     * @param id The order ID to update
+     * @param updateTtlHours New TTL in hours
+     * @param webhookUrl New webhook URL (null to remove)
+     * @param resourceTypes New resource types array (null means all types)
+     * @param resourceFilters New resource filters JSON (null to remove)
+     * @param expandDistributionAccessServices New expansion setting
+     * @param format New format
+     * @param style New style
+     * @param expandUris New expand URIs setting
+     * @return Number of rows affected (0 if order not found, 1 if updated)
+     */
+    @Modifying(clearAutomatically = true)
+    @Transactional
+    @Query(
+        value = """
+        UPDATE union_graphs 
+        SET update_ttl_hours = :updateTtlHours,
+            webhook_url = :webhookUrl,
+            resource_types = CAST(:resourceTypes AS text[]),
+            resource_filters = CASE 
+                WHEN :resourceFilters IS NULL THEN NULL 
+                ELSE CAST(:resourceFilters AS jsonb) 
+            END,
+            expand_distribution_access_services = :expandDistributionAccessServices,
+            format = :format,
+            style = :style,
+            expand_uris = :expandUris,
+            status = 'PENDING',
+            graph_data = NULL,
+            error_message = NULL,
+            locked_by = NULL,
+            locked_at = NULL,
+            processed_at = NULL,
+            processing_started_at = NULL,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = :id
+    """,
+        nativeQuery = true,
+    )
+    fun updateOrderWithReset(
+        @Param("id") id: String,
+        @Param("updateTtlHours") updateTtlHours: Int,
+        @Param("webhookUrl") webhookUrl: String?,
+        @Param("resourceTypes") resourceTypes: List<String>?,
+        @Param("resourceFilters") resourceFilters: String?,
+        @Param("expandDistributionAccessServices") expandDistributionAccessServices: Boolean,
+        @Param("format") format: String,
+        @Param("style") style: String,
+        @Param("expandUris") expandUris: Boolean,
+    ): Int
+
+    /**
+     * Updates an order with new configuration values.
+     * This is a convenience method that calls the appropriate update method based on resetToPending.
+     */
+    fun updateOrder(
+        id: String,
+        updateTtlHours: Int,
+        webhookUrl: String?,
+        resourceTypes: List<String>?,
+        resourceFilters: String?,
+        expandDistributionAccessServices: Boolean,
+        format: String,
+        style: String,
+        expandUris: Boolean,
+        resetToPending: Boolean,
+    ): Int =
+        if (resetToPending) {
+            updateOrderWithReset(
+                id = id,
+                updateTtlHours = updateTtlHours,
+                webhookUrl = webhookUrl,
+                resourceTypes = resourceTypes,
+                resourceFilters = resourceFilters,
+                expandDistributionAccessServices = expandDistributionAccessServices,
+                format = format,
+                style = style,
+                expandUris = expandUris,
+            )
+        } else {
+            updateOrderWithoutReset(
+                id = id,
+                updateTtlHours = updateTtlHours,
+                webhookUrl = webhookUrl,
+                resourceTypes = resourceTypes,
+                resourceFilters = resourceFilters,
+                expandDistributionAccessServices = expandDistributionAccessServices,
+                format = format,
+                style = style,
+                expandUris = expandUris,
+            )
+        }
 }

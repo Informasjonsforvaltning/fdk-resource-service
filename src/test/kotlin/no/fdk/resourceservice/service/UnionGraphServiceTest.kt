@@ -485,6 +485,196 @@ class UnionGraphServiceTest {
     }
 
     @Test
+    fun `updateOrder should update safe fields without resetting status`() {
+        // Given
+        val orderId = "test-order-id"
+        val existingOrder =
+            UnionGraphOrder(
+                id = orderId,
+                status = UnionGraphOrder.GraphStatus.COMPLETED,
+                resourceTypes = listOf("CONCEPT"),
+                updateTtlHours = 12,
+                webhookUrl = "https://example.com/webhook",
+            )
+
+        every { unionGraphOrderRepository.findById(orderId) } returns Optional.of(existingOrder)
+        every { unionGraphOrderRepository.updateOrder(any(), any(), any(), any(), any(), any(), any(), any(), any(), false) } returns 1
+        every { unionGraphOrderRepository.findById(orderId) } returns
+            Optional.of(
+                existingOrder.copy(
+                    updateTtlHours = 24,
+                    webhookUrl = "https://example.com/new-webhook",
+                ),
+            )
+
+        // When
+        val result =
+            unionGraphService.updateOrder(
+                id = orderId,
+                updateTtlHours = 24,
+                webhookUrl = "https://example.com/new-webhook",
+            )
+
+        // Then
+        assertNotNull(result)
+        assertEquals(UnionGraphOrder.GraphStatus.COMPLETED, result!!.status)
+        assertEquals(24, result.updateTtlHours)
+        assertEquals("https://example.com/new-webhook", result.webhookUrl)
+        verify { unionGraphOrderRepository.updateOrder(any(), any(), any(), any(), any(), any(), any(), any(), any(), false) }
+    }
+
+    @Test
+    fun `updateOrder should reset to PENDING when graph-affecting fields change`() {
+        // Given
+        val orderId = "test-order-id"
+        val existingOrder =
+            UnionGraphOrder(
+                id = orderId,
+                status = UnionGraphOrder.GraphStatus.COMPLETED,
+                resourceTypes = listOf("CONCEPT"),
+                updateTtlHours = 12,
+            )
+
+        val updatedOrder =
+            existingOrder.copy(
+                status = UnionGraphOrder.GraphStatus.PENDING,
+                resourceTypes = listOf("DATASET"),
+            )
+
+        every { unionGraphOrderRepository.findById(orderId) } returnsMany
+            listOf(
+                Optional.of(existingOrder),
+                Optional.of(updatedOrder),
+            )
+        every { unionGraphOrderRepository.updateOrder(any(), any(), any(), any(), any(), any(), any(), any(), any(), true) } returns 1
+
+        // When
+        val result =
+            unionGraphService.updateOrder(
+                id = orderId,
+                resourceTypes = listOf(ResourceType.DATASET),
+            )
+
+        // Then
+        assertNotNull(result)
+        assertEquals(UnionGraphOrder.GraphStatus.PENDING, result!!.status)
+        assertEquals(listOf("DATASET"), result.resourceTypes)
+        verify { unionGraphOrderRepository.updateOrder(any(), any(), any(), any(), any(), any(), any(), any(), any(), true) }
+    }
+
+    @Test
+    fun `updateOrder should return null when order not found`() {
+        // Given
+        val orderId = "non-existent-id"
+        every { unionGraphOrderRepository.findById(orderId) } returns Optional.empty()
+
+        // When
+        val result = unionGraphService.updateOrder(id = orderId, updateTtlHours = 24)
+
+        // Then
+        assertNull(result)
+        verify(exactly = 0) { unionGraphOrderRepository.updateOrder(any(), any(), any(), any(), any(), any(), any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `updateOrder should throw IllegalArgumentException for invalid updateTtlHours`() {
+        // Given
+        val orderId = "test-order-id"
+        val existingOrder =
+            UnionGraphOrder(
+                id = orderId,
+                updateTtlHours = 12,
+            )
+
+        every { unionGraphOrderRepository.findById(orderId) } returns Optional.of(existingOrder)
+
+        // When/Then
+        assertThrows<IllegalArgumentException> {
+            unionGraphService.updateOrder(id = orderId, updateTtlHours = 2)
+        }
+    }
+
+    @Test
+    fun `updateOrder should throw IllegalArgumentException for invalid webhook URL`() {
+        // Given
+        val orderId = "test-order-id"
+        val existingOrder =
+            UnionGraphOrder(
+                id = orderId,
+                updateTtlHours = 12,
+            )
+
+        every { unionGraphOrderRepository.findById(orderId) } returns Optional.of(existingOrder)
+
+        // When/Then
+        assertThrows<IllegalArgumentException> {
+            unionGraphService.updateOrder(id = orderId, webhookUrl = "http://example.com/webhook")
+        }
+    }
+
+    @Test
+    fun `updateOrder should remove webhook when empty string provided`() {
+        // Given
+        val orderId = "test-order-id"
+        val existingOrder =
+            UnionGraphOrder(
+                id = orderId,
+                webhookUrl = "https://example.com/webhook",
+            )
+
+        every { unionGraphOrderRepository.findById(orderId) } returns Optional.of(existingOrder)
+        every { unionGraphOrderRepository.updateOrder(any(), any(), any(), any(), any(), any(), any(), any(), any(), false) } returns 1
+        every { unionGraphOrderRepository.findById(orderId) } returns
+            Optional.of(
+                existingOrder.copy(webhookUrl = null),
+            )
+
+        // When
+        val result = unionGraphService.updateOrder(id = orderId, webhookUrl = "")
+
+        // Then
+        assertNotNull(result)
+        assertNull(result!!.webhookUrl)
+    }
+
+    @Test
+    fun `updateOrder should detect format change and reset to PENDING`() {
+        // Given
+        val orderId = "test-order-id"
+        val existingOrder =
+            UnionGraphOrder(
+                id = orderId,
+                status = UnionGraphOrder.GraphStatus.COMPLETED,
+                format = UnionGraphOrder.GraphFormat.JSON_LD,
+            )
+        val updatedOrder =
+            existingOrder.copy(
+                status = UnionGraphOrder.GraphStatus.PENDING,
+                format = UnionGraphOrder.GraphFormat.TURTLE,
+            )
+
+        every { unionGraphOrderRepository.findById(orderId) } returnsMany
+            listOf(
+                Optional.of(existingOrder),
+                Optional.of(updatedOrder),
+            )
+        every { unionGraphOrderRepository.updateOrder(any(), any(), any(), any(), any(), any(), any(), any(), any(), true) } returns 1
+
+        // When
+        val result =
+            unionGraphService.updateOrder(
+                id = orderId,
+                format = UnionGraphOrder.GraphFormat.TURTLE,
+            )
+
+        // Then
+        assertNotNull(result)
+        assertEquals(UnionGraphOrder.GraphStatus.PENDING, result!!.status)
+        assertEquals(UnionGraphOrder.GraphFormat.TURTLE, result.format)
+        verify { unionGraphOrderRepository.updateOrder(any(), any(), any(), any(), any(), any(), any(), any(), any(), true) }
+    }
+
+    @Test
     fun `deleteOrder should delete order when found`() {
         // Given
         val orderId = "test-order-id"
