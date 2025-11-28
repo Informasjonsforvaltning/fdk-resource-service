@@ -1,6 +1,5 @@
 package no.fdk.resourceservice.service
 
-import com.fasterxml.jackson.core.type.TypeReference
 import com.fasterxml.jackson.databind.ObjectMapper
 import no.fdk.resourceservice.config.UnionGraphConfig
 import no.fdk.resourceservice.model.ResourceType
@@ -16,7 +15,6 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Propagation
 import org.springframework.transaction.annotation.Transactional
 import java.io.ByteArrayInputStream
-import java.io.StringWriter
 import java.util.UUID
 
 /**
@@ -33,6 +31,7 @@ class UnionGraphService(
     private val resourceService: ResourceService,
     private val objectMapper: ObjectMapper,
     private val webhookService: WebhookService,
+    private val rdfService: RdfService,
 ) {
     private val logger = LoggerFactory.getLogger(UnionGraphService::class.java)
 
@@ -63,6 +62,9 @@ class UnionGraphService(
      *                                          will have those DataService graphs automatically included in the union graph.
      *                                          This allows creating union graphs that include both datasets and their related
      *                                          data services in a single graph.
+     * @param graphFormat The RDF format to use for the graph data (default: JSON_LD).
+     * @param graphStyle The style to use for the graph format (PRETTY or STANDARD, default: PRETTY).
+     * @param graphExpandUris Whether to expand URIs in the graph data (default: true).
      * @return CreateOrderResult containing the union graph and a flag indicating if it's new or existing.
      * @throws IllegalArgumentException if webhookUrl is provided but not HTTPS, or if filters are invalid
      */
@@ -72,6 +74,9 @@ class UnionGraphService(
         webhookUrl: String? = null,
         resourceFilters: UnionGraphResourceFilters? = null,
         expandDistributionAccessServices: Boolean = false,
+        graphFormat: UnionGraphOrder.GraphFormat = UnionGraphOrder.GraphFormat.JSON_LD,
+        graphStyle: UnionGraphOrder.GraphStyle = UnionGraphOrder.GraphStyle.PRETTY,
+        graphExpandUris: Boolean = true,
     ): CreateOrderResult {
         // Validate updateTtlHours: must be 0 (never update) or > 3
         if (updateTtlHours != 0 && updateTtlHours <= 3) {
@@ -108,6 +113,9 @@ class UnionGraphService(
                 webhookUrl,
                 filtersPayload?.let { objectMapper.writeValueAsString(it) },
                 expandDistributionAccessServices,
+                graphFormat.name,
+                graphStyle.name,
+                graphExpandUris,
             )
         if (existingOrder != null) {
             logger.info(
@@ -129,6 +137,9 @@ class UnionGraphService(
                 webhookUrl = webhookUrl,
                 resourceFilters = filtersPayload,
                 expandDistributionAccessServices = expandDistributionAccessServices,
+                graphFormat = graphFormat,
+                graphStyle = graphStyle,
+                graphExpandUris = graphExpandUris,
             )
 
         val saved = unionGraphOrderRepository.save(order)
@@ -231,13 +242,13 @@ class UnionGraphService(
      * @param expandDistributionAccessServices If true, datasets with distributions that reference DataService URIs
      *                                          (via distribution[].accessService[].uri) will have those DataService
      *                                          graphs automatically included in the union graph.
-     * @return The merged union graph as JSON-LD Map, or null if no resources found.
+     * @return The merged union graph as a Jena Model, or null if no resources found.
      */
     fun buildUnionGraph(
         resourceTypes: List<ResourceType>? = null,
         resourceFilters: UnionGraphResourceFilters? = null,
         expandDistributionAccessServices: Boolean = false,
-    ): Map<String, Any>? {
+    ): org.apache.jena.rdf.model.Model? {
         logger.info(
             "Building union graph for resource types: {}, expandDistributionAccessServices: {}",
             resourceTypes,
@@ -371,26 +382,13 @@ class UnionGraphService(
 
             logger.info("Processed {} resources, building final union graph...", processedCount)
 
-            // Convert merged model back to JSON-LD Map
-            val jsonLdString =
-                StringWriter().use { writer ->
-                    RDFDataMgr.write(writer, unionModel, org.apache.jena.riot.RDFFormat.JSONLD_PRETTY)
-                    writer.toString()
-                }
-
-            val jsonLdMap =
-                objectMapper.readValue(
-                    jsonLdString,
-                    object : TypeReference<Map<String, Any>>() {},
-                )
-
             logger.info("Successfully built union graph with {} statements from {} resources", unionModel.size(), processedCount)
-            return jsonLdMap
+            // Return the model directly - caller will convert to desired format
+            return unionModel
         } catch (e: Exception) {
             logger.error("Failed to build union graph", e)
-            return null
-        } finally {
             unionModel.close()
+            return null
         }
     }
 
@@ -561,16 +559,48 @@ class UnionGraphService(
                     }
                 }
 
-            val unionGraph = buildUnionGraph(resourceTypes, lockedOrder.resourceFilters, lockedOrder.expandDistributionAccessServices)
+            val unionModel = buildUnionGraph(resourceTypes, lockedOrder.resourceFilters, lockedOrder.expandDistributionAccessServices)
 
             val previousStatus = lockedOrder.status
 
-            if (unionGraph != null) {
-                // Convert to JSON string for database storage
-                val graphJsonLdString = objectMapper.writeValueAsString(unionGraph)
+            if (unionModel != null) {
+                try {
+                    // Convert the model directly to the requested format
+                    val rdfFormat =
+                        when (lockedOrder.graphFormat) {
+                            UnionGraphOrder.GraphFormat.JSON_LD -> RdfService.RdfFormat.JSON_LD
+                            UnionGraphOrder.GraphFormat.TURTLE -> RdfService.RdfFormat.TURTLE
+                            UnionGraphOrder.GraphFormat.RDF_XML -> RdfService.RdfFormat.RDF_XML
+                            UnionGraphOrder.GraphFormat.N_TRIPLES -> RdfService.RdfFormat.N_TRIPLES
+                            UnionGraphOrder.GraphFormat.N_QUADS -> RdfService.RdfFormat.N_QUADS
+                        }
+                    val rdfStyle =
+                        when (lockedOrder.graphStyle) {
+                            UnionGraphOrder.GraphStyle.PRETTY -> RdfService.RdfFormatStyle.PRETTY
+                            UnionGraphOrder.GraphStyle.STANDARD -> RdfService.RdfFormatStyle.STANDARD
+                        }
 
-                // Mark as completed
-                unionGraphOrderRepository.markAsCompleted(lockedOrder.id, graphJsonLdString)
+                    val graphData =
+                        rdfService.convertFromModel(
+                            unionModel,
+                            rdfFormat,
+                            rdfStyle,
+                            lockedOrder.graphExpandUris,
+                            null, // No specific resource type for union graphs
+                        ) ?: throw IllegalStateException("Failed to convert union graph to requested format")
+
+                    // Mark as completed
+                    unionGraphOrderRepository.markAsCompleted(
+                        lockedOrder.id,
+                        graphData,
+                        lockedOrder.graphFormat.name,
+                        lockedOrder.graphStyle.name,
+                        lockedOrder.graphExpandUris,
+                    )
+                } finally {
+                    // Always close the model to free resources
+                    unionModel.close()
+                }
                 logger.info("Successfully processed union graph order {}", lockedOrder.id)
 
                 // Call webhook if configured

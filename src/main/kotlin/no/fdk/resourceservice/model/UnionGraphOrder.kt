@@ -59,12 +59,32 @@ data class UnionGraphOrder(
     @Column(name = "update_ttl_hours", nullable = false)
     val updateTtlHours: Int = 0,
     /**
-     * The built union graph in JSON-LD format.
+     * The built union graph data in the requested format.
      * Only populated when status is COMPLETED.
+     * Stored as TEXT to support any RDF format (JSON-LD, Turtle, RDF/XML, etc.).
      */
-    @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "graph_json_ld", columnDefinition = "jsonb")
-    val graphJsonLd: Map<String, Any>? = null,
+    @Column(name = "graph_data", columnDefinition = "text")
+    val graphData: String? = null,
+    /**
+     * The RDF format used for the graph data.
+     * Default: JSON_LD
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "graph_format", nullable = false, length = 50)
+    val graphFormat: GraphFormat = GraphFormat.JSON_LD,
+    /**
+     * The style used for the graph format (PRETTY or STANDARD).
+     * Default: PRETTY
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "graph_style", nullable = false, length = 50)
+    val graphStyle: GraphStyle = GraphStyle.PRETTY,
+    /**
+     * Whether URIs are expanded in the graph data.
+     * Default: true
+     */
+    @Column(name = "graph_expand_uris", nullable = false)
+    val graphExpandUris: Boolean = true,
     /**
      * Error message if the graph building failed.
      */
@@ -122,5 +142,18 @@ data class UnionGraphOrder(
         PROCESSING,
         COMPLETED,
         FAILED,
+    }
+
+    enum class GraphFormat {
+        JSON_LD,
+        TURTLE,
+        RDF_XML,
+        N_TRIPLES,
+        N_QUADS,
+    }
+
+    enum class GraphStyle {
+        PRETTY,
+        STANDARD,
     }
 }

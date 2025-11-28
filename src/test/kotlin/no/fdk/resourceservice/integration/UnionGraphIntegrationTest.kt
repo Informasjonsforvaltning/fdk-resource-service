@@ -286,7 +286,7 @@ class UnionGraphIntegrationTest : BaseIntegrationTest() {
         assertNull(initialOrder.lockedBy)
         assertNull(initialOrder.lockedAt)
         assertNull(initialOrder.processedAt)
-        assertNull(initialOrder.graphJsonLd)
+        assertNull(initialOrder.graphData)
 
         // Fetch the order to pass to processOrder
         val order =
@@ -307,14 +307,13 @@ class UnionGraphIntegrationTest : BaseIntegrationTest() {
             }!!
         assertEquals(UnionGraphOrder.GraphStatus.COMPLETED, completedOrder.status)
         assertNotNull(completedOrder.processedAt, "processedAt should be set when completed")
-        assertNotNull(completedOrder.graphJsonLd, "graphJsonLd should be set when completed")
+        assertNotNull(completedOrder.graphData, "graphData should be set when completed")
         assertNull(completedOrder.errorMessage, "errorMessage should be null when completed")
         assertNotNull(completedOrder.updatedAt, "updatedAt should be set")
-        // Verify the graph contains both concepts
-        val graph = completedOrder.graphJsonLd
-        assertNotNull(graph)
-        // The graph should be a valid JSON-LD structure
-        assertTrue(graph!!.containsKey("@graph") || graph.containsKey("@id"))
+        // Verify the graph data is a non-empty string
+        val graphData = completedOrder.graphData
+        assertNotNull(graphData)
+        assertTrue(graphData!!.isNotEmpty(), "graphData should not be empty")
     }
 
     @Test
@@ -349,7 +348,7 @@ class UnionGraphIntegrationTest : BaseIntegrationTest() {
             }!!
         assertEquals(UnionGraphOrder.GraphStatus.FAILED, failedOrder.status)
         assertNotNull(failedOrder.errorMessage, "errorMessage should be set when failed")
-        assertNull(failedOrder.graphJsonLd, "graphJsonLd should be null when failed")
+        assertNull(failedOrder.graphData, "graphData should be null when failed")
         assertNull(failedOrder.processedAt, "processedAt should be null when failed")
         assertNotNull(failedOrder.updatedAt, "updatedAt should be set")
     }
@@ -394,7 +393,7 @@ class UnionGraphIntegrationTest : BaseIntegrationTest() {
                     id = "test-order-reset-completed",
                     status = UnionGraphOrder.GraphStatus.COMPLETED,
                     resourceTypes = listOf("CONCEPT"),
-                    graphJsonLd = mapOf("@graph" to listOf(mapOf("@id" to "https://example.com/resource"))),
+                    graphData = """{"@graph":[{"@id":"https://example.com/resource"}]}""",
                     processedAt = Instant.now(),
                 ),
             )
@@ -402,7 +401,7 @@ class UnionGraphIntegrationTest : BaseIntegrationTest() {
         // Verify initial state
         val initialOrder = unionGraphOrderRepository.findById(order.id).get()
         assertEquals(UnionGraphOrder.GraphStatus.COMPLETED, initialOrder.status)
-        assertNotNull(initialOrder.graphJsonLd)
+        assertNotNull(initialOrder.graphData)
         assertNotNull(initialOrder.processedAt)
 
         // When - reset to pending
@@ -412,7 +411,7 @@ class UnionGraphIntegrationTest : BaseIntegrationTest() {
         assertNotNull(result)
         val resetOrder = unionGraphOrderRepository.findById(order.id).get()
         assertEquals(UnionGraphOrder.GraphStatus.PENDING, resetOrder.status)
-        // Note: graphJsonLd and processedAt are not cleared by resetToPending
+        // Note: graphData and processedAt are not cleared by resetToPending
         // They remain until the order is processed again
         assertNotNull(resetOrder.updatedAt, "updatedAt should be set")
     }
@@ -639,14 +638,7 @@ class UnionGraphIntegrationTest : BaseIntegrationTest() {
     @Transactional
     fun `markAsCompleted should update status and store graph with database mutations`() {
         // Given - a processing order
-        val graphJsonLd =
-            mapOf(
-                "@graph" to
-                    listOf(
-                        mapOf("@id" to "https://example.com/resource1"),
-                        mapOf("@id" to "https://example.com/resource2"),
-                    ),
-            )
+        val graphData = """{"@graph":[{"@id":"https://example.com/resource1"},{"@id":"https://example.com/resource2"}]}"""
         val order =
             unionGraphOrderRepository.save(
                 UnionGraphOrder(
@@ -659,19 +651,24 @@ class UnionGraphIntegrationTest : BaseIntegrationTest() {
             )
 
         // When - mark as completed
-        val graphJsonLdString = objectMapper.writeValueAsString(graphJsonLd)
-        unionGraphOrderRepository.markAsCompleted(order.id, graphJsonLdString)
+        unionGraphOrderRepository.markAsCompleted(
+            order.id,
+            graphData,
+            UnionGraphOrder.GraphFormat.JSON_LD.name,
+            UnionGraphOrder.GraphStyle.PRETTY.name,
+            true,
+        )
 
         // Then - verify state change and database mutations
         val completedOrder = unionGraphOrderRepository.findById(order.id).get()
         assertEquals(UnionGraphOrder.GraphStatus.COMPLETED, completedOrder.status)
-        assertNotNull(completedOrder.graphJsonLd, "graphJsonLd should be set")
+        assertNotNull(completedOrder.graphData, "graphData should be set")
+        assertEquals(graphData, completedOrder.graphData, "graphData should match stored value")
+        assertEquals(UnionGraphOrder.GraphFormat.JSON_LD, completedOrder.graphFormat)
+        assertEquals(UnionGraphOrder.GraphStyle.PRETTY, completedOrder.graphStyle)
+        assertTrue(completedOrder.graphExpandUris)
         assertNotNull(completedOrder.processedAt, "processedAt should be set")
         assertNotNull(completedOrder.updatedAt, "updatedAt should be set")
-        // Verify the graph data is correct
-        val storedGraph = completedOrder.graphJsonLd
-        assertNotNull(storedGraph)
-        assertTrue(storedGraph!!.containsKey("@graph"))
     }
 
     @Test
@@ -697,7 +694,7 @@ class UnionGraphIntegrationTest : BaseIntegrationTest() {
         val failedOrder = unionGraphOrderRepository.findById(order.id).get()
         assertEquals(UnionGraphOrder.GraphStatus.FAILED, failedOrder.status)
         assertEquals(errorMessage, failedOrder.errorMessage, "errorMessage should be set")
-        assertNull(failedOrder.graphJsonLd, "graphJsonLd should be null when failed")
+        assertNull(failedOrder.graphData, "graphData should be null when failed")
         assertNull(failedOrder.processedAt, "processedAt should be null when failed")
         assertNotNull(failedOrder.updatedAt, "updatedAt should be set")
     }
@@ -777,8 +774,14 @@ class UnionGraphIntegrationTest : BaseIntegrationTest() {
         assertTrue(lockedOrder.expandDistributionAccessServices)
 
         // Mark as completed
-        val graphJsonLd = mapOf("@graph" to listOf(mapOf("@id" to "https://example.com/resource")))
-        unionGraphOrderRepository.markAsCompleted(order.id, objectMapper.writeValueAsString(graphJsonLd))
+        val graphData = """{"@graph":[{"@id":"https://example.com/resource"}]}"""
+        unionGraphOrderRepository.markAsCompleted(
+            order.id,
+            graphData,
+            UnionGraphOrder.GraphFormat.JSON_LD.name,
+            UnionGraphOrder.GraphStyle.PRETTY.name,
+            true,
+        )
         val completedOrder = unionGraphOrderRepository.findById(order.id).get()
         assertEquals(initialId, completedOrder.id)
         assertEquals(initialCreatedAt, completedOrder.createdAt.truncatedTo(ChronoUnit.MICROS))

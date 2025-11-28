@@ -14,9 +14,7 @@ import no.fdk.resourceservice.model.ResourceType
 import no.fdk.resourceservice.model.UnionGraphOrder
 import no.fdk.resourceservice.model.UnionGraphResourceFilters
 import no.fdk.resourceservice.service.RdfService
-import no.fdk.resourceservice.service.RdfService.RdfFormatStyle
 import no.fdk.resourceservice.service.UnionGraphService
-import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
@@ -24,9 +22,7 @@ import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
-import org.springframework.web.bind.annotation.RequestHeader
 import org.springframework.web.bind.annotation.RequestMapping
-import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 
 /**
@@ -157,6 +153,23 @@ class UnionGraphController(
         val webhookUrl = requestBody?.webhookUrl
         val resourceFilters = requestBody?.toDomainFilters()
         val expandDistributionAccessServices = requestBody?.expandDistributionAccessServices ?: false
+        val graphFormat =
+            requestBody?.graphFormat?.let {
+                try {
+                    UnionGraphOrder.GraphFormat.valueOf(it.uppercase())
+                } catch (e: IllegalArgumentException) {
+                    null
+                }
+            } ?: UnionGraphOrder.GraphFormat.JSON_LD
+        val graphStyle =
+            requestBody?.graphStyle?.let {
+                try {
+                    UnionGraphOrder.GraphStyle.valueOf(it.uppercase())
+                } catch (e: IllegalArgumentException) {
+                    null
+                }
+            } ?: UnionGraphOrder.GraphStyle.PRETTY
+        val graphExpandUris = requestBody?.graphExpandUris ?: true
 
         // Validate updateTtlHours: must be 0 (never update) or > 3
         if (updateTtlHours != 0 && updateTtlHours <= 3) {
@@ -166,7 +179,16 @@ class UnionGraphController(
 
         val result =
             try {
-                unionGraphService.createOrder(resourceTypes, updateTtlHours, webhookUrl, resourceFilters, expandDistributionAccessServices)
+                unionGraphService.createOrder(
+                    resourceTypes,
+                    updateTtlHours,
+                    webhookUrl,
+                    resourceFilters,
+                    expandDistributionAccessServices,
+                    graphFormat,
+                    graphStyle,
+                    graphExpandUris,
+                )
             } catch (e: IllegalArgumentException) {
                 // Handle validation errors (e.g., invalid webhook URL, invalid updateTtlHours)
                 logger.warn("Invalid request: {}", e.message)
@@ -185,6 +207,9 @@ class UnionGraphController(
                 createdAt = order.createdAt.toString(),
                 resourceFilters = toResponseFilters(order.resourceFilters),
                 expandDistributionAccessServices = order.expandDistributionAccessServices,
+                graphFormat = order.graphFormat.name,
+                graphStyle = order.graphStyle.name,
+                graphExpandUris = order.graphExpandUris,
             )
 
         // Return 201 Created for new union graphs, 409 Conflict for existing ones
@@ -249,6 +274,9 @@ class UnionGraphController(
                     processedAt = order.processedAt?.toString(),
                     resourceFilters = toResponseFilters(order.resourceFilters),
                     expandDistributionAccessServices = order.expandDistributionAccessServices,
+                    graphFormat = order.graphFormat.name,
+                    graphStyle = order.graphStyle.name,
+                    graphExpandUris = order.graphExpandUris,
                 )
             }
 
@@ -319,6 +347,9 @@ class UnionGraphController(
                 createdAt = order.createdAt.toString(),
                 resourceFilters = toResponseFilters(order.resourceFilters),
                 expandDistributionAccessServices = order.expandDistributionAccessServices,
+                graphFormat = order.graphFormat.name,
+                graphStyle = order.graphStyle.name,
+                graphExpandUris = order.graphExpandUris,
             )
 
         return ResponseEntity
@@ -375,6 +406,9 @@ class UnionGraphController(
                 processedAt = order.processedAt?.toString(),
                 resourceFilters = toResponseFilters(order.resourceFilters),
                 expandDistributionAccessServices = order.expandDistributionAccessServices,
+                graphFormat = order.graphFormat.name,
+                graphStyle = order.graphStyle.name,
+                graphExpandUris = order.graphExpandUris,
             )
 
         return ResponseEntity
@@ -412,9 +446,9 @@ class UnionGraphController(
     @Operation(
         summary = "Get union graph",
         description =
-            "Retrieve the built union graph. " +
-                "Supports content negotiation for multiple RDF formats (JSON-LD, Turtle, RDF/XML, N-Triples, N-Quads). " +
-                "The graph must be in COMPLETED status. This endpoint is publicly accessible.",
+            "Retrieve the built union graph in the format specified when the order was created. " +
+                "The graph must be in COMPLETED status. This endpoint is publicly accessible. " +
+                "The format, style, and URI expansion are determined by the order configuration.",
     )
     @ApiResponses(
         value = [
@@ -437,22 +471,13 @@ class UnionGraphController(
                 responseCode = "400",
                 description = "Graph is not yet completed",
             ),
-            ApiResponse(
-                responseCode = "500",
-                description = "Failed to convert graph to requested format",
-            ),
         ],
     )
     fun getGraph(
         @Parameter(description = "Union graph ID")
         @PathVariable id: String,
-        @RequestHeader(HttpHeaders.ACCEPT, required = false) acceptHeader: String?,
-        @Parameter(description = "RDF format style (pretty or standard)")
-        @RequestParam(name = "style", required = false) style: String?,
-        @Parameter(description = "Whether to expand URIs (default: true)")
-        @RequestParam(name = "expandUris", required = false, defaultValue = "true") expandUris: Boolean?,
     ): ResponseEntity<Any> {
-        logger.debug("Getting graph for order: {}, Accept: {}, style: {}, expandUris: {}", id, acceptHeader, style, expandUris)
+        logger.debug("Getting graph for order: {}", id)
 
         val order =
             unionGraphService.getOrder(id)
@@ -464,36 +489,24 @@ class UnionGraphController(
                 .body("Graph is not yet completed. Current status: ${order.status}")
         }
 
-        val graphJsonLd =
-            order.graphJsonLd
+        val graphData =
+            order.graphData
                 ?: return ResponseEntity.notFound().build()
 
-        val format = rdfService.getBestFormat(acceptHeader)
-        val styleEnum =
-            when (style?.lowercase()) {
-                "standard" -> RdfFormatStyle.STANDARD
-                else -> RdfFormatStyle.PRETTY
+        // Determine content type based on the stored format
+        val contentType =
+            when (order.graphFormat) {
+                UnionGraphOrder.GraphFormat.JSON_LD -> org.springframework.http.MediaType("application", "ld+json")
+                UnionGraphOrder.GraphFormat.TURTLE -> org.springframework.http.MediaType("text", "turtle")
+                UnionGraphOrder.GraphFormat.RDF_XML -> org.springframework.http.MediaType("application", "rdf+xml")
+                UnionGraphOrder.GraphFormat.N_TRIPLES -> org.springframework.http.MediaType("application", "n-triples")
+                UnionGraphOrder.GraphFormat.N_QUADS -> org.springframework.http.MediaType("application", "n-quads")
             }
 
-        val convertedData =
-            rdfService.convertFromJsonLd(
-                graphJsonLd,
-                format,
-                styleEnum,
-                expandUris ?: true,
-                null, // No specific resource type for union graphs
-            )
-
-        return if (convertedData != null) {
-            ResponseEntity
-                .ok()
-                .contentType(rdfService.getContentType(format))
-                .body(convertedData)
-        } else {
-            ResponseEntity
-                .internalServerError()
-                .body("Failed to convert graph to requested format")
-        }
+        return ResponseEntity
+            .ok()
+            .contentType(contentType)
+            .body(graphData)
     }
 
     /**
@@ -591,6 +604,23 @@ class UnionGraphController(
          * Default: false
          */
         val expandDistributionAccessServices: Boolean? = null,
+        /**
+         * The RDF format to use for the graph data.
+         * Valid values: JSON_LD, TURTLE, RDF_XML, N_TRIPLES, N_QUADS
+         * Default: JSON_LD
+         */
+        val graphFormat: String? = null,
+        /**
+         * The style to use for the graph format.
+         * Valid values: PRETTY, STANDARD
+         * Default: PRETTY
+         */
+        val graphStyle: String? = null,
+        /**
+         * Whether to expand URIs in the graph data (clear namespace prefixes).
+         * Default: true
+         */
+        val graphExpandUris: Boolean? = null,
     ) {
         fun toDomainFilters(): UnionGraphResourceFilters? = resourceFilters?.toDomain()
     }
@@ -663,6 +693,18 @@ class UnionGraphController(
          * Whether DataService graphs are automatically included when datasets reference them via distribution accessService.
          */
         val expandDistributionAccessServices: Boolean,
+        /**
+         * The RDF format used for the graph data.
+         */
+        val graphFormat: String,
+        /**
+         * The style used for the graph format (PRETTY or STANDARD).
+         */
+        val graphStyle: String,
+        /**
+         * Whether URIs are expanded in the graph data.
+         */
+        val graphExpandUris: Boolean,
     )
 
     /**
@@ -687,6 +729,18 @@ class UnionGraphController(
          * Whether DataService graphs are automatically included when datasets reference them via distribution accessService.
          */
         val expandDistributionAccessServices: Boolean,
+        /**
+         * The RDF format used for the graph data.
+         */
+        val graphFormat: String,
+        /**
+         * The style used for the graph format (PRETTY or STANDARD).
+         */
+        val graphStyle: String,
+        /**
+         * Whether URIs are expanded in the graph data.
+         */
+        val graphExpandUris: Boolean,
     )
 
     /**
@@ -712,6 +766,18 @@ class UnionGraphController(
          * Whether DataService graphs are automatically included when datasets reference them via distribution accessService.
          */
         val expandDistributionAccessServices: Boolean,
+        /**
+         * The RDF format used for the graph data.
+         */
+        val graphFormat: String,
+        /**
+         * The style used for the graph format (PRETTY or STANDARD).
+         */
+        val graphStyle: String,
+        /**
+         * Whether URIs are expanded in the graph data.
+         */
+        val graphExpandUris: Boolean,
     )
 
     /**

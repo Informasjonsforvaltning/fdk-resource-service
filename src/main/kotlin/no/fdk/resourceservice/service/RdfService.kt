@@ -126,6 +126,52 @@ class RdfService(
     }
 
     /**
+     * Converts a Jena Model directly to any target format.
+     * This is more efficient than converting through intermediate formats.
+     *
+     * @param model The Jena Model to convert
+     * @param toFormat The target RDF format
+     * @param style The format style (PRETTY or STANDARD)
+     * @param expandUris Whether to expand URIs (clear namespace prefixes, default: false)
+     * @param resourceType Optional resource type to use resource-specific namespace prefixes
+     * @return The converted RDF data as a String, or null if conversion failed
+     */
+    fun convertFromModel(
+        model: org.apache.jena.rdf.model.Model,
+        toFormat: RdfFormat,
+        style: RdfFormatStyle,
+        expandUris: Boolean = false,
+        resourceType: ResourceType? = null,
+    ): String? {
+        // Create a copy of the model to avoid modifying the original
+        val workingModel = ModelFactory.createDefaultModel()
+        try {
+            workingModel.add(model)
+
+            if (expandUris) {
+                workingModel.clearNsPrefixMap()
+            } else {
+                // Add resource-specific prefixes when expandUris is false
+                addPrefixesForResourceType(workingModel, resourceType)
+            }
+
+            val rdfFormat = getRdfFormat(toFormat, style)
+            val result =
+                StringWriter().use { outputStream ->
+                    RDFDataMgr.write(outputStream, workingModel, rdfFormat)
+                    outputStream.toString()
+                }
+
+            return handleSpecialCases(result, rdfFormat)
+        } catch (e: Exception) {
+            logger.error("Failed to convert model to format {}: {}", toFormat, e.message, e)
+            return null
+        } finally {
+            workingModel.close()
+        }
+    }
+
+    /**
      * Converts from JSON-LD format to any target format.
      *
      * @param jsonLdData The JSON-LD data to convert
@@ -154,21 +200,8 @@ class RdfService(
                 RDFDataMgr.read(model, inputStream, Lang.JSONLD)
             }
 
-            if (expandUris) {
-                model.clearNsPrefixMap()
-            } else {
-                // Add resource-specific prefixes when expandUris is false
-                addPrefixesForResourceType(model, resourceType)
-            }
-
-            val rdfFormat = getRdfFormat(toFormat, style)
-            val result =
-                StringWriter().use { outputStream ->
-                    RDFDataMgr.write(outputStream, model, rdfFormat)
-                    outputStream.toString()
-                }
-
-            return handleSpecialCases(result, rdfFormat)
+            // Use the new convertFromModel method
+            return convertFromModel(model, toFormat, style, expandUris, resourceType)
         } finally {
             model.close()
         }

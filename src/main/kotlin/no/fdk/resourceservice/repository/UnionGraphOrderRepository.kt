@@ -91,7 +91,10 @@ interface UnionGraphOrderRepository : JpaRepository<UnionGraphOrder, String> {
         value = """
         UPDATE union_graphs 
         SET status = 'COMPLETED', 
-            graph_json_ld = CAST(:graphJsonLd AS jsonb),
+            graph_data = :graphData,
+            graph_format = :graphFormat,
+            graph_style = :graphStyle,
+            graph_expand_uris = :graphExpandUris,
             processed_at = CURRENT_TIMESTAMP,
             updated_at = CURRENT_TIMESTAMP
         WHERE id = :id
@@ -100,7 +103,10 @@ interface UnionGraphOrderRepository : JpaRepository<UnionGraphOrder, String> {
     )
     fun markAsCompleted(
         @Param("id") id: String,
-        @Param("graphJsonLd") graphJsonLd: String,
+        @Param("graphData") graphData: String,
+        @Param("graphFormat") graphFormat: String,
+        @Param("graphStyle") graphStyle: String,
+        @Param("graphExpandUris") graphExpandUris: Boolean,
     ): Int
 
     /**
@@ -207,6 +213,9 @@ interface UnionGraphOrderRepository : JpaRepository<UnionGraphOrder, String> {
             END
         )
         AND expand_distribution_access_services = :expandDistributionAccessServices
+        AND graph_format = :graphFormat
+        AND graph_style = :graphStyle
+        AND graph_expand_uris = :graphExpandUris
         ORDER BY 
             CASE status 
                 WHEN 'COMPLETED' THEN 1
@@ -225,5 +234,8 @@ interface UnionGraphOrderRepository : JpaRepository<UnionGraphOrder, String> {
         @Param("webhookUrl") webhookUrl: String?,
         @Param("resourceFilters") resourceFilters: String?,
         @Param("expandDistributionAccessServices") expandDistributionAccessServices: Boolean,
+        @Param("graphFormat") graphFormat: String,
+        @Param("graphStyle") graphStyle: String,
+        @Param("graphExpandUris") graphExpandUris: Boolean,
     ): UnionGraphOrder?
 }

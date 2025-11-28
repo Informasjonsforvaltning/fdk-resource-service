@@ -6,7 +6,6 @@ import no.fdk.resourceservice.config.UnionGraphFeatureConfig
 import no.fdk.resourceservice.model.ResourceType
 import no.fdk.resourceservice.model.UnionGraphOrder
 import no.fdk.resourceservice.model.UnionGraphResourceFilters
-import no.fdk.resourceservice.service.RdfService
 import no.fdk.resourceservice.service.UnionGraphService
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -67,6 +66,9 @@ class UnionGraphControllerTest : BaseControllerTest() {
                 "https://example.com/webhook",
                 null,
                 false,
+                UnionGraphOrder.GraphFormat.JSON_LD,
+                UnionGraphOrder.GraphStyle.PRETTY,
+                true,
             )
         } returns UnionGraphService.CreateOrderResult(order, isNew = true)
 
@@ -166,6 +168,9 @@ class UnionGraphControllerTest : BaseControllerTest() {
                 null,
                 null,
                 false,
+                UnionGraphOrder.GraphFormat.JSON_LD,
+                UnionGraphOrder.GraphStyle.PRETTY,
+                true,
             )
         } returns UnionGraphService.CreateOrderResult(order, isNew = true)
 
@@ -269,6 +274,9 @@ class UnionGraphControllerTest : BaseControllerTest() {
                 "http://example.com/webhook",
                 null,
                 false,
+                UnionGraphOrder.GraphFormat.JSON_LD,
+                UnionGraphOrder.GraphStyle.PRETTY,
+                true,
             )
         } throws IllegalArgumentException("Webhook URL must use HTTPS protocol")
 
@@ -297,7 +305,16 @@ class UnionGraphControllerTest : BaseControllerTest() {
             )
 
         every {
-            unionGraphService.createOrder(null, 0, null, null, false)
+            unionGraphService.createOrder(
+                null,
+                0,
+                null,
+                null,
+                false,
+                UnionGraphOrder.GraphFormat.JSON_LD,
+                UnionGraphOrder.GraphStyle.PRETTY,
+                true,
+            )
         } returns UnionGraphService.CreateOrderResult(order, isNew = true)
 
         // When & Then
@@ -333,6 +350,9 @@ class UnionGraphControllerTest : BaseControllerTest() {
                 null,
                 filters,
                 false,
+                UnionGraphOrder.GraphFormat.JSON_LD,
+                UnionGraphOrder.GraphStyle.PRETTY,
+                true,
             )
         } returns UnionGraphService.CreateOrderResult(order, isNew = true)
 
@@ -374,6 +394,9 @@ class UnionGraphControllerTest : BaseControllerTest() {
                 null,
                 filters,
                 false,
+                UnionGraphOrder.GraphFormat.JSON_LD,
+                UnionGraphOrder.GraphStyle.PRETTY,
+                true,
             )
         } throws IllegalArgumentException("Dataset filters require the DATASET resource type")
 
@@ -504,35 +527,27 @@ class UnionGraphControllerTest : BaseControllerTest() {
     }
 
     @Test
-    fun `getGraph should return graph in JSON-LD format`() {
+    fun `getGraph should return graph in stored format`() {
         // Given
-        val graphData = mapOf("@graph" to listOf(mapOf("@id" to "https://example.com/resource")))
+        val graphData = """{"@graph":[{"@id":"https://example.com/resource"}]}"""
         val order =
             UnionGraphOrder(
                 id = "test-order-5",
                 status = UnionGraphOrder.GraphStatus.COMPLETED,
-                graphJsonLd = graphData,
+                graphData = graphData,
+                graphFormat = UnionGraphOrder.GraphFormat.JSON_LD,
+                graphStyle = UnionGraphOrder.GraphStyle.PRETTY,
+                graphExpandUris = true,
             )
 
         every { unionGraphService.getOrder("test-order-5") } returns order
-        every { rdfService.getBestFormat(null) } returns RdfService.RdfFormat.JSON_LD
-        every {
-            rdfService.convertFromJsonLd(
-                graphData,
-                RdfService.RdfFormat.JSON_LD,
-                RdfService.RdfFormatStyle.PRETTY,
-                true,
-                null,
-            )
-        } returns """{"@graph":[{"@id":"https://example.com/resource"}]}"""
-        every { rdfService.getContentType(RdfService.RdfFormat.JSON_LD) } returns MediaType.APPLICATION_JSON
 
         // When & Then
         mockMvc
             .perform(get("/v1/union-graphs/test-order-5/graph"))
             .andExpect(status().isOk)
-            .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-            .andExpect(jsonPath("$.@graph[0].@id").value("https://example.com/resource"))
+            .andExpect(content().contentType(MediaType("application", "ld+json")))
+            .andExpect(content().string(graphData))
     }
 
     @Test
@@ -564,36 +579,27 @@ class UnionGraphControllerTest : BaseControllerTest() {
     }
 
     @Test
-    fun `getGraph should return graph in Turtle format when Accept header is text-turtle`() {
+    fun `getGraph should return graph in stored Turtle format`() {
         // Given
-        val graphData = mapOf("@graph" to listOf(mapOf("@id" to "https://example.com/resource")))
+        val graphData = """<https://example.com/resource> a <http://example.org/Resource> ."""
         val order =
             UnionGraphOrder(
                 id = "test-order-7",
                 status = UnionGraphOrder.GraphStatus.COMPLETED,
-                graphJsonLd = graphData,
+                graphData = graphData,
+                graphFormat = UnionGraphOrder.GraphFormat.TURTLE,
+                graphStyle = UnionGraphOrder.GraphStyle.PRETTY,
+                graphExpandUris = false,
             )
 
         every { unionGraphService.getOrder("test-order-7") } returns order
-        every { rdfService.getBestFormat("text/turtle") } returns RdfService.RdfFormat.TURTLE
-        every {
-            rdfService.convertFromJsonLd(
-                graphData,
-                RdfService.RdfFormat.TURTLE,
-                RdfService.RdfFormatStyle.PRETTY,
-                true,
-                null,
-            )
-        } returns """<https://example.com/resource> a <http://example.org/Resource> ."""
-        every { rdfService.getContentType(RdfService.RdfFormat.TURTLE) } returns MediaType.valueOf("text/turtle")
 
         // When & Then
         mockMvc
-            .perform(
-                get("/v1/union-graphs/test-order-7/graph")
-                    .header("Accept", "text/turtle"),
-            ).andExpect(status().isOk)
+            .perform(get("/v1/union-graphs/test-order-7/graph"))
+            .andExpect(status().isOk)
             .andExpect(content().contentType(MediaType.valueOf("text/turtle")))
+            .andExpect(content().string(graphData))
     }
 
     @Test
