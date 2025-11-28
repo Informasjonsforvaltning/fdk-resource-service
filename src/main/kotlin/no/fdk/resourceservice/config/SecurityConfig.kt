@@ -37,7 +37,11 @@ class SecurityConfig(
                 authz
                     .requestMatchers("/actuator/**")
                     .permitAll()
-                    // Union graph endpoints require API key (except GET /{id}/graph for graph data)
+                    // Union graph endpoints require API key (except public endpoints)
+                    .requestMatchers("GET", "/v1/union-graphs/available")
+                    .permitAll() // Available graphs list is public
+                    .requestMatchers("GET", "/v1/union-graphs/{id}/info")
+                    .permitAll() // Graph info endpoint is public
                     .requestMatchers("GET", "/v1/union-graphs/{id}/graph")
                     .permitAll() // Graph endpoint is public
                     .requestMatchers("/v1/union-graphs", "/v1/union-graphs/**")

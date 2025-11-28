@@ -176,6 +176,21 @@ interface UnionGraphOrderRepository : JpaRepository<UnionGraphOrder, String> {
     fun findByStatus(status: UnionGraphOrder.GraphStatus): List<UnionGraphOrder>
 
     /**
+     * Finds all orders that have graph data available (graph_data IS NOT NULL).
+     * Used for listing available union graphs that can be accessed.
+     * Orders are returned sorted by creation date (newest first).
+     */
+    @Query(
+        value = """
+        SELECT * FROM union_graphs 
+        WHERE graph_data IS NOT NULL
+        ORDER BY created_at DESC
+    """,
+        nativeQuery = true,
+    )
+    fun findAllWithGraphData(): List<UnionGraphOrder>
+
+    /**
      * Finds all orders ordered by creation date (newest first).
      * Used for listing all orders without loading graph data.
      */

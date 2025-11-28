@@ -610,6 +610,120 @@ class UnionGraphController(
     }
 
     /**
+     * Gets minimal information about all available union graphs (with graph data).
+     *
+     * This endpoint is publicly accessible and returns only basic information
+     * about union graphs that have graph data available. This includes graphs that
+     * are currently COMPLETED, as well as graphs that were previously completed
+     * but are now being updated (PROCESSING status).
+     *
+     * @return List of available union graphs with minimal information.
+     */
+    @GetMapping("/available")
+    @Operation(
+        summary = "List available union graphs",
+        description =
+            "Retrieve a list of all union graphs that have graph data available. " +
+                "This includes graphs that are currently COMPLETED, as well as graphs " +
+                "that were previously completed but are now being updated. " +
+                "This endpoint is publicly accessible and returns only minimal information " +
+                "(id, name, description, resource types, format, and creation date). " +
+                "Use this endpoint to discover available union graphs without authentication.",
+    )
+    @ApiResponses(
+        value = [
+            ApiResponse(
+                responseCode = "200",
+                description = "Successfully retrieved list of available union graphs",
+                content = [Content(mediaType = "application/json")],
+            ),
+        ],
+    )
+    fun getAvailableOrders(): ResponseEntity<List<UnionGraphMinimalInfoResponse>> {
+        logger.debug("Getting all available union graph orders")
+
+        val orders = unionGraphService.getAvailableOrders()
+
+        val response =
+            orders.map { order ->
+                UnionGraphMinimalInfoResponse(
+                    id = order.id,
+                    name = order.name,
+                    description = order.description,
+                    resourceTypes = order.resourceTypes,
+                    format = order.format.name,
+                    createdAt = order.createdAt.toString(),
+                )
+            }
+
+        return ResponseEntity
+            .ok()
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(response)
+    }
+
+    /**
+     * Gets minimal information about a specific union graph.
+     *
+     * This endpoint is publicly accessible and returns only basic information
+     * about the union graph if it has graph data available.
+     *
+     * @param id The union graph ID.
+     * @return Minimal information about the union graph, or 404 if not found or not available.
+     */
+    @GetMapping("/{id}/info")
+    @Operation(
+        summary = "Get union graph minimal information",
+        description =
+            "Retrieve minimal information about a specific union graph. " +
+                "This endpoint is publicly accessible and returns only basic information " +
+                "(id, name, description, resource types, format, and creation date). " +
+                "Returns 404 if the union graph is not found or does not have graph data available.",
+    )
+    @ApiResponses(
+        value = [
+            ApiResponse(
+                responseCode = "200",
+                description = "Successfully retrieved union graph information",
+                content = [Content(mediaType = "application/json")],
+            ),
+            ApiResponse(
+                responseCode = "404",
+                description = "Union graph not found or graph not yet available",
+            ),
+        ],
+    )
+    fun getOrderInfo(
+        @Parameter(description = "Union graph ID")
+        @PathVariable id: String,
+    ): ResponseEntity<UnionGraphMinimalInfoResponse> {
+        logger.debug("Getting minimal info for order: {}", id)
+
+        val order =
+            unionGraphService.getOrder(id)
+                ?: return ResponseEntity.notFound().build()
+
+        if (order.graphData == null) {
+            return ResponseEntity.notFound().build()
+        }
+
+        val response =
+            UnionGraphMinimalInfoResponse(
+                id = order.id,
+                name = order.name,
+                description = order.description,
+                resourceTypes = order.resourceTypes,
+                format = order.format.name,
+                createdAt = order.createdAt.toString(),
+            )
+
+        return ResponseEntity
+            .ok()
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(response)
+    }
+
+    /**
      * Gets the built union graph.
      *
      * Supports content negotiation for all RDF formats:
@@ -1027,6 +1141,39 @@ class UnionGraphController(
          * Optional human-readable description of the union graph.
          */
         val description: String?,
+    )
+
+    /**
+     * Response DTO for minimal union graph information.
+     * Used for publicly accessible endpoints that provide basic information
+     * about available union graphs without requiring authentication.
+     */
+    data class UnionGraphMinimalInfoResponse(
+        /**
+         * The union graph ID.
+         */
+        val id: String,
+        /**
+         * Human-readable name for the union graph.
+         */
+        val name: String,
+        /**
+         * Optional human-readable description of the union graph.
+         */
+        val description: String?,
+        /**
+         * List of resource types included in the union graph.
+         * Null if all resource types are included.
+         */
+        val resourceTypes: List<String>?,
+        /**
+         * The RDF format used for the graph data.
+         */
+        val format: String,
+        /**
+         * When the union graph was created.
+         */
+        val createdAt: String,
     )
 
     /**

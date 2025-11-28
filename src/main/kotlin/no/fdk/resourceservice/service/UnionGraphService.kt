@@ -225,6 +225,18 @@ class UnionGraphService(
     }
 
     /**
+     * Gets all union graphs that have graph data available.
+     * This includes graphs that are currently COMPLETED, as well as graphs that
+     * were previously completed but are now being updated (PROCESSING status).
+     *
+     * @return List of all union graphs with available graph data, ordered by creation date (newest first).
+     */
+    fun getAvailableOrders(): List<UnionGraphOrder> {
+        logger.debug("Getting all available union graph orders")
+        return unionGraphOrderRepository.findAllWithGraphData()
+    }
+
+    /**
      * Calculate total resources for progress tracking.
      */
     private fun calculateTotalResources(
