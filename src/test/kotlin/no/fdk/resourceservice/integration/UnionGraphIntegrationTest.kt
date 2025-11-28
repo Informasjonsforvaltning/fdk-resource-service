@@ -664,9 +664,9 @@ class UnionGraphIntegrationTest : BaseIntegrationTest() {
         assertEquals(UnionGraphOrder.GraphStatus.COMPLETED, completedOrder.status)
         assertNotNull(completedOrder.graphData, "graphData should be set")
         assertEquals(graphData, completedOrder.graphData, "graphData should match stored value")
-        assertEquals(UnionGraphOrder.GraphFormat.JSON_LD, completedOrder.graphFormat)
-        assertEquals(UnionGraphOrder.GraphStyle.PRETTY, completedOrder.graphStyle)
-        assertTrue(completedOrder.graphExpandUris)
+        assertEquals(UnionGraphOrder.GraphFormat.JSON_LD, completedOrder.format)
+        assertEquals(UnionGraphOrder.GraphStyle.PRETTY, completedOrder.style)
+        assertTrue(completedOrder.expandUris)
         assertNotNull(completedOrder.processedAt, "processedAt should be set")
         assertNotNull(completedOrder.updatedAt, "updatedAt should be set")
     }

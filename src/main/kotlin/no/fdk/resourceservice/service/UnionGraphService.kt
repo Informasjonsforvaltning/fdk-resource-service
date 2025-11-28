@@ -32,8 +32,14 @@ class UnionGraphService(
     private val objectMapper: ObjectMapper,
     private val webhookService: WebhookService,
     private val rdfService: RdfService,
+    private val metricsService: UnionGraphMetricsService,
 ) {
     private val logger = LoggerFactory.getLogger(UnionGraphService::class.java)
+
+    init {
+        // Initialize metrics service with repository for gauge callbacks
+        metricsService.initialize(unionGraphOrderRepository)
+    }
 
     /**
      * Result of creating a union graph, indicating whether it's new or existing.
@@ -62,9 +68,9 @@ class UnionGraphService(
      *                                          will have those DataService graphs automatically included in the union graph.
      *                                          This allows creating union graphs that include both datasets and their related
      *                                          data services in a single graph.
-     * @param graphFormat The RDF format to use for the graph data (default: JSON_LD).
-     * @param graphStyle The style to use for the graph format (PRETTY or STANDARD, default: PRETTY).
-     * @param graphExpandUris Whether to expand URIs in the graph data (default: true).
+     * @param format The RDF format to use for the graph data (default: JSON_LD).
+     * @param style The style to use for the graph format (PRETTY or STANDARD, default: PRETTY).
+     * @param expandUris Whether to expand URIs in the graph data (default: true).
      * @return CreateOrderResult containing the union graph and a flag indicating if it's new or existing.
      * @throws IllegalArgumentException if webhookUrl is provided but not HTTPS, or if filters are invalid
      */
@@ -74,9 +80,9 @@ class UnionGraphService(
         webhookUrl: String? = null,
         resourceFilters: UnionGraphResourceFilters? = null,
         expandDistributionAccessServices: Boolean = false,
-        graphFormat: UnionGraphOrder.GraphFormat = UnionGraphOrder.GraphFormat.JSON_LD,
-        graphStyle: UnionGraphOrder.GraphStyle = UnionGraphOrder.GraphStyle.PRETTY,
-        graphExpandUris: Boolean = true,
+        format: UnionGraphOrder.GraphFormat = UnionGraphOrder.GraphFormat.JSON_LD,
+        style: UnionGraphOrder.GraphStyle = UnionGraphOrder.GraphStyle.PRETTY,
+        expandUris: Boolean = true,
     ): CreateOrderResult {
         // Validate updateTtlHours: must be 0 (never update) or > 3
         if (updateTtlHours != 0 && updateTtlHours <= 3) {
@@ -113,9 +119,9 @@ class UnionGraphService(
                 webhookUrl,
                 filtersPayload?.let { objectMapper.writeValueAsString(it) },
                 expandDistributionAccessServices,
-                graphFormat.name,
-                graphStyle.name,
-                graphExpandUris,
+                format.name,
+                style.name,
+                expandUris,
             )
         if (existingOrder != null) {
             logger.info(
@@ -137,9 +143,9 @@ class UnionGraphService(
                 webhookUrl = webhookUrl,
                 resourceFilters = filtersPayload,
                 expandDistributionAccessServices = expandDistributionAccessServices,
-                graphFormat = graphFormat,
-                graphStyle = graphStyle,
-                graphExpandUris = graphExpandUris,
+                format = format,
+                style = style,
+                expandUris = expandUris,
             )
 
         val saved = unionGraphOrderRepository.save(order)
@@ -165,6 +171,7 @@ class UnionGraphService(
         }
 
         val previousStatus = previousOrder.status
+        metricsService.recordOrderReset()
 
         // Reset to PENDING, clear error message, and release locks in a single atomic operation
         val rowsAffected = unionGraphOrderRepository.resetToPending(id)
@@ -209,6 +216,30 @@ class UnionGraphService(
      * @param id The union graph ID to delete
      * @return true if the union graph was deleted, false if not found
      */
+    /**
+     * Calculate total resources for progress tracking.
+     */
+    private fun calculateTotalResources(
+        resourceTypes: List<ResourceType>?,
+        resourceFilters: UnionGraphResourceFilters?,
+    ): Long {
+        val typesToProcess = resourceTypes?.ifEmpty { null } ?: ResourceType.entries
+        val datasetFilters = resourceFilters?.dataset
+        var total = 0L
+        for (type in typesToProcess) {
+            total +=
+                when {
+                    type == ResourceType.DATASET && datasetFilters != null ->
+                        resourceRepository.countDatasetsByFilters(
+                            datasetFilters.isOpenData.toSqlBooleanText(),
+                            datasetFilters.isRelatedToTransportportal.toSqlBooleanText(),
+                        )
+                    else -> resourceRepository.countByResourceTypeAndDeletedFalse(type.name)
+                }
+        }
+        return total
+    }
+
     fun deleteOrder(id: String): Boolean {
         logger.info("Deleting union graph order: {}", id)
 
@@ -248,6 +279,7 @@ class UnionGraphService(
         resourceTypes: List<ResourceType>? = null,
         resourceFilters: UnionGraphResourceFilters? = null,
         expandDistributionAccessServices: Boolean = false,
+        orderId: String? = null, // Optional order ID for progress tracking
     ): org.apache.jena.rdf.model.Model? {
         logger.info(
             "Building union graph for resource types: {}, expandDistributionAccessServices: {}",
@@ -338,6 +370,12 @@ class UnionGraphService(
                                     resourceModel.close()
                                     processedCount++
 
+                                    // Update progress metrics
+                                    if (orderId != null) {
+                                        metricsService.updateProcessingProgress(orderId, processedCount)
+                                    }
+                                    metricsService.recordResourcesProcessed(1)
+
                                     // If expanding distribution access services and this is a dataset,
                                     // extract DataService URIs and add their graphs
                                     if (expandDistributionAccessServices && type == ResourceType.DATASET) {
@@ -378,6 +416,7 @@ class UnionGraphService(
                     "Expanded {} DataService graph(s) from dataset distribution accessService references",
                     expandedDataServiceUris.size,
                 )
+                metricsService.recordDataServicesExpanded(expandedDataServiceUris.size)
             }
 
             logger.info("Processed {} resources, building final union graph...", processedCount)
@@ -559,7 +598,18 @@ class UnionGraphService(
                     }
                 }
 
-            val unionModel = buildUnionGraph(resourceTypes, lockedOrder.resourceFilters, lockedOrder.expandDistributionAccessServices)
+            val processingStartTime = System.currentTimeMillis()
+            
+            // Start tracking progress
+            val totalResources = calculateTotalResources(resourceTypes, lockedOrder.resourceFilters)
+            metricsService.startProcessingProgress(lockedOrder.id, totalResources)
+
+            val unionModel = buildUnionGraph(
+                resourceTypes,
+                lockedOrder.resourceFilters,
+                lockedOrder.expandDistributionAccessServices,
+                lockedOrder.id, // Pass order ID for progress tracking
+            )
 
             val previousStatus = lockedOrder.status
 
@@ -567,7 +617,7 @@ class UnionGraphService(
                 try {
                     // Convert the model directly to the requested format
                     val rdfFormat =
-                        when (lockedOrder.graphFormat) {
+                        when (lockedOrder.format) {
                             UnionGraphOrder.GraphFormat.JSON_LD -> RdfService.RdfFormat.JSON_LD
                             UnionGraphOrder.GraphFormat.TURTLE -> RdfService.RdfFormat.TURTLE
                             UnionGraphOrder.GraphFormat.RDF_XML -> RdfService.RdfFormat.RDF_XML
@@ -575,7 +625,7 @@ class UnionGraphService(
                             UnionGraphOrder.GraphFormat.N_QUADS -> RdfService.RdfFormat.N_QUADS
                         }
                     val rdfStyle =
-                        when (lockedOrder.graphStyle) {
+                        when (lockedOrder.style) {
                             UnionGraphOrder.GraphStyle.PRETTY -> RdfService.RdfFormatStyle.PRETTY
                             UnionGraphOrder.GraphStyle.STANDARD -> RdfService.RdfFormatStyle.STANDARD
                         }
@@ -585,7 +635,7 @@ class UnionGraphService(
                             unionModel,
                             rdfFormat,
                             rdfStyle,
-                            lockedOrder.graphExpandUris,
+                            lockedOrder.expandUris,
                             null, // No specific resource type for union graphs
                         ) ?: throw IllegalStateException("Failed to convert union graph to requested format")
 
@@ -593,10 +643,16 @@ class UnionGraphService(
                     unionGraphOrderRepository.markAsCompleted(
                         lockedOrder.id,
                         graphData,
-                        lockedOrder.graphFormat.name,
-                        lockedOrder.graphStyle.name,
-                        lockedOrder.graphExpandUris,
+                        lockedOrder.format.name,
+                        lockedOrder.style.name,
+                        lockedOrder.expandUris,
                     )
+                    
+                    // Record successful completion
+                    val processingDuration = (System.currentTimeMillis() - processingStartTime) / 1000.0
+                    metricsService.recordProcessingDuration(processingDuration)
+                    metricsService.recordOrderCompleted()
+                    metricsService.stopProcessingProgress(lockedOrder.id)
                 } finally {
                     // Always close the model to free resources
                     unionModel.close()
@@ -606,7 +662,15 @@ class UnionGraphService(
                 // Call webhook if configured
                 val updatedOrder = unionGraphOrderRepository.findById(lockedOrder.id).orElse(null)
                 if (updatedOrder != null) {
-                    webhookService.callWebhook(updatedOrder, previousStatus)
+                    val webhookStartTime = System.currentTimeMillis()
+                    val webhookSuccess = try {
+                        webhookService.callWebhook(updatedOrder, previousStatus)
+                        true
+                    } catch (e: Exception) {
+                        false
+                    }
+                    val webhookDuration = (System.currentTimeMillis() - webhookStartTime) / 1000.0
+                    metricsService.recordWebhookCall(webhookDuration, webhookSuccess)
                 }
             } else {
                 // Mark as failed if no graph was built
@@ -614,6 +678,8 @@ class UnionGraphService(
                     lockedOrder.id,
                     "No resources found or failed to build union graph",
                 )
+                metricsService.recordOrderFailed("no_resources")
+                metricsService.stopProcessingProgress(lockedOrder.id)
                 logger.warn("Failed to build union graph for order {}", lockedOrder.id)
 
                 // Call webhook if configured
@@ -629,6 +695,8 @@ class UnionGraphService(
                 order.id,
                 "Error processing order: ${e.message}",
             )
+            metricsService.recordOrderFailed("processing_error")
+            metricsService.stopProcessingProgress(order.id)
 
             // Call webhook if configured
             val updatedOrder = unionGraphOrderRepository.findById(order.id).orElse(null)

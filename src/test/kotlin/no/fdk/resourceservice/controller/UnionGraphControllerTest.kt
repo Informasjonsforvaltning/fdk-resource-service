@@ -535,9 +535,9 @@ class UnionGraphControllerTest : BaseControllerTest() {
                 id = "test-order-5",
                 status = UnionGraphOrder.GraphStatus.COMPLETED,
                 graphData = graphData,
-                graphFormat = UnionGraphOrder.GraphFormat.JSON_LD,
-                graphStyle = UnionGraphOrder.GraphStyle.PRETTY,
-                graphExpandUris = true,
+                format = UnionGraphOrder.GraphFormat.JSON_LD,
+                style = UnionGraphOrder.GraphStyle.PRETTY,
+                expandUris = true,
             )
 
         every { unionGraphService.getOrder("test-order-5") } returns order
@@ -587,9 +587,9 @@ class UnionGraphControllerTest : BaseControllerTest() {
                 id = "test-order-7",
                 status = UnionGraphOrder.GraphStatus.COMPLETED,
                 graphData = graphData,
-                graphFormat = UnionGraphOrder.GraphFormat.TURTLE,
-                graphStyle = UnionGraphOrder.GraphStyle.PRETTY,
-                graphExpandUris = false,
+                format = UnionGraphOrder.GraphFormat.TURTLE,
+                style = UnionGraphOrder.GraphStyle.PRETTY,
+                expandUris = false,
             )
 
         every { unionGraphService.getOrder("test-order-7") } returns order

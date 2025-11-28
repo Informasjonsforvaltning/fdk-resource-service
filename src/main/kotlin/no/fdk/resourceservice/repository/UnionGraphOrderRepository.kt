@@ -92,9 +92,9 @@ interface UnionGraphOrderRepository : JpaRepository<UnionGraphOrder, String> {
         UPDATE union_graphs 
         SET status = 'COMPLETED', 
             graph_data = :graphData,
-            graph_format = :graphFormat,
-            graph_style = :graphStyle,
-            graph_expand_uris = :graphExpandUris,
+            format = :format,
+            style = :style,
+            expand_uris = :expandUris,
             processed_at = CURRENT_TIMESTAMP,
             updated_at = CURRENT_TIMESTAMP
         WHERE id = :id
@@ -104,9 +104,9 @@ interface UnionGraphOrderRepository : JpaRepository<UnionGraphOrder, String> {
     fun markAsCompleted(
         @Param("id") id: String,
         @Param("graphData") graphData: String,
-        @Param("graphFormat") graphFormat: String,
-        @Param("graphStyle") graphStyle: String,
-        @Param("graphExpandUris") graphExpandUris: Boolean,
+        @Param("format") format: String,
+        @Param("style") style: String,
+        @Param("expandUris") expandUris: Boolean,
     ): Int
 
     /**
@@ -182,6 +182,13 @@ interface UnionGraphOrderRepository : JpaRepository<UnionGraphOrder, String> {
     fun findAllByOrderByCreatedAtDesc(): List<UnionGraphOrder>
 
     /**
+     * Counts orders by status.
+     * Used for metrics.
+     */
+    @Query("SELECT COUNT(o) FROM UnionGraphOrder o WHERE o.status = :status")
+    fun countByStatus(@Param("status") status: UnionGraphOrder.GraphStatus): Long
+
+    /**
      * Finds an order by configuration (resource types, update TTL, and webhook URL).
      * Used to check if an order with the same configuration already exists.
      *
@@ -213,9 +220,9 @@ interface UnionGraphOrderRepository : JpaRepository<UnionGraphOrder, String> {
             END
         )
         AND expand_distribution_access_services = :expandDistributionAccessServices
-        AND graph_format = :graphFormat
-        AND graph_style = :graphStyle
-        AND graph_expand_uris = :graphExpandUris
+        AND format = :format
+        AND style = :style
+        AND expand_uris = :expandUris
         ORDER BY 
             CASE status 
                 WHEN 'COMPLETED' THEN 1
@@ -234,8 +241,8 @@ interface UnionGraphOrderRepository : JpaRepository<UnionGraphOrder, String> {
         @Param("webhookUrl") webhookUrl: String?,
         @Param("resourceFilters") resourceFilters: String?,
         @Param("expandDistributionAccessServices") expandDistributionAccessServices: Boolean,
-        @Param("graphFormat") graphFormat: String,
-        @Param("graphStyle") graphStyle: String,
-        @Param("graphExpandUris") graphExpandUris: Boolean,
+        @Param("format") format: String,
+        @Param("style") style: String,
+        @Param("expandUris") expandUris: Boolean,
     ): UnionGraphOrder?
 }

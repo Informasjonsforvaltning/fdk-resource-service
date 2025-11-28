@@ -70,21 +70,21 @@ data class UnionGraphOrder(
      * Default: JSON_LD
      */
     @Enumerated(EnumType.STRING)
-    @Column(name = "graph_format", nullable = false, length = 50)
-    val graphFormat: GraphFormat = GraphFormat.JSON_LD,
+    @Column(name = "format", nullable = false, length = 50)
+    val format: GraphFormat = GraphFormat.JSON_LD,
     /**
      * The style used for the graph format (PRETTY or STANDARD).
      * Default: PRETTY
      */
     @Enumerated(EnumType.STRING)
-    @Column(name = "graph_style", nullable = false, length = 50)
-    val graphStyle: GraphStyle = GraphStyle.PRETTY,
+    @Column(name = "style", nullable = false, length = 50)
+    val style: GraphStyle = GraphStyle.PRETTY,
     /**
      * Whether URIs are expanded in the graph data.
      * Default: true
      */
-    @Column(name = "graph_expand_uris", nullable = false)
-    val graphExpandUris: Boolean = true,
+    @Column(name = "expand_uris", nullable = false)
+    val expandUris: Boolean = true,
     /**
      * Error message if the graph building failed.
      */

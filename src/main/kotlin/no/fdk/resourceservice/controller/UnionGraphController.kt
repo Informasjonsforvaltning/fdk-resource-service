@@ -105,9 +105,9 @@ class UnionGraphController(
                                     "resourceTypes": ["DATASET", "DATA_SERVICE"],
                                     "updateTtlHours": 24,
                                     "webhookUrl": "https://example.com/webhook",
-                                    "graphFormat": "JSON_LD",
-                                    "graphStyle": "PRETTY",
-                                    "graphExpandUris": true
+                                    "format": "JSON_LD",
+                                    "style": "PRETTY",
+                                    "expandUris": true
                                 }
                                 """,
                         ),
@@ -126,9 +126,9 @@ class UnionGraphController(
                                         }
                                     },
                                     "expandDistributionAccessServices": true,
-                                    "graphFormat": "TURTLE",
-                                    "graphStyle": "PRETTY",
-                                    "graphExpandUris": false
+                                    "format": "TURTLE",
+                                    "style": "PRETTY",
+                                    "expandUris": false
                                 }
                                 """,
                         ),
@@ -139,9 +139,9 @@ class UnionGraphController(
                                 {
                                     "resourceTypes": ["CONCEPT"],
                                     "updateTtlHours": 0,
-                                    "graphFormat": "TURTLE",
-                                    "graphStyle": "STANDARD",
-                                    "graphExpandUris": true
+                                    "format": "TURTLE",
+                                    "style": "STANDARD",
+                                    "expandUris": true
                                 }
                                 """,
                         ),
@@ -172,23 +172,23 @@ class UnionGraphController(
         val webhookUrl = requestBody?.webhookUrl
         val resourceFilters = requestBody?.toDomainFilters()
         val expandDistributionAccessServices = requestBody?.expandDistributionAccessServices ?: false
-        val graphFormat =
-            requestBody?.graphFormat?.let {
+        val format =
+            requestBody?.format?.let {
                 try {
                     UnionGraphOrder.GraphFormat.valueOf(it.uppercase())
                 } catch (e: IllegalArgumentException) {
                     null
                 }
             } ?: UnionGraphOrder.GraphFormat.JSON_LD
-        val graphStyle =
-            requestBody?.graphStyle?.let {
+        val style =
+            requestBody?.style?.let {
                 try {
                     UnionGraphOrder.GraphStyle.valueOf(it.uppercase())
                 } catch (e: IllegalArgumentException) {
                     null
                 }
             } ?: UnionGraphOrder.GraphStyle.PRETTY
-        val graphExpandUris = requestBody?.graphExpandUris ?: true
+        val expandUris = requestBody?.expandUris ?: true
 
         // Validate updateTtlHours: must be 0 (never update) or > 3
         if (updateTtlHours != 0 && updateTtlHours <= 3) {
@@ -204,9 +204,9 @@ class UnionGraphController(
                     webhookUrl,
                     resourceFilters,
                     expandDistributionAccessServices,
-                    graphFormat,
-                    graphStyle,
-                    graphExpandUris,
+                    format,
+                    style,
+                    expandUris,
                 )
             } catch (e: IllegalArgumentException) {
                 // Handle validation errors (e.g., invalid webhook URL, invalid updateTtlHours)
@@ -226,9 +226,9 @@ class UnionGraphController(
                 createdAt = order.createdAt.toString(),
                 resourceFilters = toResponseFilters(order.resourceFilters),
                 expandDistributionAccessServices = order.expandDistributionAccessServices,
-                graphFormat = order.graphFormat.name,
-                graphStyle = order.graphStyle.name,
-                graphExpandUris = order.graphExpandUris,
+                format = order.format.name,
+                style = order.style.name,
+                expandUris = order.expandUris,
             )
 
         // Return 201 Created for new union graphs, 409 Conflict for existing ones
@@ -293,9 +293,9 @@ class UnionGraphController(
                     processedAt = order.processedAt?.toString(),
                     resourceFilters = toResponseFilters(order.resourceFilters),
                     expandDistributionAccessServices = order.expandDistributionAccessServices,
-                    graphFormat = order.graphFormat.name,
-                    graphStyle = order.graphStyle.name,
-                    graphExpandUris = order.graphExpandUris,
+                    format = order.format.name,
+                    style = order.style.name,
+                    expandUris = order.expandUris,
                 )
             }
 
@@ -366,9 +366,9 @@ class UnionGraphController(
                 createdAt = order.createdAt.toString(),
                 resourceFilters = toResponseFilters(order.resourceFilters),
                 expandDistributionAccessServices = order.expandDistributionAccessServices,
-                graphFormat = order.graphFormat.name,
-                graphStyle = order.graphStyle.name,
-                graphExpandUris = order.graphExpandUris,
+                format = order.format.name,
+                style = order.style.name,
+                expandUris = order.expandUris,
             )
 
         return ResponseEntity
@@ -425,9 +425,9 @@ class UnionGraphController(
                 processedAt = order.processedAt?.toString(),
                 resourceFilters = toResponseFilters(order.resourceFilters),
                 expandDistributionAccessServices = order.expandDistributionAccessServices,
-                graphFormat = order.graphFormat.name,
-                graphStyle = order.graphStyle.name,
-                graphExpandUris = order.graphExpandUris,
+                format = order.format.name,
+                style = order.style.name,
+                expandUris = order.expandUris,
             )
 
         return ResponseEntity
@@ -514,12 +514,17 @@ class UnionGraphController(
 
         // Determine content type based on the stored format
         val contentType =
-            when (order.graphFormat) {
-                UnionGraphOrder.GraphFormat.JSON_LD -> org.springframework.http.MediaType("application", "ld+json")
-                UnionGraphOrder.GraphFormat.TURTLE -> org.springframework.http.MediaType("text", "turtle")
-                UnionGraphOrder.GraphFormat.RDF_XML -> org.springframework.http.MediaType("application", "rdf+xml")
-                UnionGraphOrder.GraphFormat.N_TRIPLES -> org.springframework.http.MediaType("application", "n-triples")
-                UnionGraphOrder.GraphFormat.N_QUADS -> org.springframework.http.MediaType("application", "n-quads")
+            when (order.format) {
+                UnionGraphOrder.GraphFormat.JSON_LD ->
+                    org.springframework.http.MediaType("application", "ld+json")
+                UnionGraphOrder.GraphFormat.TURTLE ->
+                    org.springframework.http.MediaType("text", "turtle")
+                UnionGraphOrder.GraphFormat.RDF_XML ->
+                    org.springframework.http.MediaType("application", "rdf+xml")
+                UnionGraphOrder.GraphFormat.N_TRIPLES ->
+                    org.springframework.http.MediaType("application", "n-triples")
+                UnionGraphOrder.GraphFormat.N_QUADS ->
+                    org.springframework.http.MediaType("application", "n-quads")
             }
 
         return ResponseEntity
@@ -590,6 +595,12 @@ class UnionGraphController(
          * If null or empty, all resource types will be included.
          * Valid values: CONCEPT, DATASET, DATA_SERVICE, INFORMATION_MODEL, SERVICE, EVENT
          */
+        @io.swagger.v3.oas.annotations.media.Schema(
+            description =
+                "List of resource types to include in the union graph. " +
+                    "Valid values: CONCEPT, DATASET, DATA_SERVICE, INFORMATION_MODEL, SERVICE, EVENT",
+            example = "[\"DATASET\", \"DATA_SERVICE\"]",
+        )
         val resourceTypes: List<String>? = null,
         /**
          * Time to live in hours for automatic graph updates.
@@ -628,18 +639,32 @@ class UnionGraphController(
          * Valid values: JSON_LD, TURTLE, RDF_XML, N_TRIPLES, N_QUADS
          * Default: JSON_LD
          */
-        val graphFormat: String? = null,
+        @io.swagger.v3.oas.annotations.media.Schema(
+            description = "The RDF format to use for the graph data",
+            allowableValues = ["JSON_LD", "TURTLE", "RDF_XML", "N_TRIPLES", "N_QUADS"],
+            example = "JSON_LD",
+        )
+        val format: String? = null,
         /**
          * The style to use for the graph format.
          * Valid values: PRETTY, STANDARD
          * Default: PRETTY
          */
-        val graphStyle: String? = null,
+        @io.swagger.v3.oas.annotations.media.Schema(
+            description = "The style to use for the graph format",
+            allowableValues = ["PRETTY", "STANDARD"],
+            example = "PRETTY",
+        )
+        val style: String? = null,
         /**
          * Whether to expand URIs in the graph data (clear namespace prefixes).
          * Default: true
          */
-        val graphExpandUris: Boolean? = null,
+        @io.swagger.v3.oas.annotations.media.Schema(
+            description = "Whether to expand URIs in the graph data (clear namespace prefixes)",
+            example = "true",
+        )
+        val expandUris: Boolean? = null,
     ) {
         fun toDomainFilters(): UnionGraphResourceFilters? = resourceFilters?.toDomain()
     }
@@ -715,15 +740,15 @@ class UnionGraphController(
         /**
          * The RDF format used for the graph data.
          */
-        val graphFormat: String,
+        val format: String,
         /**
          * The style used for the graph format (PRETTY or STANDARD).
          */
-        val graphStyle: String,
+        val style: String,
         /**
          * Whether URIs are expanded in the graph data.
          */
-        val graphExpandUris: Boolean,
+        val expandUris: Boolean,
     )
 
     /**
@@ -751,15 +776,15 @@ class UnionGraphController(
         /**
          * The RDF format used for the graph data.
          */
-        val graphFormat: String,
+        val format: String,
         /**
          * The style used for the graph format (PRETTY or STANDARD).
          */
-        val graphStyle: String,
+        val style: String,
         /**
          * Whether URIs are expanded in the graph data.
          */
-        val graphExpandUris: Boolean,
+        val expandUris: Boolean,
     )
 
     /**
@@ -788,15 +813,15 @@ class UnionGraphController(
         /**
          * The RDF format used for the graph data.
          */
-        val graphFormat: String,
+        val format: String,
         /**
          * The style used for the graph format (PRETTY or STANDARD).
          */
-        val graphStyle: String,
+        val style: String,
         /**
          * Whether URIs are expanded in the graph data.
          */
-        val graphExpandUris: Boolean,
+        val expandUris: Boolean,
     )
 
     /**
