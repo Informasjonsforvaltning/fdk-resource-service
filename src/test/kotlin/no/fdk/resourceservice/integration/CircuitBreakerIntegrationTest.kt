@@ -127,7 +127,7 @@ class CircuitBreakerIntegrationTest : BaseIntegrationTest() {
                     ConceptEvent
                         .newBuilder()
                         .setFdkId("test-concept-fail-$i")
-                        .setType(ConceptEventType.CONCEPT_HARVESTED)
+                        .setType(ConceptEventType.CONCEPT_REASONED)
                         .setTimestamp(System.currentTimeMillis() + i)
                         .setGraph(validTurtleData)
                         .build()
@@ -144,7 +144,7 @@ class CircuitBreakerIntegrationTest : BaseIntegrationTest() {
                     ConceptEvent
                         .newBuilder()
                         .setFdkId("test-concept-fail-$i")
-                        .setType(ConceptEventType.CONCEPT_HARVESTED)
+                        .setType(ConceptEventType.CONCEPT_REASONED)
                         .setTimestamp(System.currentTimeMillis() + i)
                         .setGraph(emptyTurtleData)
                         .build()

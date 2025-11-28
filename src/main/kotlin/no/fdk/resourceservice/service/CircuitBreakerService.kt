@@ -1,5 +1,6 @@
 package no.fdk.resourceservice.service
 
+import com.fasterxml.jackson.core.type.TypeReference
 import com.fasterxml.jackson.databind.ObjectMapper
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker
 import io.micrometer.core.instrument.Metrics
@@ -26,8 +27,7 @@ import kotlin.time.toJavaDuration
  * and the JSON-LD graph representation (resourceGraph) of RDF resources.
  *
  * Key responsibilities:
- * - Process HARVESTED events: Store both resourceJson and resourceGraph (JSON-LD 1.1 in pretty format)
- * - Process REASONED events: Update resourceJson and resourceGraph
+ * - Process REASONED events: Store both resourceJson and resourceGraph (JSON-LD 1.1 in pretty format)
  * - Handle circuit breaker failures with fallback methods
  * - Convert Turtle RDF to JSON-LD 1.1 for resourceGraph storage
  */
@@ -77,7 +77,10 @@ class CircuitBreakerService(
 
                     val resourceJson =
                         try {
-                            objectMapper.readValue(event.data, Map::class.java) as Map<String, Any>
+                            objectMapper.readValue(
+                                event.data,
+                                object : TypeReference<Map<String, Any>>() {},
+                            )
                         } catch (e: Exception) {
                             logger.error("JSON parse failed: id=${event.fdkId}, error=${e.message}", e)
                             Metrics
@@ -239,13 +242,13 @@ class CircuitBreakerService(
         logger.debug("Processing event: id=$fdkId, type=$resourceType, event=$eventType, graphLen=${graph.length}")
         val action =
             when {
-                eventType.endsWith("_HARVESTED") -> "HARVESTED"
+                eventType.endsWith("_REASONED") -> "REASONED"
                 eventType.endsWith("_REMOVED") -> "REMOVED"
                 else -> eventType.substringAfter("_")
             }
 
         when (action) {
-            "HARVESTED" -> {
+            "REASONED" -> {
                 // Check timestamp early to avoid expensive conversion
                 if (!resourceService.shouldUpdateResource(fdkId, timestamp)) {
                     logger.debug("Skipped (older timestamp): id=$fdkId, type=$resourceType")

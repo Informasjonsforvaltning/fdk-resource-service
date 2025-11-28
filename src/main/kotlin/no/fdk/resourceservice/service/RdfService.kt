@@ -1,5 +1,6 @@
 package no.fdk.resourceservice.service
 
+import com.fasterxml.jackson.core.type.TypeReference
 import com.fasterxml.jackson.databind.ObjectMapper
 import no.fdk.resourceservice.model.ResourceType
 import org.apache.jena.rdf.model.Model
@@ -125,6 +126,70 @@ class RdfService(
     }
 
     /**
+     * Converts a Jena Model directly to any target format.
+     * This is more efficient than converting through intermediate formats.
+     *
+     * For large models (like union graphs), this method optimizes memory usage
+     * by working directly on the model when possible, avoiding unnecessary copies.
+     *
+     * @param model The Jena Model to convert
+     * @param toFormat The target RDF format
+     * @param style The format style (PRETTY or STANDARD)
+     * @param expandUris Whether to expand URIs (clear namespace prefixes, default: false)
+     * @param resourceType Optional resource type to use resource-specific namespace prefixes
+     * @return The converted RDF data as a String, or null if conversion failed
+     */
+    fun convertFromModel(
+        model: org.apache.jena.rdf.model.Model,
+        toFormat: RdfFormat,
+        style: RdfFormatStyle,
+        expandUris: Boolean = false,
+        resourceType: ResourceType? = null,
+    ): String? {
+        // For large models (like union graphs), we optimize by avoiding unnecessary copies.
+        // We only create a copy if we need to modify namespace prefixes for a specific resource type.
+        // For union graphs (resourceType == null), we can work directly on the model since
+        // it's only used once for conversion and will be closed by the caller.
+        val needsCopy = !expandUris && resourceType != null
+        val workingModel =
+            if (needsCopy) {
+                // Create a copy only when we need to add resource-specific prefixes
+                val copy = ModelFactory.createDefaultModel()
+                copy.add(model)
+                copy
+            } else {
+                // Work directly on the original model (safe for union graphs)
+                model
+            }
+
+        try {
+            if (expandUris) {
+                workingModel.clearNsPrefixMap()
+            } else {
+                // Add prefixes: resource-specific if resourceType provided, common otherwise
+                addPrefixesForResourceType(workingModel, resourceType)
+            }
+
+            val rdfFormat = getRdfFormat(toFormat, style)
+            val result =
+                StringWriter().use { outputStream ->
+                    RDFDataMgr.write(outputStream, workingModel, rdfFormat)
+                    outputStream.toString()
+                }
+
+            return handleSpecialCases(result, rdfFormat)
+        } catch (e: Exception) {
+            logger.error("Failed to convert model to format {}: {}", toFormat, e.message, e)
+            return null
+        } finally {
+            // Only close if we created a copy (the original model is closed by the caller)
+            if (needsCopy) {
+                workingModel.close()
+            }
+        }
+    }
+
+    /**
      * Converts from JSON-LD format to any target format.
      *
      * @param jsonLdData The JSON-LD data to convert
@@ -153,21 +218,8 @@ class RdfService(
                 RDFDataMgr.read(model, inputStream, Lang.JSONLD)
             }
 
-            if (expandUris) {
-                model.clearNsPrefixMap()
-            } else {
-                // Add resource-specific prefixes when expandUris is false
-                addPrefixesForResourceType(model, resourceType)
-            }
-
-            val rdfFormat = getRdfFormat(toFormat, style)
-            val result =
-                StringWriter().use { outputStream ->
-                    RDFDataMgr.write(outputStream, model, rdfFormat)
-                    outputStream.toString()
-                }
-
-            return handleSpecialCases(result, rdfFormat)
+            // Use the new convertFromModel method
+            return convertFromModel(model, toFormat, style, expandUris, resourceType)
         } finally {
             model.close()
         }
@@ -210,8 +262,11 @@ class RdfService(
 
             if (jsonLdString != null) {
                 // Parse JSON-LD string to Map
-                @Suppress("UNCHECKED_CAST")
-                val jsonLdMap = objectMapper.readValue(jsonLdString, Map::class.java) as Map<String, Any>
+                val jsonLdMap =
+                    objectMapper.readValue(
+                        jsonLdString,
+                        object : TypeReference<Map<String, Any>>() {},
+                    )
                 logger.debug("Successfully converted Turtle to JSON-LD Map")
                 jsonLdMap
             } else {

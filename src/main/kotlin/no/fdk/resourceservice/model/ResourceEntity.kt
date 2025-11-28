@@ -54,7 +54,7 @@ data class ResourceEntity(
      * - Contains the full RDF graph structure
      * - Uses expanded URIs (no namespace prefixes)
      * - Stored in JSON-LD 1.1 pretty format (no @context or @graph wrapper)
-     * - Populated during HARVESTED and REASONED events
+     * - Populated during REASONED events
      *
      * Example structure (JSON-LD 1.1 pretty format):
      * ```json

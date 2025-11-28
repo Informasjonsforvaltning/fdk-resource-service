@@ -18,6 +18,7 @@ spec:
         app: fdk-resource-service
       annotations:
         prometheus.io/scrape: "true"
+        prometheus.io/path: "/actuator/prometheus"
     spec:
       serviceAccountName: error-reporting-sa
       containers:
@@ -58,6 +59,11 @@ spec:
                 secretKeyRef:
                   name: kafka
                   key: SCHEMA_REGISTRY
+            - name: UNION_GRAPHS_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: fdk-resource-service
+                  key: UNION_GRAPHS_API_KEY
           image: fdk-resource-service
           imagePullPolicy: Always
           ports:

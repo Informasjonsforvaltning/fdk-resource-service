@@ -54,7 +54,7 @@ management:
 
 logging:
   level:
-    no.fdk.resourceservice: WARN
+    no.fdk.resourceservice: DEBUG
     org.springframework.kafka: WARN
     org.hibernate.SQL: WARN
     org.hibernate.type.descriptor.sql.BasicBinder: WARN
@@ -70,6 +70,20 @@ app:
       information-model: information-model-events
       service: service-events
       event: event-events
+  union-graphs:
+    # Enable/disable delete endpoint for union graph orders
+    # Set to true to allow deletion of orders (default: false)
+    delete-enabled: ${UNION_GRAPHS_DELETE_ENABLED:false}
+    # Enable/disable reset endpoint for union graph orders
+    # Set to true to allow resetting orders to PENDING (default: false)
+    reset-enabled: ${UNION_GRAPHS_RESET_ENABLED:false}
+    # API key for securing union graph endpoints (except GET /{id} graph endpoint)
+    api-key: ${UNION_GRAPHS_API_KEY:}
+    # Resource batch size for processing union graphs
+    # Lower values reduce memory usage and contention but increase database queries
+    # Recommended: 20-30 for better performance with parallel processing, 50+ for high-memory systems
+    # Note: parallelStream() processes all items concurrently, so smaller batches reduce contention
+    resource-batch-size: ${UNION_GRAPHS_RESOURCE_BATCH_SIZE:25}
 
 # SpringDoc OpenAPI configuration
 springdoc:
