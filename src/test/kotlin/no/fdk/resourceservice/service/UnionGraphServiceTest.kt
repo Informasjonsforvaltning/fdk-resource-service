@@ -26,6 +26,7 @@ class UnionGraphServiceTest {
     private lateinit var objectMapper: ObjectMapper
     private lateinit var webhookService: WebhookService
     private lateinit var rdfService: RdfService
+    private lateinit var metricsService: UnionGraphMetricsService
     private lateinit var unionGraphService: UnionGraphService
 
     @BeforeEach
@@ -36,6 +37,7 @@ class UnionGraphServiceTest {
         objectMapper = ObjectMapper()
         webhookService = mockk(relaxed = true)
         rdfService = mockk(relaxed = true)
+        metricsService = mockk<UnionGraphMetricsService>(relaxed = true)
         unionGraphService =
             UnionGraphService(
                 unionGraphOrderRepository,
@@ -44,6 +46,7 @@ class UnionGraphServiceTest {
                 objectMapper,
                 webhookService,
                 rdfService,
+                metricsService,
             )
     }
 

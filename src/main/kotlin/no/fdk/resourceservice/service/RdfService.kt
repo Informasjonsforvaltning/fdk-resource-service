@@ -129,6 +129,9 @@ class RdfService(
      * Converts a Jena Model directly to any target format.
      * This is more efficient than converting through intermediate formats.
      *
+     * For large models (like union graphs), this method optimizes memory usage
+     * by working directly on the model when possible, avoiding unnecessary copies.
+     *
      * @param model The Jena Model to convert
      * @param toFormat The target RDF format
      * @param style The format style (PRETTY or STANDARD)
@@ -143,15 +146,27 @@ class RdfService(
         expandUris: Boolean = false,
         resourceType: ResourceType? = null,
     ): String? {
-        // Create a copy of the model to avoid modifying the original
-        val workingModel = ModelFactory.createDefaultModel()
-        try {
-            workingModel.add(model)
+        // For large models (like union graphs), we optimize by avoiding unnecessary copies.
+        // We only create a copy if we need to modify namespace prefixes for a specific resource type.
+        // For union graphs (resourceType == null), we can work directly on the model since
+        // it's only used once for conversion and will be closed by the caller.
+        val needsCopy = !expandUris && resourceType != null
+        val workingModel =
+            if (needsCopy) {
+                // Create a copy only when we need to add resource-specific prefixes
+                val copy = ModelFactory.createDefaultModel()
+                copy.add(model)
+                copy
+            } else {
+                // Work directly on the original model (safe for union graphs)
+                model
+            }
 
+        try {
             if (expandUris) {
                 workingModel.clearNsPrefixMap()
             } else {
-                // Add resource-specific prefixes when expandUris is false
+                // Add prefixes: resource-specific if resourceType provided, common otherwise
                 addPrefixesForResourceType(workingModel, resourceType)
             }
 
@@ -167,7 +182,10 @@ class RdfService(
             logger.error("Failed to convert model to format {}: {}", toFormat, e.message, e)
             return null
         } finally {
-            workingModel.close()
+            // Only close if we created a copy (the original model is closed by the caller)
+            if (needsCopy) {
+                workingModel.close()
+            }
         }
     }
 

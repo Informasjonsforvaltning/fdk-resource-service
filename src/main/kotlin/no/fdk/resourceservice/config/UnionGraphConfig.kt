@@ -43,6 +43,12 @@ class UnionGraphConfig : SchedulingConfigurer {
          * Resources are fetched and processed in batches to prevent memory exhaustion.
          */
         const val UNION_GRAPH_RESOURCE_BATCH_SIZE = 100
+
+        /**
+         * Progress update interval - update progress metrics every N resources.
+         * This reduces the overhead of frequent metric updates during processing.
+         */
+        const val UNION_GRAPH_PROGRESS_UPDATE_INTERVAL = 50
     }
 
     /**

@@ -186,7 +186,9 @@ interface UnionGraphOrderRepository : JpaRepository<UnionGraphOrder, String> {
      * Used for metrics.
      */
     @Query("SELECT COUNT(o) FROM UnionGraphOrder o WHERE o.status = :status")
-    fun countByStatus(@Param("status") status: UnionGraphOrder.GraphStatus): Long
+    fun countByStatus(
+        @Param("status") status: UnionGraphOrder.GraphStatus,
+    ): Long
 
     /**
      * Finds an order by configuration (resource types, update TTL, and webhook URL).

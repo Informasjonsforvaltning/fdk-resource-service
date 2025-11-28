@@ -211,12 +211,6 @@ class UnionGraphService(
     }
 
     /**
-     * Deletes a union graph.
-     *
-     * @param id The union graph ID to delete
-     * @return true if the union graph was deleted, false if not found
-     */
-    /**
      * Calculate total resources for progress tracking.
      */
     private fun calculateTotalResources(
@@ -240,6 +234,12 @@ class UnionGraphService(
         return total
     }
 
+    /**
+     * Deletes a union graph.
+     *
+     * @param id The union graph ID to delete
+     * @return true if the union graph was deleted, false if not found
+     */
     fun deleteOrder(id: String): Boolean {
         logger.info("Deleting union graph order: {}", id)
 
@@ -320,8 +320,11 @@ class UnionGraphService(
         val unionModel = ModelFactory.createDefaultModel()
         var processedCount = 0L
         val batchSize = UnionGraphConfig.UNION_GRAPH_RESOURCE_BATCH_SIZE
-        // Track expanded DataService URIs to avoid duplicates
-        val expandedDataServiceUris = mutableSetOf<String>()
+        val progressUpdateInterval = UnionGraphConfig.UNION_GRAPH_PROGRESS_UPDATE_INTERVAL
+        // Track expanded DataService URIs to avoid duplicates (thread-safe)
+        val expandedDataServiceUris = java.util.Collections.synchronizedSet(mutableSetOf<String>())
+        // Synchronization object for thread-safe model merging
+        val modelLock = Any()
 
         try {
             // Process each resource type
@@ -351,44 +354,56 @@ class UnionGraphService(
                     if (batch.isEmpty()) {
                         hasMore = false
                     } else {
-                        // Process each resource in the batch
-                        for (resource in batch) {
-                            val jsonLd = resource.resourceJsonLd
-                            if (jsonLd != null) {
-                                try {
-                                    // Convert JSON-LD Map to JSON string
-                                    val jsonString = objectMapper.writeValueAsString(jsonLd)
+                        // Process resources in parallel within the batch for better performance
+                        val batchProcessedCount =
+                            batch
+                                .parallelStream()
+                                .mapToLong { resource ->
+                                    val jsonLd = resource.resourceJsonLd
+                                    if (jsonLd != null) {
+                                        try {
+                                            // Convert JSON-LD Map to JSON string
+                                            val jsonString = objectMapper.writeValueAsString(jsonLd)
 
-                                    // Parse JSON-LD into Jena Model
-                                    val resourceModel = ModelFactory.createDefaultModel()
-                                    ByteArrayInputStream(jsonString.toByteArray()).use { inputStream ->
-                                        RDFDataMgr.read(resourceModel, inputStream, Lang.JSONLD)
-                                    }
+                                            // Parse JSON-LD into Jena Model
+                                            val resourceModel = ModelFactory.createDefaultModel()
+                                            ByteArrayInputStream(jsonString.toByteArray()).use { inputStream ->
+                                                RDFDataMgr.read(resourceModel, inputStream, Lang.JSONLD)
+                                            }
 
-                                    // Merge into union model
-                                    unionModel.add(resourceModel)
-                                    resourceModel.close()
-                                    processedCount++
+                                            // Thread-safe merge into union model
+                                            synchronized(modelLock) {
+                                                unionModel.add(resourceModel)
+                                            }
+                                            resourceModel.close()
 
-                                    // Update progress metrics
-                                    if (orderId != null) {
-                                        metricsService.updateProcessingProgress(orderId, processedCount)
-                                    }
-                                    metricsService.recordResourcesProcessed(1)
-
-                                    // If expanding distribution access services and this is a dataset,
-                                    // extract DataService URIs and add their graphs
-                                    if (expandDistributionAccessServices && type == ResourceType.DATASET) {
-                                        val datasetJson = resource.resourceJson
-                                        if (datasetJson != null) {
-                                            extractAndAddDataServices(datasetJson, unionModel, expandedDataServiceUris)
+                                            // If expanding distribution access services and this is a dataset,
+                                            // extract DataService URIs (will be processed after batch)
+                                            if (expandDistributionAccessServices && type == ResourceType.DATASET) {
+                                                val datasetJson = resource.resourceJson
+                                                if (datasetJson != null) {
+                                                    // Extract URIs (thread-safe set)
+                                                    extractDataServiceUris(datasetJson, expandedDataServiceUris)
+                                                }
+                                            }
+                                            1L
+                                        } catch (e: Exception) {
+                                            logger.warn("Failed to merge resource {}: {}", resource.id, e.message)
+                                            0L
                                         }
+                                    } else {
+                                        0L
                                     }
-                                } catch (e: Exception) {
-                                    logger.warn("Failed to merge resource {}: {}", resource.id, e.message)
-                                    // Continue with other resources
-                                }
+                                }.sum()
+
+                        processedCount += batchProcessedCount
+
+                        // Update progress metrics at intervals to reduce overhead
+                        if (processedCount % progressUpdateInterval == 0L || batch.size < batchSize) {
+                            if (orderId != null) {
+                                metricsService.updateProcessingProgress(orderId, processedCount)
                             }
+                            metricsService.recordResourcesProcessed(batchProcessedCount)
                         }
 
                         // Check if we've processed all resources for this type
@@ -402,6 +417,37 @@ class UnionGraphService(
                         if (processedCount % (batchSize * 5) == 0L) {
                             logger.debug("Processed {} resources so far...", processedCount)
                         }
+                    }
+                }
+            }
+
+            // Process expanded DataService graphs after all resources are merged
+            // This is done sequentially to avoid excessive parallel database queries
+            if (expandDistributionAccessServices && expandedDataServiceUris.isNotEmpty()) {
+                logger.info("Processing {} expanded DataService graph(s)...", expandedDataServiceUris.size)
+                for (uri in expandedDataServiceUris) {
+                    try {
+                        val dataServiceJsonLd = resourceService.getResourceJsonLdByUri(uri, ResourceType.DATA_SERVICE)
+                        if (dataServiceJsonLd != null) {
+                            // Convert JSON-LD Map to JSON string
+                            val jsonString = objectMapper.writeValueAsString(dataServiceJsonLd)
+
+                            // Parse JSON-LD into Jena Model
+                            val dataServiceModel = ModelFactory.createDefaultModel()
+                            ByteArrayInputStream(jsonString.toByteArray()).use { inputStream ->
+                                RDFDataMgr.read(dataServiceModel, inputStream, Lang.JSONLD)
+                            }
+
+                            // Merge into union model
+                            unionModel.add(dataServiceModel)
+                            dataServiceModel.close()
+                            logger.debug("Added DataService graph for URI: {}", uri)
+                        } else {
+                            logger.debug("DataService not found for URI: {}", uri)
+                        }
+                    } catch (e: Exception) {
+                        logger.warn("Failed to add DataService graph for URI {}: {}", uri, e.message)
+                        // Continue with other URIs
                     }
                 }
             }
@@ -428,6 +474,59 @@ class UnionGraphService(
             logger.error("Failed to build union graph", e)
             unionModel.close()
             return null
+        }
+    }
+
+    /**
+     * Extracts DataService URIs from a dataset JSON payload.
+     *
+     * Follows the path: distribution[*].accessService[*].uri
+     * Adds URIs to the provided set (thread-safe).
+     *
+     * @param datasetJson The dataset JSON map
+     * @param uriSet Thread-safe set to add URIs to
+     */
+    private fun extractDataServiceUris(
+        datasetJson: Map<String, Any>,
+        uriSet: MutableSet<String>,
+    ) {
+        try {
+            // Extract distributions from the dataset
+            val distributions =
+                when (val distValue = datasetJson["distribution"]) {
+                    is List<*> -> distValue.filterIsInstance<Map<String, Any>>()
+                    is Map<*, *> -> listOf(distValue as Map<String, Any>)
+                    else -> emptyList()
+                }
+
+            // Extract DataService URIs from distributions
+            for (distribution in distributions) {
+                val accessServices =
+                    when (val accessServiceValue = distribution["accessService"]) {
+                        is List<*> -> accessServiceValue.filterIsInstance<Map<String, Any>>()
+                        is Map<*, *> -> listOf(accessServiceValue as Map<String, Any>)
+                        else -> emptyList()
+                    }
+
+                for (accessService in accessServices) {
+                    when (val uriValue = accessService["uri"]) {
+                        is String -> {
+                            if (uriValue.isNotBlank()) {
+                                uriSet.add(uriValue)
+                            }
+                        }
+                        is List<*> -> {
+                            uriValue
+                                .filterIsInstance<String>()
+                                .filter { it.isNotBlank() }
+                                .forEach { uriSet.add(it) }
+                        }
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            logger.warn("Failed to extract DataService URIs from dataset: {}", e.message)
+            // Continue processing other resources
         }
     }
 
@@ -599,17 +698,18 @@ class UnionGraphService(
                 }
 
             val processingStartTime = System.currentTimeMillis()
-            
+
             // Start tracking progress
             val totalResources = calculateTotalResources(resourceTypes, lockedOrder.resourceFilters)
             metricsService.startProcessingProgress(lockedOrder.id, totalResources)
 
-            val unionModel = buildUnionGraph(
-                resourceTypes,
-                lockedOrder.resourceFilters,
-                lockedOrder.expandDistributionAccessServices,
-                lockedOrder.id, // Pass order ID for progress tracking
-            )
+            val unionModel =
+                buildUnionGraph(
+                    resourceTypes,
+                    lockedOrder.resourceFilters,
+                    lockedOrder.expandDistributionAccessServices,
+                    lockedOrder.id, // Pass order ID for progress tracking
+                )
 
             val previousStatus = lockedOrder.status
 
@@ -647,7 +747,7 @@ class UnionGraphService(
                         lockedOrder.style.name,
                         lockedOrder.expandUris,
                     )
-                    
+
                     // Record successful completion
                     val processingDuration = (System.currentTimeMillis() - processingStartTime) / 1000.0
                     metricsService.recordProcessingDuration(processingDuration)
@@ -663,12 +763,13 @@ class UnionGraphService(
                 val updatedOrder = unionGraphOrderRepository.findById(lockedOrder.id).orElse(null)
                 if (updatedOrder != null) {
                     val webhookStartTime = System.currentTimeMillis()
-                    val webhookSuccess = try {
-                        webhookService.callWebhook(updatedOrder, previousStatus)
-                        true
-                    } catch (e: Exception) {
-                        false
-                    }
+                    val webhookSuccess =
+                        try {
+                            webhookService.callWebhook(updatedOrder, previousStatus)
+                            true
+                        } catch (e: Exception) {
+                            false
+                        }
                     val webhookDuration = (System.currentTimeMillis() - webhookStartTime) / 1000.0
                     metricsService.recordWebhookCall(webhookDuration, webhookSuccess)
                 }
