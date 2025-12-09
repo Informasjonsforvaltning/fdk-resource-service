@@ -130,6 +130,8 @@ class CircuitBreakerIntegrationTest : BaseIntegrationTest() {
                         .setType(ConceptEventType.CONCEPT_REASONED)
                         .setTimestamp(System.currentTimeMillis() + i)
                         .setGraph(validTurtleData)
+                        .setHarvestRunId(null)
+                        .setUri(null)
                         .build()
                 }
 
@@ -147,6 +149,8 @@ class CircuitBreakerIntegrationTest : BaseIntegrationTest() {
                         .setType(ConceptEventType.CONCEPT_REASONED)
                         .setTimestamp(System.currentTimeMillis() + i)
                         .setGraph(emptyTurtleData)
+                        .setHarvestRunId(null)
+                        .setUri(null)
                         .build()
                 }
 
@@ -183,6 +187,8 @@ class CircuitBreakerIntegrationTest : BaseIntegrationTest() {
                     .setType(ConceptEventType.CONCEPT_HARVESTED)
                     .setTimestamp(System.currentTimeMillis() + 100)
                     .setGraph(validTurtleData)
+                    .setHarvestRunId(null)
+                    .setUri(null)
                     .build()
 
             try {

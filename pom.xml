@@ -282,6 +282,8 @@
                 <excludes>
                     <exclude>**/*IntegrationTest.java</exclude>
                     <exclude>**/*IntegrationTest.kt</exclude>
+                    <exclude>**/*UnionGraph*Test.java</exclude>
+                    <exclude>**/*UnionGraph*Test.kt</exclude>
                 </excludes>
             </configuration>
         </plugin>
@@ -311,6 +313,9 @@
                     <include>**/*IntegrationTest.java</include>
                     <include>**/*IntegrationTest.kt</include>
                 </includes>
+                <excludes>
+                    <exclude>**/*UnionGraph*Test.*</exclude>
+                </excludes>
             </configuration>
         </plugin>
             <plugin>

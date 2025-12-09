@@ -18,6 +18,7 @@ import no.fdk.informationmodel.InformationModelEvent
 import no.fdk.informationmodel.InformationModelEventType
 import no.fdk.rdf.parse.RdfParseEvent
 import no.fdk.rdf.parse.RdfParseResourceType
+import no.fdk.resourceservice.kafka.HarvestEventProducer
 import no.fdk.resourceservice.model.ResourceType
 import no.fdk.service.ServiceEvent
 import no.fdk.service.ServiceEventType
@@ -29,12 +30,13 @@ import java.sql.SQLException
 class CircuitBreakerServiceTest {
     private val resourceService = mockk<ResourceService>()
     private val rdfService = mockk<RdfService>()
+    private val harvestEventProducer = mockk<HarvestEventProducer>(relaxed = true)
     private lateinit var circuitBreakerService: CircuitBreakerService
 
     @BeforeEach
     fun setUp() {
         clearAllMocks()
-        circuitBreakerService = CircuitBreakerService(resourceService, rdfService)
+        circuitBreakerService = CircuitBreakerService(resourceService, rdfService, harvestEventProducer)
 
         // Mock ResourceService methods with relaxed mocking
         every { resourceService.shouldUpdateResource(any(), any()) } returns true // Default: allow updates

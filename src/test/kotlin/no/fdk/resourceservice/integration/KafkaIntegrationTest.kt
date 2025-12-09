@@ -96,6 +96,8 @@ class KafkaIntegrationTest : BaseIntegrationTest() {
                     .setType(ConceptEventType.CONCEPT_REASONED)
                     .setTimestamp(timestamp)
                     .setGraph(turtleData)
+                    .setHarvestRunId(null)
+                    .setUri(null)
                     .build()
 
             val record = ProducerRecord<String, ConceptEvent>(topic, resourceId, event)
@@ -143,9 +145,25 @@ class KafkaIntegrationTest : BaseIntegrationTest() {
                 .setType(ConceptEventType.CONCEPT_REASONED)
                 .setTimestamp(System.currentTimeMillis())
                 .setGraph(turtleData)
+                .setHarvestRunId(null)
+                .setUri(null)
                 .build()
 
         // Call the circuit breaker service directly for REASONED event
+        circuitBreakerService.handleConceptEvent(event)
+
+        // Now simulate the REASONED event to set the resourceGraph
+        val reasonedEvent =
+            ConceptEvent
+                .newBuilder()
+                .setFdkId(resourceId)
+                .setType(ConceptEventType.CONCEPT_REASONED)
+                .setTimestamp(System.currentTimeMillis() + 1000) // Slightly later timestamp
+                .setGraph(turtleData)
+                .setHarvestRunId(null)
+                .setUri(null)
+                .build()
+
         println("🔧 Testing REASONED event...")
         circuitBreakerService.handleConceptEvent(event)
 
@@ -210,6 +228,8 @@ class KafkaIntegrationTest : BaseIntegrationTest() {
                     .setType(ConceptEventType.CONCEPT_REASONED)
                     .setTimestamp(System.currentTimeMillis())
                     .setGraph(turtleData)
+                    .setHarvestRunId(null)
+                    .setUri(null)
                     .build()
 
             val record = ProducerRecord<String, Any>(topic, resourceId, event)
@@ -357,6 +377,8 @@ class KafkaIntegrationTest : BaseIntegrationTest() {
                                 .setType(DatasetEventType.DATASET_REASONED)
                                 .setTimestamp(timestamp)
                                 .setGraph(graph)
+                                .setHarvestRunId(null)
+                                .setUri(null)
                                 .build()
                         }
                         ResourceType.DATA_SERVICE -> {
@@ -366,6 +388,8 @@ class KafkaIntegrationTest : BaseIntegrationTest() {
                                 .setType(DataServiceEventType.DATA_SERVICE_REASONED)
                                 .setTimestamp(timestamp)
                                 .setGraph(graph)
+                                .setHarvestRunId(null)
+                                .setUri(null)
                                 .build()
                         }
                         ResourceType.SERVICE -> {
@@ -375,6 +399,8 @@ class KafkaIntegrationTest : BaseIntegrationTest() {
                                 .setType(ServiceEventType.SERVICE_REASONED)
                                 .setTimestamp(timestamp)
                                 .setGraph(graph)
+                                .setHarvestRunId(null)
+                                .setUri(null)
                                 .build()
                         }
                         else -> throw IllegalArgumentException("Unsupported resource type: ${resourceTestData.resourceType}")
@@ -462,6 +488,8 @@ class KafkaIntegrationTest : BaseIntegrationTest() {
                     .setType(ConceptEventType.CONCEPT_REASONED)
                     .setTimestamp(System.currentTimeMillis())
                     .setGraph(initialTurtleData)
+                    .setHarvestRunId(null)
+                    .setUri(null)
                     .build()
 
             producer.send(ProducerRecord<String, ConceptEvent>(topic, resourceId, createEvent)).get(10, TimeUnit.SECONDS)
@@ -484,6 +512,8 @@ class KafkaIntegrationTest : BaseIntegrationTest() {
                     .setType(ConceptEventType.CONCEPT_REASONED)
                     .setTimestamp(System.currentTimeMillis() + 1000)
                     .setGraph(updatedTurtleData)
+                    .setHarvestRunId(null)
+                    .setUri(null)
                     .build()
 
             producer.send(ProducerRecord<String, ConceptEvent>(topic, resourceId, updateEvent)).get(10, TimeUnit.SECONDS)

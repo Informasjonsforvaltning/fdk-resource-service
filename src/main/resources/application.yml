@@ -76,6 +76,7 @@ app:
       information-model: information-model-events
       service: service-events
       event: event-events
+      harvest: harvest-events
   union-graphs:
     # Enable/disable delete endpoint for union graph orders
     # Set to true to allow deletion of orders (default: false)
