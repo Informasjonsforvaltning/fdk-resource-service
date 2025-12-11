@@ -118,6 +118,8 @@ class KafkaConsumer(
                         .setType(ConceptEventType.valueOf(fields.type))
                         .setTimestamp(fields.timestamp)
                         .setGraph(fields.graph)
+                        .setHarvestRunId(value.get("harvestRunId")?.toString())
+                        .setUri(value.get("uri")?.toString())
                         .build()
                 } catch (e: Exception) {
                     logger.warn("Failed to convert GenericRecord to ConceptEvent: ${e.message}")
@@ -152,6 +154,8 @@ class KafkaConsumer(
                         .setType(DatasetEventType.valueOf(fields.type))
                         .setTimestamp(fields.timestamp)
                         .setGraph(fields.graph)
+                        .setHarvestRunId(value.get("harvestRunId")?.toString())
+                        .setUri(value.get("uri")?.toString())
                         .build()
                 } catch (e: Exception) {
                     logger.warn("Failed to convert GenericRecord to DatasetEvent: ${e.message}")
@@ -186,6 +190,8 @@ class KafkaConsumer(
                         .setType(DataServiceEventType.valueOf(fields.type))
                         .setTimestamp(fields.timestamp)
                         .setGraph(fields.graph)
+                        .setHarvestRunId(value.get("harvestRunId")?.toString())
+                        .setUri(value.get("uri")?.toString())
                         .build()
                 } catch (e: Exception) {
                     logger.warn("Failed to convert GenericRecord to DataServiceEvent: ${e.message}")
@@ -220,6 +226,8 @@ class KafkaConsumer(
                         .setType(EventEventType.valueOf(fields.type))
                         .setTimestamp(fields.timestamp)
                         .setGraph(fields.graph)
+                        .setHarvestRunId(value.get("harvestRunId")?.toString())
+                        .setUri(value.get("uri")?.toString())
                         .build()
                 } catch (e: Exception) {
                     logger.warn("Failed to convert GenericRecord to EventEvent: ${e.message}")
@@ -253,7 +261,9 @@ class KafkaConsumer(
                         .setFdkId(fields.fdkId)
                         .setType(InformationModelEventType.valueOf(fields.type))
                         .setTimestamp(fields.timestamp)
-                        .setGraph(fields.graph)
+                        .setGraph(fields.graph)                      
+                        .setHarvestRunId(value.get("harvestRunId")?.toString())
+                        .setUri(value.get("uri")?.toString())
                         .build()
                 } catch (e: Exception) {
                     logger.warn("Failed to convert GenericRecord to InformationModelEvent: ${e.message}")
@@ -288,6 +298,8 @@ class KafkaConsumer(
                         .setType(ServiceEventType.valueOf(fields.type))
                         .setTimestamp(fields.timestamp)
                         .setGraph(fields.graph)
+                        .setHarvestRunId(value.get("harvestRunId")?.toString())
+                        .setUri(value.get("uri")?.toString())
                         .build()
                 } catch (e: Exception) {
                     logger.warn("Failed to convert GenericRecord to ServiceEvent: ${e.message}")
