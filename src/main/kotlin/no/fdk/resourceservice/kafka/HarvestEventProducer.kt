@@ -46,7 +46,6 @@ class HarvestEventProducer(
      * @param resourceType The type of resource that was processed
      * @param fdkId The FDK ID of the resource
      * @param resourceUri The URI of the resource (optional)
-     * @param originalEventTimestamp The timestamp from the original source event
      * @param startTime The timestamp when processing started (start of update process)
      * @param endTime The timestamp when processing finished (current time)
      */
@@ -55,7 +54,6 @@ class HarvestEventProducer(
         resourceType: ResourceType,
         fdkId: String,
         resourceUri: String?,
-        originalEventTimestamp: Long,
         startTime: Long,
         endTime: Long,
     ) {
@@ -77,7 +75,6 @@ class HarvestEventProducer(
                     .setDataType(dataType)
                     .setFdkId(fdkId)
                     .setResourceUri(resourceUri)
-                    .setTimestamp(originalEventTimestamp)
                     .setStartTime(startTimeStr)
                     .setEndTime(endTimeStr)
                     .setDataSourceId(null)
@@ -104,7 +101,6 @@ class HarvestEventProducer(
      * @param resourceType The type of resource that was removed
      * @param fdkId The FDK ID of the resource
      * @param resourceUri The URI of the resource (optional)
-     * @param originalEventTimestamp The timestamp from the original source event
      * @param startTime The timestamp when processing started (start of update process)
      * @param endTime The timestamp when processing finished (current time)
      */
@@ -113,7 +109,6 @@ class HarvestEventProducer(
         resourceType: ResourceType,
         fdkId: String,
         resourceUri: String?,
-        originalEventTimestamp: Long,
         startTime: Long,
         endTime: Long,
     ) {
@@ -135,7 +130,6 @@ class HarvestEventProducer(
                     .setDataType(dataType)
                     .setFdkId(fdkId)
                     .setResourceUri(resourceUri)
-                    .setTimestamp(originalEventTimestamp)
                     .setStartTime(startTimeStr)
                     .setEndTime(endTimeStr)
                     .setDataSourceId(null)
@@ -164,7 +158,6 @@ class HarvestEventProducer(
      * @param resourceType The type of resource that failed
      * @param fdkId The FDK ID of the resource
      * @param resourceUri The URI of the resource (optional)
-     * @param originalEventTimestamp The timestamp from the original source event
      * @param startTime The timestamp when processing started (start of update process)
      * @param endTime The timestamp when processing failed (current time)
      * @param errorMessage The error message describing the failure
@@ -174,7 +167,6 @@ class HarvestEventProducer(
         resourceType: ResourceType,
         fdkId: String,
         resourceUri: String?,
-        originalEventTimestamp: Long,
         startTime: Long,
         endTime: Long,
         errorMessage: String,
@@ -197,7 +189,6 @@ class HarvestEventProducer(
                     .setDataType(dataType)
                     .setFdkId(fdkId)
                     .setResourceUri(resourceUri)
-                    .setTimestamp(originalEventTimestamp)
                     .setStartTime(startTimeStr)
                     .setEndTime(endTimeStr)
                     .setErrorMessage(errorMessage)
@@ -219,3 +210,4 @@ class HarvestEventProducer(
         }
     }
 }
+
