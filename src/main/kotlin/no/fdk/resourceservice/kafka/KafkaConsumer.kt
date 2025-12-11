@@ -336,6 +336,8 @@ class KafkaConsumer(
                     RdfParseEvent
                         .newBuilder()
                         .setFdkId(fdkIdStr)
+                        .setHarvestRunId(value.get("harvestRunId")?.toString())
+                        .setUri(value.get("uri")?.toString())
                         .setResourceType(RdfParseResourceType.valueOf(resourceTypeStr))
                         .setTimestamp(timestamp)
                         .setData(data)
