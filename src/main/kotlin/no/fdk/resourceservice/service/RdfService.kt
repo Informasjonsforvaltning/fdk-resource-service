@@ -305,6 +305,12 @@ class RdfService(
      * This method converts Turtle RDF data to JSON-LD format and returns it as a Map.
      * It's specifically designed for storing in the database where JSON-LD data is expected as Map<String, Any>.
      *
+     * Optimized version that:
+     * - Uses memory-efficient model creation
+     * - Directly writes to byte array instead of StringWriter
+     * - Uses Jackson's streaming parser for faster JSON parsing
+     * - Avoids unnecessary string intermediate steps
+     *
      * @param turtleData The Turtle RDF data as a string
      * @param expandUris Whether to expand URIs (clear namespace prefixes, default: true for expanded URIs)
      * @return JSON-LD data as Map<String, Any>, or empty map if conversion fails
@@ -314,23 +320,33 @@ class RdfService(
         expandUris: Boolean = true,
     ): Map<String, Any> =
         try {
-            logger.debug("Converting Turtle to JSON-LD Map (expandUris: $expandUris)")
+            logger.debug("Converting Turtle to JSON-LD Map (expandUris: $expandUris, size: ${turtleData.length})")
 
-            // Convert Turtle to JSON-LD string
-            val jsonLdString = convertFromTurtle(turtleData, RdfFormat.JSON_LD, RdfFormatStyle.PRETTY, expandUris)
+            // Use memory-efficient model with minimal overhead
+            val model = ModelFactory.createMemModel()
+            try {
+                // Read Turtle directly from byte array (faster than String)
+                val turtleBytes = turtleData.toByteArray(Charsets.UTF_8)
+                ByteArrayInputStream(turtleBytes).use { inputStream ->
+                    RDFDataMgr.read(model, inputStream, Lang.TURTLE)
+                }
 
-            if (jsonLdString != null) {
-                // Parse JSON-LD string to Map
-                val jsonLdMap =
-                    objectMapper.readValue(
-                        jsonLdString,
-                        object : TypeReference<Map<String, Any>>() {},
-                    )
-                logger.debug("Successfully converted Turtle to JSON-LD Map")
+                if (expandUris) {
+                    model.clearNsPrefixMap()
+                }
+
+                // Write directly to byte array output stream (more efficient than StringWriter)
+                val outputStream = java.io.ByteArrayOutputStream()
+                RDFDataMgr.write(outputStream, model, RDFFormat.JSONLD_PRETTY)
+
+                // Parse JSON-LD directly from bytes (faster than string conversion)
+                @Suppress("UNCHECKED_CAST")
+                val jsonLdMap = objectMapper.readValue(outputStream.toByteArray(), Map::class.java) as Map<String, Any>
+                
+                logger.debug("Successfully converted Turtle to JSON-LD Map (result size: ${jsonLdMap.size})")
                 jsonLdMap
-            } else {
-                logger.warn("Turtle to JSON-LD conversion returned null, returning empty map")
-                emptyMap<String, Any>()
+            } finally {
+                model.close()
             }
         } catch (e: Exception) {
             logger.error("Failed to convert Turtle to JSON-LD Map", e)
