@@ -3,15 +3,20 @@ package no.fdk.resourceservice.service
 import com.fasterxml.jackson.core.type.TypeReference
 import com.fasterxml.jackson.databind.ObjectMapper
 import no.fdk.resourceservice.model.ResourceType
-import org.apache.jena.rdf.model.Model
-import org.apache.jena.rdf.model.ModelFactory
-import org.apache.jena.riot.Lang
-import org.apache.jena.riot.RDFDataMgr
-import org.apache.jena.riot.RDFFormat
+import org.eclipse.rdf4j.model.Model
+import org.eclipse.rdf4j.model.ModelFactory
+import org.eclipse.rdf4j.model.impl.LinkedHashModelFactory
+import org.eclipse.rdf4j.rio.RDFFormat
+import org.eclipse.rdf4j.rio.Rio
+import org.eclipse.rdf4j.rio.WriterConfig
+import org.eclipse.rdf4j.rio.helpers.BasicWriterSettings
+import org.eclipse.rdf4j.rio.helpers.JSONLDMode
+import org.eclipse.rdf4j.rio.helpers.JSONLDSettings
 import org.slf4j.LoggerFactory
 import org.springframework.http.MediaType
 import org.springframework.stereotype.Service
 import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
 import java.io.StringWriter
 
 /**
@@ -19,12 +24,15 @@ import java.io.StringWriter
  *
  * This service combines the functionality of both RdfProcessingService and RdfFormatService
  * into a single, comprehensive service that handles all RDF-related operations.
+ *
+ * Uses Eclipse RDF4J for better performance and memory efficiency compared to Apache Jena.
  */
 @Service
 class RdfService(
     private val objectMapper: ObjectMapper,
 ) {
     private val logger = LoggerFactory.getLogger(RdfService::class.java)
+    private val modelFactory: ModelFactory = LinkedHashModelFactory()
 
     /**
      * Supported RDF formats and their corresponding media types.
@@ -216,7 +224,7 @@ class RdfService(
                 addPrefixesForResourceType(workingModel, resourceType)
             }
 
-            val rdfFormat = getRdfFormat(toFormat, style)
+            val rdfFormat = getRdfFormat(toFormat)
             val result =
                 StringWriter().use { outputStream ->
                     RDFDataMgr.write(outputStream, workingModel, rdfFormat)
@@ -258,16 +266,20 @@ class RdfService(
 
         // Convert Map to JSON string and parse to model
         val jsonString = objectMapper.writeValueAsString(jsonLdData)
-        val model = ModelFactory.createDefaultModel()
-        try {
-            ByteArrayInputStream(jsonString.toByteArray()).use { inputStream ->
-                RDFDataMgr.read(model, inputStream, Lang.JSONLD)
+        val model =
+            try {
+                ByteArrayInputStream(jsonString.toByteArray()).use { inputStream ->
+                    Rio.parse(inputStream, "", RDFFormat.JSONLD)
+                }
+            } catch (e: Exception) {
+                logger.error("Failed to parse JSON-LD data", e)
+                return null
             }
 
             // Use the new convertFromModel method
             return convertFromModel(model, toFormat, style, expandUris, resourceType)
         } finally {
-            model.close()
+            model.clear()
         }
     }
 
@@ -287,16 +299,13 @@ class RdfService(
     /**
      * Maps format and style enums to RDFFormat enum.
      */
-    private fun getRdfFormat(
-        format: RdfFormat,
-        style: RdfFormatStyle,
-    ): RDFFormat =
+    private fun getRdfFormat(format: RdfFormat): RDFFormat =
         when (format) {
-            RdfFormat.TURTLE -> if (style == RdfFormatStyle.PRETTY) RDFFormat.TURTLE_PRETTY else RDFFormat.TURTLE
-            RdfFormat.RDF_XML -> if (style == RdfFormatStyle.PRETTY) RDFFormat.RDFXML_PRETTY else RDFFormat.RDFXML
+            RdfFormat.TURTLE -> RDFFormat.TURTLE
+            RdfFormat.RDF_XML -> RDFFormat.RDFXML
             RdfFormat.N_TRIPLES -> RDFFormat.NTRIPLES
             RdfFormat.N_QUADS -> RDFFormat.NQUADS
-            RdfFormat.JSON_LD -> if (style == RdfFormatStyle.PRETTY) RDFFormat.JSONLD_PRETTY else RDFFormat.JSONLD
+            RdfFormat.JSON_LD -> RDFFormat.JSONLD
         }
 
     /**
@@ -305,8 +314,8 @@ class RdfService(
      * This method converts Turtle RDF data to JSON-LD format and returns it as a Map.
      * It's specifically designed for storing in the database where JSON-LD data is expected as Map<String, Any>.
      *
-     * Optimized version that:
-     * - Uses memory-efficient model creation
+     * Optimized version using RDF4J that:
+     * - Uses memory-efficient LinkedHashModel for better performance
      * - Directly writes to byte array instead of StringWriter
      * - Uses Jackson's streaming parser for faster JSON parsing
      * - Avoids unnecessary string intermediate steps
@@ -318,40 +327,103 @@ class RdfService(
     fun convertTurtleToJsonLdMap(
         turtleData: String,
         expandUris: Boolean = true,
-    ): Map<String, Any> =
-        try {
+    ): Map<String, Any> {
+        return try {
             logger.debug("Converting Turtle to JSON-LD Map (expandUris: $expandUris, size: ${turtleData.length})")
 
-            // Use memory-efficient model with minimal overhead
-            val model = ModelFactory.createMemModel()
-            try {
-                // Read Turtle directly from byte array (faster than String)
-                val turtleBytes = turtleData.toByteArray(Charsets.UTF_8)
-                ByteArrayInputStream(turtleBytes).use { inputStream ->
-                    RDFDataMgr.read(model, inputStream, Lang.TURTLE)
+            // Use memory-efficient model with minimal overhead (RDF4J LinkedHashModel is optimized)
+            val model =
+                try {
+                    // Read Turtle directly from byte array (faster than String)
+                    val turtleBytes = turtleData.toByteArray(Charsets.UTF_8)
+                    ByteArrayInputStream(turtleBytes).use { inputStream ->
+                        Rio.parse(inputStream, "", RDFFormat.TURTLE)
+                    }
+                } catch (e: Exception) {
+                    logger.error("Failed to parse Turtle data in convertTurtleToJsonLdMap", e)
+                    return emptyMap<String, Any>()
                 }
 
+            try {
                 if (expandUris) {
-                    model.clearNsPrefixMap()
+                    // RDF4J doesn't have clearNamespaces(), so we remove them individually
+                    // Collect prefixes first to avoid ConcurrentModificationException
+                    val prefixes = model.namespaces.map { it.prefix }.toList()
+                    prefixes.forEach { model.removeNamespace(it) }
                 }
 
                 // Write directly to byte array output stream (more efficient than StringWriter)
-                val outputStream = java.io.ByteArrayOutputStream()
-                RDFDataMgr.write(outputStream, model, RDFFormat.JSONLD_PRETTY)
+                val outputStream = ByteArrayOutputStream()
+                val writer = Rio.createWriter(RDFFormat.JSONLD, outputStream)
+                val config = WriterConfig()
+
+                // Configure JSON-LD to include namespace prefixes in @context when expandUris is false
+                if (!expandUris) {
+                    // COMPACT mode will automatically use the model's namespaces in the @context
+                    config.set(JSONLDSettings.JSONLD_MODE, JSONLDMode.COMPACT)
+                } else {
+                    // Use EXPAND mode when expandUris is true to ensure full URIs
+                    config.set(JSONLDSettings.JSONLD_MODE, JSONLDMode.EXPAND)
+                }
+
+                writer.setWriterConfig(config)
+                Rio.write(model, writer)
 
                 // Parse JSON-LD directly from bytes (faster than string conversion)
-                @Suppress("UNCHECKED_CAST")
-                val jsonLdMap = objectMapper.readValue(outputStream.toByteArray(), Map::class.java) as Map<String, Any>
-                
+                // RDF4J may output JSON-LD as an array, so we handle both cases
+                val jsonBytes = outputStream.toByteArray()
+                if (jsonBytes.isEmpty()) {
+                    logger.warn("RDF4J produced empty JSON-LD output")
+                    return emptyMap<String, Any>()
+                }
+
+                val jsonString = String(jsonBytes, Charsets.UTF_8)
+                logger.debug("RDF4J JSON-LD output (first 500 chars): ${jsonString.take(500)}")
+
+                val jsonNode =
+                    try {
+                        objectMapper.readTree(jsonBytes)
+                    } catch (e: Exception) {
+                        logger.error("Failed to parse JSON-LD from RDF4J output: ${jsonString.take(200)}", e)
+                        return emptyMap<String, Any>()
+                    }
+
+                val jsonLdMap =
+                    when {
+                        jsonNode.isObject -> {
+                            @Suppress("UNCHECKED_CAST")
+                            objectMapper.convertValue(jsonNode, Map::class.java) as Map<String, Any>
+                        }
+                        jsonNode.isArray -> {
+                            if (jsonNode.size() == 0) {
+                                logger.warn("RDF4J produced empty JSON-LD array")
+                                emptyMap<String, Any>()
+                            } else if (jsonNode.size() == 1) {
+                                // Single graph in array - extract it
+                                @Suppress("UNCHECKED_CAST")
+                                objectMapper.convertValue(jsonNode[0], Map::class.java) as Map<String, Any>
+                            } else {
+                                // Multiple graphs - wrap in @graph
+                                @Suppress("UNCHECKED_CAST")
+                                mapOf("@graph" to objectMapper.convertValue(jsonNode, List::class.java)) as Map<String, Any>
+                            }
+                        }
+                        else -> {
+                            logger.warn("Unexpected JSON-LD format: ${jsonNode.nodeType}")
+                            emptyMap<String, Any>()
+                        }
+                    }
+
                 logger.debug("Successfully converted Turtle to JSON-LD Map (result size: ${jsonLdMap.size})")
                 jsonLdMap
             } finally {
-                model.close()
+                model.clear()
             }
         } catch (e: Exception) {
             logger.error("Failed to convert Turtle to JSON-LD Map", e)
             emptyMap<String, Any>()
         }
+    }
 
     /**
      * Adds resource-type-specific prefixes to the model.
@@ -383,32 +455,32 @@ class RdfService(
      */
     private fun addDatasetPrefixes(model: Model) {
         // Core RDF vocabularies
-        model.setNsPrefix("rdf", "http://www.w3.org/1999/02/22-rdf-syntax-ns#")
-        model.setNsPrefix("rdfs", "http://www.w3.org/2000/01/rdf-schema#")
-        model.setNsPrefix("owl", "http://www.w3.org/2002/07/owl#")
-        model.setNsPrefix("xsd", "http://www.w3.org/2001/XMLSchema#")
+        model.setNamespace("rdf", "http://www.w3.org/1999/02/22-rdf-syntax-ns#")
+        model.setNamespace("rdfs", "http://www.w3.org/2000/01/rdf-schema#")
+        model.setNamespace("owl", "http://www.w3.org/2002/07/owl#")
+        model.setNamespace("xsd", "http://www.w3.org/2001/XMLSchema#")
 
         // DCAT-AP-NO core vocabularies
-        model.setNsPrefix("dcat", "http://www.w3.org/ns/dcat#")
-        model.setNsPrefix("dcatap", "http://data.europa.eu/r5r/")
-        model.setNsPrefix("dcatno", "https://data.norge.no/vocabulary/dcatno#")
-        model.setNsPrefix("dct", "http://purl.org/dc/terms/")
+        model.setNamespace("dcat", "http://www.w3.org/ns/dcat#")
+        model.setNamespace("dcatap", "http://data.europa.eu/r5r/")
+        model.setNamespace("dcatno", "https://data.norge.no/vocabulary/dcatno#")
+        model.setNamespace("dct", "http://purl.org/dc/terms/")
 
         // Additional DCAT-AP-NO vocabularies
-        model.setNsPrefix("adms", "http://www.w3.org/ns/adms#")
-        model.setNsPrefix("cv", "http://data.europa.eu/m8g/")
-        model.setNsPrefix("cpsv", "http://purl.org/vocab/cpsv#")
-        model.setNsPrefix("dqv", "http://www.w3.org/ns/dqv#")
-        model.setNsPrefix("eli", "http://data.europa.eu/eli/ontology#")
-        model.setNsPrefix("foaf", "http://xmlns.com/foaf/0.1/")
-        model.setNsPrefix("locn", "http://www.w3.org/ns/locn#")
-        model.setNsPrefix("odrl", "http://www.w3.org/ns/odrl/2/")
-        model.setNsPrefix("odrs", "http://schema.theodi.org/odrs#")
-        model.setNsPrefix("prov", "http://www.w3.org/ns/prov#")
-        model.setNsPrefix("skos", "http://www.w3.org/2004/02/skos/core#")
-        model.setNsPrefix("spdx", "http://spdx.org/rdf/terms#")
-        model.setNsPrefix("time", "http://www.w3.org/2006/time#")
-        model.setNsPrefix("vcard", "http://www.w3.org/2006/vcard/ns#")
+        model.setNamespace("adms", "http://www.w3.org/ns/adms#")
+        model.setNamespace("cv", "http://data.europa.eu/m8g/")
+        model.setNamespace("cpsv", "http://purl.org/vocab/cpsv#")
+        model.setNamespace("dqv", "http://www.w3.org/ns/dqv#")
+        model.setNamespace("eli", "http://data.europa.eu/eli/ontology#")
+        model.setNamespace("foaf", "http://xmlns.com/foaf/0.1/")
+        model.setNamespace("locn", "http://www.w3.org/ns/locn#")
+        model.setNamespace("odrl", "http://www.w3.org/ns/odrl/2/")
+        model.setNamespace("odrs", "http://schema.theodi.org/odrs#")
+        model.setNamespace("prov", "http://www.w3.org/ns/prov#")
+        model.setNamespace("skos", "http://www.w3.org/2004/02/skos/core#")
+        model.setNamespace("spdx", "http://spdx.org/rdf/terms#")
+        model.setNamespace("time", "http://www.w3.org/2006/time#")
+        model.setNamespace("vcard", "http://www.w3.org/2006/vcard/ns#")
     }
 
     /**
@@ -427,21 +499,21 @@ class RdfService(
      */
     private fun addConceptPrefixes(model: Model) {
         // Core RDF vocabularies
-        model.setNsPrefix("rdf", "http://www.w3.org/1999/02/22-rdf-syntax-ns#")
-        model.setNsPrefix("rdfs", "http://www.w3.org/2000/01/rdf-schema#")
-        model.setNsPrefix("owl", "http://www.w3.org/2002/07/owl#")
-        model.setNsPrefix("xsd", "http://www.w3.org/2001/XMLSchema#")
+        model.setNamespace("rdf", "http://www.w3.org/1999/02/22-rdf-syntax-ns#")
+        model.setNamespace("rdfs", "http://www.w3.org/2000/01/rdf-schema#")
+        model.setNamespace("owl", "http://www.w3.org/2002/07/owl#")
+        model.setNamespace("xsd", "http://www.w3.org/2001/XMLSchema#")
 
         // SKOS-AP-NO-Begrep core vocabularies
-        model.setNsPrefix("adms", "http://www.w3.org/ns/adms#")
-        model.setNsPrefix("dcat", "http://www.w3.org/ns/dcat#")
-        model.setNsPrefix("dct", "http://purl.org/dc/terms/")
-        model.setNsPrefix("euvoc", "http://publications.europa.eu/ontology/euvoc#")
-        model.setNsPrefix("org", "http://www.w3.org/ns/org#")
-        model.setNsPrefix("skos", "http://www.w3.org/2004/02/skos/core#")
-        model.setNsPrefix("skosno", "https://data.norge.no/vocabulary/skosno#")
-        model.setNsPrefix("vcard", "http://www.w3.org/2006/vcard/ns#")
-        model.setNsPrefix("xkos", "http://rdf-vocabulary.ddialliance.org/xkos#")
+        model.setNamespace("adms", "http://www.w3.org/ns/adms#")
+        model.setNamespace("dcat", "http://www.w3.org/ns/dcat#")
+        model.setNamespace("dct", "http://purl.org/dc/terms/")
+        model.setNamespace("euvoc", "http://publications.europa.eu/ontology/euvoc#")
+        model.setNamespace("org", "http://www.w3.org/ns/org#")
+        model.setNamespace("skos", "http://www.w3.org/2004/02/skos/core#")
+        model.setNamespace("skosno", "https://data.norge.no/vocabulary/skosno#")
+        model.setNamespace("vcard", "http://www.w3.org/2006/vcard/ns#")
+        model.setNamespace("xkos", "http://rdf-vocabulary.ddialliance.org/xkos#")
     }
 
     /**
@@ -452,22 +524,22 @@ class RdfService(
      */
     private fun addInformationModelPrefixes(model: Model) {
         // Core RDF vocabularies
-        model.setNsPrefix("rdf", "http://www.w3.org/1999/02/22-rdf-syntax-ns#")
-        model.setNsPrefix("rdfs", "http://www.w3.org/2000/01/rdf-schema#")
-        model.setNsPrefix("owl", "http://www.w3.org/2002/07/owl#")
-        model.setNsPrefix("xsd", "http://www.w3.org/2001/XMLSchema#")
+        model.setNamespace("rdf", "http://www.w3.org/1999/02/22-rdf-syntax-ns#")
+        model.setNamespace("rdfs", "http://www.w3.org/2000/01/rdf-schema#")
+        model.setNamespace("owl", "http://www.w3.org/2002/07/owl#")
+        model.setNamespace("xsd", "http://www.w3.org/2001/XMLSchema#")
 
         // ModellDCAT-AP-NO core vocabularies
-        model.setNsPrefix("adms", "http://www.w3.org/ns/adms#")
-        model.setNsPrefix("dcat", "http://www.w3.org/ns/dcat#")
-        model.setNsPrefix("dct", "http://purl.org/dc/terms/")
-        model.setNsPrefix("foaf", "http://xmlns.com/foaf/0.1/")
-        model.setNsPrefix("locn", "http://www.w3.org/ns/locn#")
-        model.setNsPrefix("modelldcatno", "https://data.norge.no/vocabulary/modelldcatno#")
-        model.setNsPrefix("prof", "https://www.w3.org/ns/dx/prof/")
-        model.setNsPrefix("skos", "http://www.w3.org/2004/02/skos/core#")
-        model.setNsPrefix("vcard", "http://www.w3.org/2006/vcard/ns#")
-        model.setNsPrefix("xkos", "http://rdf-vocabulary.ddialliance.org/xkos#")
+        model.setNamespace("adms", "http://www.w3.org/ns/adms#")
+        model.setNamespace("dcat", "http://www.w3.org/ns/dcat#")
+        model.setNamespace("dct", "http://purl.org/dc/terms/")
+        model.setNamespace("foaf", "http://xmlns.com/foaf/0.1/")
+        model.setNamespace("locn", "http://www.w3.org/ns/locn#")
+        model.setNamespace("modelldcatno", "https://data.norge.no/vocabulary/modelldcatno#")
+        model.setNamespace("prof", "https://www.w3.org/ns/dx/prof/")
+        model.setNamespace("skos", "http://www.w3.org/2004/02/skos/core#")
+        model.setNamespace("vcard", "http://www.w3.org/2006/vcard/ns#")
+        model.setNamespace("xkos", "http://rdf-vocabulary.ddialliance.org/xkos#")
     }
 
     /**
@@ -478,29 +550,29 @@ class RdfService(
      */
     private fun addServicePrefixes(model: Model) {
         // Core RDF vocabularies
-        model.setNsPrefix("rdf", "http://www.w3.org/1999/02/22-rdf-syntax-ns#")
-        model.setNsPrefix("rdfs", "http://www.w3.org/2000/01/rdf-schema#")
-        model.setNsPrefix("xsd", "http://www.w3.org/2001/XMLSchema#")
+        model.setNamespace("rdf", "http://www.w3.org/1999/02/22-rdf-syntax-ns#")
+        model.setNamespace("rdfs", "http://www.w3.org/2000/01/rdf-schema#")
+        model.setNamespace("xsd", "http://www.w3.org/2001/XMLSchema#")
 
         // CPSV-AP-NO core vocabularies
-        model.setNsPrefix("adms", "http://www.w3.org/ns/adms#")
-        model.setNsPrefix("cpsv", "http://purl.org/vocab/cpsv#")
-        model.setNsPrefix("cpsvno", "https://data.norge.no/vocabulary/cpsvno#")
-        model.setNsPrefix("cv", "http://data.europa.eu/m8g/")
-        model.setNsPrefix("dcat", "http://www.w3.org/ns/dcat#")
-        model.setNsPrefix("dcatno", "https://data.norge.no/vocabulary/dcatno#")
-        model.setNsPrefix("dct", "http://purl.org/dc/terms/")
-        model.setNsPrefix("eli", "http://data.europa.eu/eli/ontology#")
-        model.setNsPrefix("epo", "http://data.europa.eu/a4g/ontology#")
-        model.setNsPrefix("foaf", "http://xmlns.com/foaf/0.1/")
-        model.setNsPrefix("greg", "http://www.w3.org/ns/time/gregorian#")
-        model.setNsPrefix("locn", "http://www.w3.org/ns/locn#")
-        model.setNsPrefix("org", "http://www.w3.org/ns/org#")
-        model.setNsPrefix("schema", "https://schema.org/")
-        model.setNsPrefix("skos", "http://www.w3.org/2004/02/skos/core#")
-        model.setNsPrefix("time", "http://www.w3.org/2006/time#")
-        model.setNsPrefix("vcard", "http://www.w3.org/2006/vcard/ns#")
-        model.setNsPrefix("xkos", "http://rdf-vocabulary.ddialliance.org/xkos#")
+        model.setNamespace("adms", "http://www.w3.org/ns/adms#")
+        model.setNamespace("cpsv", "http://purl.org/vocab/cpsv#")
+        model.setNamespace("cpsvno", "https://data.norge.no/vocabulary/cpsvno#")
+        model.setNamespace("cv", "http://data.europa.eu/m8g/")
+        model.setNamespace("dcat", "http://www.w3.org/ns/dcat#")
+        model.setNamespace("dcatno", "https://data.norge.no/vocabulary/dcatno#")
+        model.setNamespace("dct", "http://purl.org/dc/terms/")
+        model.setNamespace("eli", "http://data.europa.eu/eli/ontology#")
+        model.setNamespace("epo", "http://data.europa.eu/a4g/ontology#")
+        model.setNamespace("foaf", "http://xmlns.com/foaf/0.1/")
+        model.setNamespace("greg", "http://www.w3.org/ns/time/gregorian#")
+        model.setNamespace("locn", "http://www.w3.org/ns/locn#")
+        model.setNamespace("org", "http://www.w3.org/ns/org#")
+        model.setNamespace("schema", "https://schema.org/")
+        model.setNamespace("skos", "http://www.w3.org/2004/02/skos/core#")
+        model.setNamespace("time", "http://www.w3.org/2006/time#")
+        model.setNamespace("vcard", "http://www.w3.org/2006/vcard/ns#")
+        model.setNamespace("xkos", "http://rdf-vocabulary.ddialliance.org/xkos#")
     }
 
     /**
@@ -511,29 +583,29 @@ class RdfService(
      */
     private fun addEventPrefixes(model: Model) {
         // Core RDF vocabularies
-        model.setNsPrefix("rdf", "http://www.w3.org/1999/02/22-rdf-syntax-ns#")
-        model.setNsPrefix("rdfs", "http://www.w3.org/2000/01/rdf-schema#")
-        model.setNsPrefix("xsd", "http://www.w3.org/2001/XMLSchema#")
+        model.setNamespace("rdf", "http://www.w3.org/1999/02/22-rdf-syntax-ns#")
+        model.setNamespace("rdfs", "http://www.w3.org/2000/01/rdf-schema#")
+        model.setNamespace("xsd", "http://www.w3.org/2001/XMLSchema#")
 
         // CPSV-AP-NO core vocabularies
-        model.setNsPrefix("adms", "http://www.w3.org/ns/adms#")
-        model.setNsPrefix("cpsv", "http://purl.org/vocab/cpsv#")
-        model.setNsPrefix("cpsvno", "https://data.norge.no/vocabulary/cpsvno#")
-        model.setNsPrefix("cv", "http://data.europa.eu/m8g/")
-        model.setNsPrefix("dcat", "http://www.w3.org/ns/dcat#")
-        model.setNsPrefix("dcatno", "https://data.norge.no/vocabulary/dcatno#")
-        model.setNsPrefix("dct", "http://purl.org/dc/terms/")
-        model.setNsPrefix("eli", "http://data.europa.eu/eli/ontology#")
-        model.setNsPrefix("epo", "http://data.europa.eu/a4g/ontology#")
-        model.setNsPrefix("foaf", "http://xmlns.com/foaf/0.1/")
-        model.setNsPrefix("greg", "http://www.w3.org/ns/time/gregorian#")
-        model.setNsPrefix("locn", "http://www.w3.org/ns/locn#")
-        model.setNsPrefix("org", "http://www.w3.org/ns/org#")
-        model.setNsPrefix("schema", "https://schema.org/")
-        model.setNsPrefix("skos", "http://www.w3.org/2004/02/skos/core#")
-        model.setNsPrefix("time", "http://www.w3.org/2006/time#")
-        model.setNsPrefix("vcard", "http://www.w3.org/2006/vcard/ns#")
-        model.setNsPrefix("xkos", "http://rdf-vocabulary.ddialliance.org/xkos#")
+        model.setNamespace("adms", "http://www.w3.org/ns/adms#")
+        model.setNamespace("cpsv", "http://purl.org/vocab/cpsv#")
+        model.setNamespace("cpsvno", "https://data.norge.no/vocabulary/cpsvno#")
+        model.setNamespace("cv", "http://data.europa.eu/m8g/")
+        model.setNamespace("dcat", "http://www.w3.org/ns/dcat#")
+        model.setNamespace("dcatno", "https://data.norge.no/vocabulary/dcatno#")
+        model.setNamespace("dct", "http://purl.org/dc/terms/")
+        model.setNamespace("eli", "http://data.europa.eu/eli/ontology#")
+        model.setNamespace("epo", "http://data.europa.eu/a4g/ontology#")
+        model.setNamespace("foaf", "http://xmlns.com/foaf/0.1/")
+        model.setNamespace("greg", "http://www.w3.org/ns/time/gregorian#")
+        model.setNamespace("locn", "http://www.w3.org/ns/locn#")
+        model.setNamespace("org", "http://www.w3.org/ns/org#")
+        model.setNamespace("schema", "https://schema.org/")
+        model.setNamespace("skos", "http://www.w3.org/2004/02/skos/core#")
+        model.setNamespace("time", "http://www.w3.org/2006/time#")
+        model.setNamespace("vcard", "http://www.w3.org/2006/vcard/ns#")
+        model.setNamespace("xkos", "http://rdf-vocabulary.ddialliance.org/xkos#")
     }
 
     /**
@@ -545,24 +617,24 @@ class RdfService(
      */
     private fun addCommonPrefixes(model: Model) {
         // Core RDF vocabularies
-        model.setNsPrefix("rdf", "http://www.w3.org/1999/02/22-rdf-syntax-ns#")
-        model.setNsPrefix("rdfs", "http://www.w3.org/2000/01/rdf-schema#")
-        model.setNsPrefix("owl", "http://www.w3.org/2002/07/owl#")
-        model.setNsPrefix("xsd", "http://www.w3.org/2001/XMLSchema#")
+        model.setNamespace("rdf", "http://www.w3.org/1999/02/22-rdf-syntax-ns#")
+        model.setNamespace("rdfs", "http://www.w3.org/2000/01/rdf-schema#")
+        model.setNamespace("owl", "http://www.w3.org/2002/07/owl#")
+        model.setNamespace("xsd", "http://www.w3.org/2001/XMLSchema#")
 
         // DCAT and Dublin Core vocabularies
-        model.setNsPrefix("dcat", "http://www.w3.org/ns/dcat#")
-        model.setNsPrefix("dct", "http://purl.org/dc/terms/")
-        model.setNsPrefix("dc", "http://purl.org/dc/elements/1.1/")
+        model.setNamespace("dcat", "http://www.w3.org/ns/dcat#")
+        model.setNamespace("dct", "http://purl.org/dc/terms/")
+        model.setNamespace("dc", "http://purl.org/dc/elements/1.1/")
 
         // Additional common vocabularies
-        model.setNsPrefix("foaf", "http://xmlns.com/foaf/0.1/")
-        model.setNsPrefix("skos", "http://www.w3.org/2004/02/skos/core#")
-        model.setNsPrefix("schema", "http://schema.org/")
-        model.setNsPrefix("vcard", "http://www.w3.org/2006/vcard/ns#")
-        model.setNsPrefix("prov", "http://www.w3.org/ns/prov#")
-        model.setNsPrefix("adms", "http://www.w3.org/ns/adms#")
-        model.setNsPrefix("locn", "http://www.w3.org/ns/locn#")
+        model.setNamespace("foaf", "http://xmlns.com/foaf/0.1/")
+        model.setNamespace("skos", "http://www.w3.org/2004/02/skos/core#")
+        model.setNamespace("schema", "http://schema.org/")
+        model.setNamespace("vcard", "http://www.w3.org/2006/vcard/ns#")
+        model.setNamespace("prov", "http://www.w3.org/ns/prov#")
+        model.setNamespace("adms", "http://www.w3.org/ns/adms#")
+        model.setNamespace("locn", "http://www.w3.org/ns/locn#")
     }
 
     /**
@@ -573,7 +645,7 @@ class RdfService(
         rdfFormat: RDFFormat,
     ): String =
         when {
-            rdfFormat == RDFFormat.RDFXML || rdfFormat == RDFFormat.RDFXML_PRETTY -> {
+            rdfFormat == RDFFormat.RDFXML -> {
                 if (!result.startsWith("<?xml")) {
                     "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n$result"
                 } else {

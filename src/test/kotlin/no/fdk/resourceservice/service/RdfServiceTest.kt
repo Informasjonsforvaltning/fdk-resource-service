@@ -335,8 +335,8 @@ class RdfServiceTest {
         // Then
         assertNotNull(result)
         val jsonResult = objectMapper.readTree(result)
-        // When expandUris is false, Jena may add @context with prefixes
-        // or the result may still contain expanded URIs, depending on Jena's behavior
+        // When expandUris is false, RDF4J may add @context with prefixes
+        // or the result may still contain expanded URIs, depending on RDF4J's behavior
         assertTrue(jsonResult.has("@id") || jsonResult.has("@context"))
     }
 
@@ -662,7 +662,7 @@ class RdfServiceTest {
         assertNotNull(result)
         assertTrue(result.isNotEmpty())
         // When expandUris is false, the result may contain @context or use prefixes
-        // The exact structure depends on Jena's JSON-LD serialization
+        // The exact structure depends on RDF4J's JSON-LD serialization
     }
 
     @Test
