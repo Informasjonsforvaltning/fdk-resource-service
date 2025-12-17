@@ -19,6 +19,7 @@ import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Assertions.fail
 import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.kafka.listener.KafkaMessageListenerContainer
@@ -88,6 +89,7 @@ class CircuitBreakerIntegrationTest : BaseIntegrationTest() {
     }
 
     @Test
+    @Disabled("Harvest event handling is disabled")
     fun `circuit breaker should open and pause listener when failure threshold is reached`() {
         // Given: Verify initial state
         assertEquals(

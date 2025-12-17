@@ -23,6 +23,7 @@ import no.fdk.resourceservice.model.ResourceType
 import no.fdk.service.ServiceEvent
 import no.fdk.service.ServiceEventType
 import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import java.sql.SQLException
@@ -88,6 +89,7 @@ class CircuitBreakerServiceTest {
     }
 
     @Test
+    @Disabled("Harvest event handling is disabled")
     fun `should handle ConceptEvent successfully`() {
         // Given
         val event =
@@ -112,6 +114,7 @@ class CircuitBreakerServiceTest {
     }
 
     @Test
+    @Disabled("Harvest event handling is disabled")
     fun `should handle DatasetEvent successfully`() {
         // Given
         val event =
@@ -136,6 +139,7 @@ class CircuitBreakerServiceTest {
     }
 
     @Test
+    @Disabled("Harvest event handling is disabled")
     fun `should handle DataServiceEvent successfully`() {
         // Given
         val event =
@@ -160,6 +164,7 @@ class CircuitBreakerServiceTest {
     }
 
     @Test
+    @Disabled("Harvest event handling is disabled")
     fun `should handle InformationModelEvent successfully`() {
         // Given
         val event =
@@ -184,6 +189,7 @@ class CircuitBreakerServiceTest {
     }
 
     @Test
+    @Disabled("Harvest event handling is disabled")
     fun `should handle ServiceEvent successfully`() {
         // Given
         val event =
@@ -208,6 +214,7 @@ class CircuitBreakerServiceTest {
     }
 
     @Test
+    @Disabled("Harvest event handling is disabled")
     fun `should handle EventEvent successfully`() {
         // Given
         val event =
@@ -256,6 +263,7 @@ class CircuitBreakerServiceTest {
     }
 
     @Test
+    @Disabled("Harvest event handling is disabled")
     fun `should trigger fallback when ResourceService throws exception in handleConceptEvent`() {
         // Given
         val event =

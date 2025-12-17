@@ -15,6 +15,7 @@ import no.fdk.service.ServiceEventType
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.junit.jupiter.api.Assertions.assertNotNull
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -60,6 +61,7 @@ class KafkaIntegrationTest : BaseIntegrationTest() {
     }
 
     @Test
+    @Disabled("Harvest event handling is disabled")
     fun `should produce and consume Kafka messages end-to-end`() {
         // Given
         val topic = "concept-events"
@@ -122,6 +124,7 @@ class KafkaIntegrationTest : BaseIntegrationTest() {
     }
 
     @Test
+    @Disabled("Harvest event handling is disabled")
     fun `should test business logic directly without Kafka`() {
         // Test the business logic directly without relying on Kafka consumers
         val resourceId = "test-concept-direct"
@@ -195,6 +198,7 @@ class KafkaIntegrationTest : BaseIntegrationTest() {
     }
 
     @Test
+    @Disabled("Harvest event handling is disabled")
     fun `should handle single concept resource via Kafka`() {
         // Simplified test with just one resource type to isolate the issue
         val topic = "concept-events"
@@ -281,6 +285,7 @@ class KafkaIntegrationTest : BaseIntegrationTest() {
     }
 
     @Test
+    @Disabled("Harvest event handling is disabled")
     fun `should handle multiple resource types via Kafka`() {
         // Given
         data class ResourceTestData(
@@ -445,6 +450,7 @@ class KafkaIntegrationTest : BaseIntegrationTest() {
     }
 
     @Test
+    @Disabled("Harvest event handling is disabled")
     fun `should handle resource updates via Kafka`() {
         // Given
         val topic = "concept-events"
