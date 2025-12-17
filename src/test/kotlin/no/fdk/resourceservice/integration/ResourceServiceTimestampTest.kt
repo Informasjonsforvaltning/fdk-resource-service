@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 
@@ -187,6 +188,7 @@ class ResourceServiceTimestampTest : BaseIntegrationTest() {
     }
 
     @Test
+    @Disabled("Harvest event handling is disabled")
     fun `should mark harvested resource as not deleted even if previously deleted`() {
         // Given - Resource is harvested, then deleted, then harvested again
         val resourceId = "test-harvest-undelete"
