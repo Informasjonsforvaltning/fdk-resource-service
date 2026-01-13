@@ -29,7 +29,6 @@ class SecurityConfig(
         }
 
         return http
-            .csrf { it.disable() } // Disable CSRF for stateless REST API
             .cors { it.configurationSource(corsConfigurationSource()) }
             .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
             .authorizeHttpRequests { authz ->
