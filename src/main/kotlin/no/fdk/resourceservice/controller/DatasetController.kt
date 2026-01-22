@@ -6,6 +6,7 @@ import io.swagger.v3.oas.annotations.media.Content
 import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.responses.ApiResponses
 import io.swagger.v3.oas.annotations.tags.Tag
+import jakarta.validation.Valid
 import no.fdk.resourceservice.model.FindByIdsRequest
 import no.fdk.resourceservice.model.ResourceType
 import no.fdk.resourceservice.service.RdfService
@@ -195,6 +196,7 @@ class DatasetController(
             description = "List request containing IDs of the requested datasets",
             required = true,
         )
+        @Valid
         @RequestBody request: FindByIdsRequest,
     ): ResponseEntity<List<Map<String, Any>>> = handleJsonResourceListRequest(request.ids, ResourceType.DATASET)
 }

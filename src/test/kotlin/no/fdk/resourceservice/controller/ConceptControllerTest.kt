@@ -555,4 +555,38 @@ class ConceptControllerTest : BaseControllerTest() {
             .andExpect(jsonPath("$").isArray)
             .andExpect(jsonPath("$.length()").value(0))
     }
+
+    @Test
+    fun `findConcepts should return 400 when ids list exceeds 100 items`() {
+        val ids = (1..101).map { "id-$it" }
+        val idsJson = ids.joinToString(",") { "\"$it\"" }
+        val requestBody = """{"ids": [$idsJson]}"""
+
+        mockMvc
+            .perform(
+                post("/v1/concepts")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(requestBody),
+            ).andExpect(status().isBadRequest)
+    }
+
+    @Test
+    fun `findConcepts should return 200 when ids list has exactly 100 items`() {
+        val ids = (1..100).map { "id-$it" }
+        val resources = ids.map { mapOf("id" to it, "title" to "Concept $it") }
+        val idsJson = ids.joinToString(",") { "\"$it\"" }
+        val requestBody = """{"ids": [$idsJson]}"""
+
+        every { resourceService.getResourceJsonListById(ids, ResourceType.CONCEPT) } returns resources
+
+        mockMvc
+            .perform(
+                post("/v1/concepts")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(requestBody),
+            ).andExpect(status().isOk)
+            .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+            .andExpect(jsonPath("$").isArray)
+            .andExpect(jsonPath("$.length()").value(100))
+    }
 }
