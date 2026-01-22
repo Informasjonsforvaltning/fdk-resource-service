@@ -31,25 +31,6 @@ class LegacyRedirectController {
 
     // ===== CONCEPTS =====
 
-    @GetMapping("/concepts")
-    @Operation(
-        summary = "Legacy concepts endpoint redirect",
-        description = "Redirects from legacy /concepts to /v1/concepts",
-    )
-    @ApiResponses(
-        value = [
-            ApiResponse(responseCode = "307", description = "Temporary redirect to /v1/concepts"),
-        ],
-    )
-    fun redirectConcepts(): ResponseEntity<Void> {
-        val request = (RequestContextHolder.currentRequestAttributes() as ServletRequestAttributes).request
-        logger.info("Legacy redirect: ${request.requestURI} -> /v1/concepts")
-        return ResponseEntity
-            .status(HttpStatus.TEMPORARY_REDIRECT)
-            .header("Location", "/v1/concepts")
-            .build()
-    }
-
     @GetMapping("/concepts/{id}")
     @Operation(
         summary = "Legacy concept endpoint redirect",
@@ -73,25 +54,6 @@ class LegacyRedirectController {
     }
 
     // ===== DATA SERVICES =====
-
-    @GetMapping("/data-services")
-    @Operation(
-        summary = "Legacy data services endpoint redirect",
-        description = "Redirects from legacy /data-services to /v1/data-services",
-    )
-    @ApiResponses(
-        value = [
-            ApiResponse(responseCode = "307", description = "Temporary redirect to /v1/data-services"),
-        ],
-    )
-    fun redirectDataServices(): ResponseEntity<Void> {
-        val request = (RequestContextHolder.currentRequestAttributes() as ServletRequestAttributes).request
-        logger.info("Legacy redirect: ${request.requestURI} -> /v1/data-services")
-        return ResponseEntity
-            .status(HttpStatus.TEMPORARY_REDIRECT)
-            .header("Location", "/v1/data-services")
-            .build()
-    }
 
     @GetMapping("/data-services/{id}")
     @Operation(
@@ -117,25 +79,6 @@ class LegacyRedirectController {
 
     // ===== DATASETS =====
 
-    @GetMapping("/datasets")
-    @Operation(
-        summary = "Legacy datasets endpoint redirect",
-        description = "Redirects from legacy /datasets to /v1/datasets",
-    )
-    @ApiResponses(
-        value = [
-            ApiResponse(responseCode = "307", description = "Temporary redirect to /v1/datasets"),
-        ],
-    )
-    fun redirectDatasets(): ResponseEntity<Void> {
-        val request = (RequestContextHolder.currentRequestAttributes() as ServletRequestAttributes).request
-        logger.info("Legacy redirect: ${request.requestURI} -> /v1/datasets")
-        return ResponseEntity
-            .status(HttpStatus.TEMPORARY_REDIRECT)
-            .header("Location", "/v1/datasets")
-            .build()
-    }
-
     @GetMapping("/datasets/{id}")
     @Operation(
         summary = "Legacy dataset endpoint redirect",
@@ -159,25 +102,6 @@ class LegacyRedirectController {
     }
 
     // ===== EVENTS =====
-
-    @GetMapping("/events")
-    @Operation(
-        summary = "Legacy events endpoint redirect",
-        description = "Redirects from legacy /events to /v1/events",
-    )
-    @ApiResponses(
-        value = [
-            ApiResponse(responseCode = "307", description = "Temporary redirect to /v1/events"),
-        ],
-    )
-    fun redirectEvents(): ResponseEntity<Void> {
-        val request = (RequestContextHolder.currentRequestAttributes() as ServletRequestAttributes).request
-        logger.info("Legacy redirect: ${request.requestURI} -> /v1/events")
-        return ResponseEntity
-            .status(HttpStatus.TEMPORARY_REDIRECT)
-            .header("Location", "/v1/events")
-            .build()
-    }
 
     @GetMapping("/events/{id}")
     @Operation(
@@ -203,25 +127,6 @@ class LegacyRedirectController {
 
     // ===== INFORMATION MODELS =====
 
-    @GetMapping("/information-models")
-    @Operation(
-        summary = "Legacy information models endpoint redirect",
-        description = "Redirects from legacy /information-models to /v1/information-models",
-    )
-    @ApiResponses(
-        value = [
-            ApiResponse(responseCode = "307", description = "Temporary redirect to /v1/information-models"),
-        ],
-    )
-    fun redirectInformationModels(): ResponseEntity<Void> {
-        val request = (RequestContextHolder.currentRequestAttributes() as ServletRequestAttributes).request
-        logger.info("Legacy redirect: ${request.requestURI} -> /v1/information-models")
-        return ResponseEntity
-            .status(HttpStatus.TEMPORARY_REDIRECT)
-            .header("Location", "/v1/information-models")
-            .build()
-    }
-
     @GetMapping("/information-models/{id}")
     @Operation(
         summary = "Legacy information model endpoint redirect",
@@ -245,25 +150,6 @@ class LegacyRedirectController {
     }
 
     // ===== SERVICES =====
-
-    @GetMapping("/services")
-    @Operation(
-        summary = "Legacy services endpoint redirect",
-        description = "Redirects from legacy /services to /v1/services",
-    )
-    @ApiResponses(
-        value = [
-            ApiResponse(responseCode = "307", description = "Temporary redirect to /v1/services"),
-        ],
-    )
-    fun redirectServices(): ResponseEntity<Void> {
-        val request = (RequestContextHolder.currentRequestAttributes() as ServletRequestAttributes).request
-        logger.info("Legacy redirect: ${request.requestURI} -> /v1/services")
-        return ResponseEntity
-            .status(HttpStatus.TEMPORARY_REDIRECT)
-            .header("Location", "/v1/services")
-            .build()
-    }
 
     @GetMapping("/services/{id}")
     @Operation(

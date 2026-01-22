@@ -6,6 +6,7 @@ import io.swagger.v3.oas.annotations.media.Content
 import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.responses.ApiResponses
 import io.swagger.v3.oas.annotations.tags.Tag
+import no.fdk.resourceservice.model.FindByIdsRequest
 import no.fdk.resourceservice.model.ResourceType
 import no.fdk.resourceservice.service.RdfService
 import no.fdk.resourceservice.service.ResourceService
@@ -13,6 +14,8 @@ import org.springframework.http.HttpHeaders
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
+import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestHeader
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
@@ -172,4 +175,26 @@ class InformationModelController(
         )
         @RequestHeader(HttpHeaders.ACCEPT, required = false) acceptHeader: String?,
     ): ResponseEntity<Any> = handleGraphRequestByUri(uri, ResourceType.INFORMATION_MODEL, acceptHeader)
+
+    @PostMapping
+    @Operation(
+        summary = "Get information models by IDs",
+        description = "Retrieve a list of information models by their unique identifiers",
+    )
+    @ApiResponses(
+        value = [
+            ApiResponse(
+                responseCode = "200",
+                description = "Successfully retrieved information models",
+                content = [Content(mediaType = "application/json")],
+            ),
+        ],
+    )
+    fun findInformationModels(
+        @Parameter(
+            description = "List request containing IDs of the requested information models",
+            required = true,
+        )
+        @RequestBody request: FindByIdsRequest,
+    ): ResponseEntity<List<Map<String, Any>>> = handleJsonResourceListRequest(request.ids, ResourceType.INFORMATION_MODEL)
 }

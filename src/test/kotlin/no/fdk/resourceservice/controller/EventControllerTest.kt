@@ -7,6 +7,7 @@ import no.fdk.resourceservice.service.RdfService
 import org.junit.jupiter.api.Test
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.content
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
@@ -122,5 +123,57 @@ class EventControllerTest : BaseControllerTest() {
         mockMvc
             .perform(get("/v1/events/{id}", eventId))
             .andExpect(status().isNotFound)
+    }
+
+    @Test
+    fun `findEvents should return 200 with list of events when found`() {
+        val event1 =
+            mapOf(
+                "id" to "event-1",
+                "title" to "First Event",
+                "type" to "Event",
+            )
+        val event2 =
+            mapOf(
+                "id" to "event-2",
+                "title" to "Second Event",
+                "type" to "Event",
+            )
+        val ids = listOf("event-1", "event-2")
+        val requestBody = """{"ids": ["event-1", "event-2"]}"""
+
+        every { resourceService.getResourceJsonListById(ids, ResourceType.EVENT) } returns listOf(event1, event2)
+
+        mockMvc
+            .perform(
+                post("/v1/events")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(requestBody),
+            ).andExpect(status().isOk)
+            .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+            .andExpect(jsonPath("$").isArray)
+            .andExpect(jsonPath("$.length()").value(2))
+            .andExpect(jsonPath("$[0].id").value("event-1"))
+            .andExpect(jsonPath("$[0].title").value("First Event"))
+            .andExpect(jsonPath("$[1].id").value("event-2"))
+            .andExpect(jsonPath("$[1].title").value("Second Event"))
+    }
+
+    @Test
+    fun `findEvents should return 200 with empty list when no events found`() {
+        val ids = listOf("non-existent-1", "non-existent-2")
+        val requestBody = """{"ids": ["non-existent-1", "non-existent-2"]}"""
+
+        every { resourceService.getResourceJsonListById(ids, ResourceType.EVENT) } returns emptyList()
+
+        mockMvc
+            .perform(
+                post("/v1/events")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(requestBody),
+            ).andExpect(status().isOk)
+            .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+            .andExpect(jsonPath("$").isArray)
+            .andExpect(jsonPath("$.length()").value(0))
     }
 }

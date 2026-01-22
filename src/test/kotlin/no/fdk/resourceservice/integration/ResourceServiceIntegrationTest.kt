@@ -79,6 +79,124 @@ class ResourceServiceIntegrationTest : BaseIntegrationTest() {
     }
 
     @Test
+    fun `getResourceJsonListById should return list of resources when all were found`() {
+        // Given
+        val resource1Id = "test-1"
+        val resource1Data =
+            mapOf(
+                "uri" to "https://example.com/1",
+                "title" to "Resource 1",
+            )
+        val resource2Id = "test-2"
+        val resource2Data =
+            mapOf(
+                "uri" to "https://example.com/2",
+                "title" to "Resource 2",
+            )
+        val timestamp = System.currentTimeMillis()
+
+        // When
+        resourceService.storeResourceJson(resource1Id, ResourceType.CONCEPT, resource1Data, timestamp)
+        resourceService.storeResourceJson(resource2Id, ResourceType.CONCEPT, resource2Data, timestamp)
+        val results = resourceService.getResourceJsonListById(listOf(resource1Id, resource2Id), ResourceType.CONCEPT)
+
+        // Then
+        assertEquals(2, results.size)
+        assertTrue(results.any { it["uri"] == "https://example.com/1" })
+        assertTrue(results.any { it["uri"] == "https://example.com/2" })
+    }
+
+    @Test
+    fun `getResourceJsonListById should return empty list when no resources found`() {
+        // When
+        val results = resourceService.getResourceJsonListById(listOf("non-existent-1", "non-existent-2"), ResourceType.CONCEPT)
+
+        // Then
+        assertTrue(results.isEmpty())
+    }
+
+    @Test
+    fun `getResourceJsonListById should return partial results when some resources found`() {
+        // Given
+        val existingId = "test-existing"
+        val existingData =
+            mapOf(
+                "uri" to "https://example.com/existing",
+                "title" to "Existing Resource",
+            )
+        val timestamp = System.currentTimeMillis()
+
+        // When
+        resourceService.storeResourceJson(existingId, ResourceType.CONCEPT, existingData, timestamp)
+        val results = resourceService.getResourceJsonListById(listOf(existingId, "non-existent"), ResourceType.CONCEPT)
+
+        // Then
+        assertEquals(1, results.size)
+        assertEquals("https://example.com/existing", results[0]["uri"])
+    }
+
+    @Test
+    fun `getResourceJsonListById should return empty list when ids list is empty`() {
+        // When
+        val results = resourceService.getResourceJsonListById(emptyList(), ResourceType.CONCEPT)
+
+        // Then
+        assertTrue(results.isEmpty())
+    }
+
+    @Test
+    fun `getResourceJsonListById should filter by resource type`() {
+        // Given
+        val conceptId = "test-concept"
+        val conceptData =
+            mapOf(
+                "uri" to "https://example.com/concept",
+                "title" to "Concept Resource",
+            )
+        val datasetId = "test-dataset"
+        val datasetData =
+            mapOf(
+                "uri" to "https://example.com/dataset",
+                "title" to "Dataset Resource",
+            )
+        val timestamp = System.currentTimeMillis()
+
+        // When
+        resourceService.storeResourceJson(conceptId, ResourceType.CONCEPT, conceptData, timestamp)
+        val conceptResults = resourceService.getResourceJsonListById(listOf(conceptId, datasetId), ResourceType.CONCEPT)
+
+        resourceService.storeResourceJson(datasetId, ResourceType.DATASET, datasetData, timestamp)
+        val datasetResults = resourceService.getResourceJsonListById(listOf(conceptId, datasetId), ResourceType.DATASET)
+
+        // Then
+        assertEquals(1, conceptResults.size)
+        assertEquals("https://example.com/concept", conceptResults[0]["uri"])
+
+        assertEquals(1, datasetResults.size)
+        assertEquals("https://example.com/dataset", datasetResults[0]["uri"])
+    }
+
+    @Test
+    fun `getResourceJsonListById should handle duplicate ids`() {
+        // Given
+        val resourceId = "test-duplicate"
+        val resourceData =
+            mapOf(
+                "uri" to "https://example.com/duplicate",
+                "title" to "Duplicate Resource",
+            )
+        val timestamp = System.currentTimeMillis()
+
+        // When
+        resourceService.storeResourceJson(resourceId, ResourceType.CONCEPT, resourceData, timestamp)
+        val results = resourceService.getResourceJsonListById(listOf(resourceId, resourceId), ResourceType.CONCEPT)
+
+        // Then - should not return duplicates
+        assertEquals(1, results.size)
+        assertEquals("https://example.com/duplicate", results[0]["uri"])
+    }
+
+    @Test
     fun `getResourceGraphDataByUri should return complete graph data`() {
         // Given
         val resourceId = "test-dataset-3"

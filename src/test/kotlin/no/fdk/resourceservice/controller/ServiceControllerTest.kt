@@ -7,6 +7,7 @@ import no.fdk.resourceservice.service.RdfService
 import org.junit.jupiter.api.Test
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.content
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
@@ -128,5 +129,57 @@ class ServiceControllerTest : BaseControllerTest() {
         mockMvc
             .perform(get("/v1/services/{id}", serviceId))
             .andExpect(status().isNotFound)
+    }
+
+    @Test
+    fun `findServices should return 200 with list of services when found`() {
+        val service1 =
+            mapOf(
+                "id" to "service-1",
+                "title" to "First Service",
+                "type" to "Service",
+            )
+        val service2 =
+            mapOf(
+                "id" to "service-2",
+                "title" to "Second Service",
+                "type" to "Service",
+            )
+        val ids = listOf("service-1", "service-2")
+        val requestBody = """{"ids": ["service-1", "service-2"]}"""
+
+        every { resourceService.getResourceJsonListById(ids, ResourceType.SERVICE) } returns listOf(service1, service2)
+
+        mockMvc
+            .perform(
+                post("/v1/services")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(requestBody),
+            ).andExpect(status().isOk)
+            .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+            .andExpect(jsonPath("$").isArray)
+            .andExpect(jsonPath("$.length()").value(2))
+            .andExpect(jsonPath("$[0].id").value("service-1"))
+            .andExpect(jsonPath("$[0].title").value("First Service"))
+            .andExpect(jsonPath("$[1].id").value("service-2"))
+            .andExpect(jsonPath("$[1].title").value("Second Service"))
+    }
+
+    @Test
+    fun `findServices should return 200 with empty list when no services found`() {
+        val ids = listOf("non-existent-1", "non-existent-2")
+        val requestBody = """{"ids": ["non-existent-1", "non-existent-2"]}"""
+
+        every { resourceService.getResourceJsonListById(ids, ResourceType.SERVICE) } returns emptyList()
+
+        mockMvc
+            .perform(
+                post("/v1/services")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(requestBody),
+            ).andExpect(status().isOk)
+            .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+            .andExpect(jsonPath("$").isArray)
+            .andExpect(jsonPath("$.length()").value(0))
     }
 }
