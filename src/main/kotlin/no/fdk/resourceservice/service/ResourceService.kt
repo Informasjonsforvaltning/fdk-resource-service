@@ -315,6 +315,25 @@ class ResourceService(
     }
 
     /**
+     * Retrieves a list of resources by their unique identifiers as JSON representation.
+     *
+     * @param ids The unique identifiers of the resources
+     * @param resourceType The type of resources to retrieve
+     * @return JSON representation of the resources, or null if not found or type mismatch
+     */
+    fun getResourceJsonListById(
+        ids: List<String>,
+        resourceType: ResourceType,
+    ): List<Map<String, Any>> {
+        logger.debug("Getting resources JSON with ids: {} and type: {}", ids, resourceType)
+
+        return resourceRepository
+            .findAllById(ids)
+            .filter { entity -> entity?.resourceType == resourceType.name }
+            .mapNotNull { entity -> entity.resourceJson }
+    }
+
+    /**
      * Retrieves all resources of a specific type that were updated since a given timestamp as JSON representations.
      *
      * @param resourceType The type of resource to retrieve

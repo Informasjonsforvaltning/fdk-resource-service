@@ -73,6 +73,25 @@ abstract class BaseController(
     }
 
     /**
+     * Handles a JSON resource list request by IDs.
+     *
+     * @param ids The resource IDs
+     * @param resourceType The type of resource
+     * @return ResponseEntity with the list of JSON resource data
+     */
+    protected fun handleJsonResourceListRequest(
+        ids: List<String>,
+        resourceType: ResourceType,
+    ): ResponseEntity<List<Map<String, Any>>> {
+        logger.debug("Retrieve list of {} for ids: {}", resourceType.name.lowercase(), ids)
+
+        return ResponseEntity
+            .ok()
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(resourceService.getResourceJsonListById(ids, resourceType))
+    }
+
+    /**
      * Handles a graph request by ID with content negotiation.
      *
      * @param id The resource ID

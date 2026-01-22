@@ -33,8 +33,7 @@ class SecurityConfig(
                 // Disable CSRF for stateless REST API endpoints
                 // CSRF protection is not needed for stateless APIs using API key authentication
                 csrf.ignoringRequestMatchers("/v1/**", "/actuator/**")
-            }
-            .cors { it.configurationSource(corsConfigurationSource()) }
+            }.cors { it.configurationSource(corsConfigurationSource()) }
             .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
             .authorizeHttpRequests { authz ->
                 // Actuator endpoints are public

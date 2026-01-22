@@ -7,54 +7,6 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 
 class LegacyRedirectControllerTest : BaseControllerTest() {
     @Test
-    fun `should redirect concepts endpoint`() {
-        mockMvc
-            .perform(get("/concepts"))
-            .andExpect(status().isTemporaryRedirect)
-            .andExpect(header().string("Location", "/v1/concepts"))
-    }
-
-    @Test
-    fun `should redirect datasets endpoint`() {
-        mockMvc
-            .perform(get("/datasets"))
-            .andExpect(status().isTemporaryRedirect)
-            .andExpect(header().string("Location", "/v1/datasets"))
-    }
-
-    @Test
-    fun `should redirect services endpoint`() {
-        mockMvc
-            .perform(get("/services"))
-            .andExpect(status().isTemporaryRedirect)
-            .andExpect(header().string("Location", "/v1/services"))
-    }
-
-    @Test
-    fun `should redirect data-services endpoint`() {
-        mockMvc
-            .perform(get("/data-services"))
-            .andExpect(status().isTemporaryRedirect)
-            .andExpect(header().string("Location", "/v1/data-services"))
-    }
-
-    @Test
-    fun `should redirect information-models endpoint`() {
-        mockMvc
-            .perform(get("/information-models"))
-            .andExpect(status().isTemporaryRedirect)
-            .andExpect(header().string("Location", "/v1/information-models"))
-    }
-
-    @Test
-    fun `should redirect events endpoint`() {
-        mockMvc
-            .perform(get("/events"))
-            .andExpect(status().isTemporaryRedirect)
-            .andExpect(header().string("Location", "/v1/events"))
-    }
-
-    @Test
     fun `should redirect concepts graph endpoint`() {
         mockMvc
             .perform(get("/concepts/graph"))

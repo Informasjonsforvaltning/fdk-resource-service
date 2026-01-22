@@ -7,6 +7,7 @@ import no.fdk.resourceservice.service.RdfService
 import org.junit.jupiter.api.Test
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.content
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
@@ -501,5 +502,91 @@ class ConceptControllerTest : BaseControllerTest() {
             ).andExpect(status().isOk)
             .andExpect(content().contentType(MediaType.valueOf("application/rdf+xml")))
             .andExpect(content().string(prettyRdfXml))
+    }
+
+    @Test
+    fun `findConcepts should return 200 with list of concepts when found`() {
+        val concept1 =
+            mapOf(
+                "id" to "concept-1",
+                "title" to "First Concept",
+                "type" to "Concept",
+            )
+        val concept2 =
+            mapOf(
+                "id" to "concept-2",
+                "title" to "Second Concept",
+                "type" to "Concept",
+            )
+        val ids = listOf("concept-1", "concept-2")
+        val requestBody = """{"ids": ["concept-1", "concept-2"]}"""
+
+        every { resourceService.getResourceJsonListById(ids, ResourceType.CONCEPT) } returns listOf(concept1, concept2)
+
+        mockMvc
+            .perform(
+                post("/v1/concepts")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(requestBody),
+            ).andExpect(status().isOk)
+            .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+            .andExpect(jsonPath("$").isArray)
+            .andExpect(jsonPath("$.length()").value(2))
+            .andExpect(jsonPath("$[0].id").value("concept-1"))
+            .andExpect(jsonPath("$[0].title").value("First Concept"))
+            .andExpect(jsonPath("$[1].id").value("concept-2"))
+            .andExpect(jsonPath("$[1].title").value("Second Concept"))
+    }
+
+    @Test
+    fun `findConcepts should return 200 with empty list when no concepts found`() {
+        val ids = listOf("non-existent-1", "non-existent-2")
+        val requestBody = """{"ids": ["non-existent-1", "non-existent-2"]}"""
+
+        every { resourceService.getResourceJsonListById(ids, ResourceType.CONCEPT) } returns emptyList()
+
+        mockMvc
+            .perform(
+                post("/v1/concepts")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(requestBody),
+            ).andExpect(status().isOk)
+            .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+            .andExpect(jsonPath("$").isArray)
+            .andExpect(jsonPath("$.length()").value(0))
+    }
+
+    @Test
+    fun `findConcepts should return 400 when ids list exceeds 100 items`() {
+        val ids = (1..101).map { "id-$it" }
+        val idsJson = ids.joinToString(",") { "\"$it\"" }
+        val requestBody = """{"ids": [$idsJson]}"""
+
+        mockMvc
+            .perform(
+                post("/v1/concepts")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(requestBody),
+            ).andExpect(status().isBadRequest)
+    }
+
+    @Test
+    fun `findConcepts should return 200 when ids list has exactly 100 items`() {
+        val ids = (1..100).map { "id-$it" }
+        val resources = ids.map { mapOf("id" to it, "title" to "Concept $it") }
+        val idsJson = ids.joinToString(",") { "\"$it\"" }
+        val requestBody = """{"ids": [$idsJson]}"""
+
+        every { resourceService.getResourceJsonListById(ids, ResourceType.CONCEPT) } returns resources
+
+        mockMvc
+            .perform(
+                post("/v1/concepts")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(requestBody),
+            ).andExpect(status().isOk)
+            .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+            .andExpect(jsonPath("$").isArray)
+            .andExpect(jsonPath("$.length()").value(100))
     }
 }

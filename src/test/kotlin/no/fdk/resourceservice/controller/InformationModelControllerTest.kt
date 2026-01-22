@@ -7,6 +7,7 @@ import no.fdk.resourceservice.service.RdfService
 import org.junit.jupiter.api.Test
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.content
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
@@ -128,5 +129,91 @@ class InformationModelControllerTest : BaseControllerTest() {
         mockMvc
             .perform(get("/v1/information-models/{id}", informationModelId))
             .andExpect(status().isNotFound)
+    }
+
+    @Test
+    fun `findInformationModels should return 200 with list of information models when found`() {
+        val model1 =
+            mapOf(
+                "id" to "model-1",
+                "title" to "First Information Model",
+                "type" to "InformationModel",
+            )
+        val model2 =
+            mapOf(
+                "id" to "model-2",
+                "title" to "Second Information Model",
+                "type" to "InformationModel",
+            )
+        val ids = listOf("model-1", "model-2")
+        val requestBody = """{"ids": ["model-1", "model-2"]}"""
+
+        every { resourceService.getResourceJsonListById(ids, ResourceType.INFORMATION_MODEL) } returns listOf(model1, model2)
+
+        mockMvc
+            .perform(
+                post("/v1/information-models")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(requestBody),
+            ).andExpect(status().isOk)
+            .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+            .andExpect(jsonPath("$").isArray)
+            .andExpect(jsonPath("$.length()").value(2))
+            .andExpect(jsonPath("$[0].id").value("model-1"))
+            .andExpect(jsonPath("$[0].title").value("First Information Model"))
+            .andExpect(jsonPath("$[1].id").value("model-2"))
+            .andExpect(jsonPath("$[1].title").value("Second Information Model"))
+    }
+
+    @Test
+    fun `findInformationModels should return 200 with empty list when no models found`() {
+        val ids = listOf("non-existent-1", "non-existent-2")
+        val requestBody = """{"ids": ["non-existent-1", "non-existent-2"]}"""
+
+        every { resourceService.getResourceJsonListById(ids, ResourceType.INFORMATION_MODEL) } returns emptyList()
+
+        mockMvc
+            .perform(
+                post("/v1/information-models")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(requestBody),
+            ).andExpect(status().isOk)
+            .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+            .andExpect(jsonPath("$").isArray)
+            .andExpect(jsonPath("$.length()").value(0))
+    }
+
+    @Test
+    fun `findInformationModels should return 400 when ids list exceeds 100 items`() {
+        val ids = (1..101).map { "id-$it" }
+        val idsJson = ids.joinToString(",") { "\"$it\"" }
+        val requestBody = """{"ids": [$idsJson]}"""
+
+        mockMvc
+            .perform(
+                post("/v1/information-models")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(requestBody),
+            ).andExpect(status().isBadRequest)
+    }
+
+    @Test
+    fun `findInformationModels should return 200 when ids list has exactly 100 items`() {
+        val ids = (1..100).map { "id-$it" }
+        val resources = ids.map { mapOf("id" to it, "title" to "Information Model $it") }
+        val idsJson = ids.joinToString(",") { "\"$it\"" }
+        val requestBody = """{"ids": [$idsJson]}"""
+
+        every { resourceService.getResourceJsonListById(ids, ResourceType.INFORMATION_MODEL) } returns resources
+
+        mockMvc
+            .perform(
+                post("/v1/information-models")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(requestBody),
+            ).andExpect(status().isOk)
+            .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+            .andExpect(jsonPath("$").isArray)
+            .andExpect(jsonPath("$.length()").value(100))
     }
 }
