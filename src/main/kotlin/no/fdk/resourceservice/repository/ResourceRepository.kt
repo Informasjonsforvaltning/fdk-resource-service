@@ -52,7 +52,7 @@ interface ResourceRepository : JpaRepository<ResourceEntity, String> {
     @Query(
         value = """
         UPDATE resources 
-        SET resource_json = CAST(:resourceJson AS jsonb), uri = :uri, timestamp = :timestamp, updated_at = CURRENT_TIMESTAMP
+        SET resource_json = (:resourceJson)::jsonb, uri = :uri, timestamp = :timestamp, updated_at = CURRENT_TIMESTAMP
         WHERE id = :id
     """,
         nativeQuery = true,
