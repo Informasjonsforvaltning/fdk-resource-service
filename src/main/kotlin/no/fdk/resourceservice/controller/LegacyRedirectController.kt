@@ -46,7 +46,7 @@ class LegacyRedirectController {
         @PathVariable id: String,
     ): ResponseEntity<Void> {
         val request = (RequestContextHolder.currentRequestAttributes() as ServletRequestAttributes).request
-        logger.info("Legacy redirect: ${request.requestURI} -> /v1/concepts/$id")
+        logger.debug("Legacy redirect: ${request.requestURI} -> /v1/concepts/$id")
         return ResponseEntity
             .status(HttpStatus.TEMPORARY_REDIRECT)
             .header("Location", "/v1/concepts/$id")
@@ -70,7 +70,7 @@ class LegacyRedirectController {
         @PathVariable id: String,
     ): ResponseEntity<Void> {
         val request = (RequestContextHolder.currentRequestAttributes() as ServletRequestAttributes).request
-        logger.info("Legacy redirect: ${request.requestURI} -> /v1/data-services/$id")
+        logger.debug("Legacy redirect: ${request.requestURI} -> /v1/data-services/$id")
         return ResponseEntity
             .status(HttpStatus.TEMPORARY_REDIRECT)
             .header("Location", "/v1/data-services/$id")
@@ -94,7 +94,7 @@ class LegacyRedirectController {
         @PathVariable id: String,
     ): ResponseEntity<Void> {
         val request = (RequestContextHolder.currentRequestAttributes() as ServletRequestAttributes).request
-        logger.info("Legacy redirect: ${request.requestURI} -> /v1/datasets/$id")
+        logger.debug("Legacy redirect: ${request.requestURI} -> /v1/datasets/$id")
         return ResponseEntity
             .status(HttpStatus.TEMPORARY_REDIRECT)
             .header("Location", "/v1/datasets/$id")
@@ -118,7 +118,7 @@ class LegacyRedirectController {
         @PathVariable id: String,
     ): ResponseEntity<Void> {
         val request = (RequestContextHolder.currentRequestAttributes() as ServletRequestAttributes).request
-        logger.info("Legacy redirect: ${request.requestURI} -> /v1/events/$id")
+        logger.debug("Legacy redirect: ${request.requestURI} -> /v1/events/$id")
         return ResponseEntity
             .status(HttpStatus.TEMPORARY_REDIRECT)
             .header("Location", "/v1/events/$id")
@@ -142,7 +142,7 @@ class LegacyRedirectController {
         @PathVariable id: String,
     ): ResponseEntity<Void> {
         val request = (RequestContextHolder.currentRequestAttributes() as ServletRequestAttributes).request
-        logger.info("Legacy redirect: ${request.requestURI} -> /v1/information-models/$id")
+        logger.debug("Legacy redirect: ${request.requestURI} -> /v1/information-models/$id")
         return ResponseEntity
             .status(HttpStatus.TEMPORARY_REDIRECT)
             .header("Location", "/v1/information-models/$id")
@@ -166,7 +166,7 @@ class LegacyRedirectController {
         @PathVariable id: String,
     ): ResponseEntity<Void> {
         val request = (RequestContextHolder.currentRequestAttributes() as ServletRequestAttributes).request
-        logger.info("Legacy redirect: ${request.requestURI} -> /v1/services/$id")
+        logger.debug("Legacy redirect: ${request.requestURI} -> /v1/services/$id")
         return ResponseEntity
             .status(HttpStatus.TEMPORARY_REDIRECT)
             .header("Location", "/v1/services/$id")
@@ -187,7 +187,7 @@ class LegacyRedirectController {
     )
     fun redirectPing(): ResponseEntity<Void> {
         val request = (RequestContextHolder.currentRequestAttributes() as ServletRequestAttributes).request
-        logger.info("Legacy redirect: ${request.requestURI} -> /health")
+        logger.debug("Legacy redirect: ${request.requestURI} -> /health")
         return ResponseEntity
             .status(HttpStatus.TEMPORARY_REDIRECT)
             .header("Location", "/health")
@@ -206,7 +206,7 @@ class LegacyRedirectController {
     )
     fun redirectReady(): ResponseEntity<Void> {
         val request = (RequestContextHolder.currentRequestAttributes() as ServletRequestAttributes).request
-        logger.info("Legacy redirect: ${request.requestURI} -> /health")
+        logger.debug("Legacy redirect: ${request.requestURI} -> /health")
         return ResponseEntity
             .status(HttpStatus.TEMPORARY_REDIRECT)
             .header("Location", "/health")
