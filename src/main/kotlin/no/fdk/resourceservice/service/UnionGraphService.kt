@@ -90,6 +90,7 @@ class UnionGraphService(
         description: String? = null,
         resourceIds: List<String>? = null,
         resourceUris: List<String>? = null,
+        includeCatalog: Boolean = true,
     ): CreateOrderResult {
         // Validate name is not blank
         if (name.isBlank()) {
@@ -146,6 +147,7 @@ class UnionGraphService(
                 expandDistributionAccessServices,
                 resourceIdsString,
                 resourceUrisString,
+                includeCatalog,
             )
         if (existingOrder != null) {
             logger.info(
@@ -171,6 +173,7 @@ class UnionGraphService(
                 description = description,
                 resourceIds = resourceIds?.sorted(),
                 resourceUris = resourceUris?.sorted(),
+                includeCatalog = includeCatalog,
             )
 
         val saved = unionGraphOrderRepository.save(order)
@@ -337,6 +340,7 @@ class UnionGraphService(
         val description: String? = null,
         val resourceIds: List<String>? = null,
         val resourceUris: List<String>? = null,
+        val includeCatalog: Boolean? = null,
         val providedFields: Set<String> = emptySet(),
     ) {
         fun has(field: String) = providedFields.contains(field)
@@ -347,7 +351,7 @@ class UnionGraphService(
      *
      * This method allows updating various fields of a union graph order.
      * If fields that affect the graph content are changed (resourceTypes, resourceFilters,
-     * expandDistributionAccessServices), the order will be
+     * expandDistributionAccessServices, includeCatalog), the order will be
      * reset to PENDING status to trigger a rebuild with the new configuration.
      *
      * Safe fields that don't require a rebuild (updateTtlHours, webhookUrl) can be
@@ -373,6 +377,7 @@ class UnionGraphService(
         expandDistributionAccessServices: Boolean? = null,
         name: String? = null,
         description: String? = null,
+        includeCatalog: Boolean? = null,
     ): UnionGraphOrder? {
         val providedFields =
             mutableSetOf<String>().apply {
@@ -383,6 +388,7 @@ class UnionGraphService(
                 if (expandDistributionAccessServices != null) add("expandDistributionAccessServices")
                 if (name != null) add("name")
                 if (description != null) add("description")
+                if (includeCatalog != null) add("includeCatalog")
             }
         return updateOrder(
             id,
@@ -394,6 +400,7 @@ class UnionGraphService(
                 expandDistributionAccessServices = expandDistributionAccessServices,
                 name = name,
                 description = description,
+                includeCatalog = includeCatalog,
                 providedFields = providedFields,
             ),
         )
@@ -458,6 +465,12 @@ class UnionGraphService(
         val newDescription = getOrKeepNullable("description", fields.description, existingOrder.description)
         val newResourceIds = getOrKeepNullable("resourceIds", fields.resourceIds?.sorted(), existingOrder.resourceIds)
         val newResourceUris = getOrKeepNullable("resourceUris", fields.resourceUris?.sorted(), existingOrder.resourceUris)
+        val newIncludeCatalog =
+            getOrKeep(
+                "includeCatalog",
+                fields.includeCatalog,
+                existingOrder.includeCatalog,
+            )
 
         val resourceTypesChanged = fields.has("resourceTypes") && newResourceTypes?.sorted() != existingOrder.resourceTypes?.sorted()
         val filtersChanged = fields.has("resourceFilters") && newResourceFilters != existingOrder.resourceFilters
@@ -466,8 +479,10 @@ class UnionGraphService(
                 newExpandDistributionAccessServices != existingOrder.expandDistributionAccessServices
         val resourceIdsChanged = fields.has("resourceIds") && newResourceIds?.sorted() != existingOrder.resourceIds?.sorted()
         val resourceUrisChanged = fields.has("resourceUris") && newResourceUris?.sorted() != existingOrder.resourceUris?.sorted()
+        val includeCatalogChanged = fields.has("includeCatalog") && newIncludeCatalog != existingOrder.includeCatalog
 
-        val requiresRebuild = resourceTypesChanged || filtersChanged || expandChanged || resourceIdsChanged || resourceUrisChanged
+        val requiresRebuild =
+            resourceTypesChanged || filtersChanged || expandChanged || resourceIdsChanged || resourceUrisChanged || includeCatalogChanged
 
         // Validate resource filters if provided
         validateResourceFilters(newResourceTypes?.map { ResourceType.valueOf(it) }, newResourceFilters)
@@ -521,6 +536,7 @@ class UnionGraphService(
                 description = newDescription,
                 resourceIds = resourceIdsString,
                 resourceUris = resourceUrisString,
+                includeCatalog = newIncludeCatalog,
                 resetToPending = requiresRebuild,
             )
 
@@ -597,6 +613,7 @@ class UnionGraphService(
         expandDistributionAccessServices: Boolean = false,
         rdfFormat: RdfService.RdfFormat = RdfService.RdfFormat.TURTLE,
         orderId: String? = null, // Required for saving snapshots
+        includeCatalog: Boolean = true,
     ): Boolean {
         if (orderId == null) {
             logger.warn("buildUnionGraph called without orderId - snapshots cannot be saved")
@@ -699,13 +716,18 @@ class UnionGraphService(
 
                                 // Convert resource graph data to RDF-XML for snapshot storage
                                 // This avoids conversion at query time for OAI-PMH
-                                val rdfXmlData =
+                                var rdfXmlData =
                                     rdfService.convertFromFormat(
                                         finalGraphData,
                                         finalGraphFormat,
                                         RdfService.RdfFormat.RDF_XML,
                                         RdfService.RdfFormatStyle.STANDARD,
                                     ) ?: finalGraphData // Fallback to original if conversion fails
+
+                                // Filter out Catalog and CatalogRecord if includeCatalog is false
+                                if (!includeCatalog) {
+                                    rdfXmlData = filterCatalogFromRdfXml(rdfXmlData)
+                                }
 
                                 // Create snapshot of resource graph data in RDF-XML format
                                 val snapshot =
@@ -875,6 +897,71 @@ class UnionGraphService(
 
         return datasetGraphData
     }
+
+    /**
+     * Filters out Catalog and CatalogRecord resources from RDF/XML data.
+     * Removes all statements where Catalog or CatalogRecord is the subject,
+     * but preserves statements where their URIs appear as objects (references).
+     *
+     * @param rdfXmlData The RDF/XML data to filter
+     * @return The filtered RDF/XML data, or the original data if filtering fails
+     */
+    private fun filterCatalogFromRdfXml(rdfXmlData: String): String =
+        try {
+            val model = ModelFactory.createDefaultModel()
+            ByteArrayInputStream(rdfXmlData.toByteArray()).use { inputStream ->
+                RDFDataMgr.read(model, inputStream, Lang.RDFXML)
+            }
+
+            // Find all resources with type dcat:Catalog or dcat:CatalogRecord
+            val catalogType = model.createResource("http://www.w3.org/ns/dcat#Catalog")
+            val catalogRecordType = model.createResource("http://www.w3.org/ns/dcat#CatalogRecord")
+            val rdfType = model.createProperty("http://www.w3.org/1999/02/22-rdf-syntax-ns#type")
+
+            // Find all resources that are of type Catalog or CatalogRecord
+            val catalogResources = mutableSetOf<org.apache.jena.rdf.model.Resource>()
+            val catalogRecordResources = mutableSetOf<org.apache.jena.rdf.model.Resource>()
+
+            // Query for resources with rdf:type = dcat:Catalog
+            val catalogStmts = model.listStatements(null, rdfType, catalogType)
+            while (catalogStmts.hasNext()) {
+                val stmt = catalogStmts.nextStatement()
+                val resource = stmt.subject
+                if (resource.isURIResource) {
+                    catalogResources.add(resource)
+                }
+            }
+
+            // Query for resources with rdf:type = dcat:CatalogRecord
+            val catalogRecordStmts = model.listStatements(null, rdfType, catalogRecordType)
+            while (catalogRecordStmts.hasNext()) {
+                val stmt = catalogRecordStmts.nextStatement()
+                val resource = stmt.subject
+                if (resource.isURIResource) {
+                    catalogRecordResources.add(resource)
+                }
+            }
+
+            // Remove all statements where Catalog or CatalogRecord resources are the subject
+            // This removes the entire resource with all its properties, but preserves
+            // statements where the Catalog/CatalogRecord URI appears as an object
+            for (resource in catalogResources) {
+                model.removeAll(resource, null, null)
+            }
+            for (resource in catalogRecordResources) {
+                model.removeAll(resource, null, null)
+            }
+
+            // Convert back to RDF/XML
+            val writer = StringWriter()
+            RDFDataMgr.write(writer, model, Lang.RDFXML)
+            model.close()
+            writer.toString()
+        } catch (e: Exception) {
+            logger.warn("Failed to filter Catalog/CatalogRecord from RDF/XML: {}", e.message)
+            // Return original data if filtering fails
+            rdfXmlData
+        }
 
     /**
      * Parses a format string to Jena Lang enum.
@@ -1212,13 +1299,18 @@ class UnionGraphService(
 
                     // Convert resource graph data to RDF-XML for snapshot storage
                     // This avoids conversion at query time for OAI-PMH
-                    val rdfXmlData =
+                    var rdfXmlData =
                         rdfService.convertFromFormat(
                             finalGraphData,
                             finalGraphFormat,
                             RdfService.RdfFormat.RDF_XML,
                             RdfService.RdfFormatStyle.STANDARD,
                         ) ?: finalGraphData // Fallback to original if conversion fails
+
+                    // Filter out Catalog and CatalogRecord if includeCatalog is false
+                    if (!order.includeCatalog) {
+                        rdfXmlData = filterCatalogFromRdfXml(rdfXmlData)
+                    }
 
                     // Create snapshot of resource graph data in RDF-XML format
                     val snapshot =

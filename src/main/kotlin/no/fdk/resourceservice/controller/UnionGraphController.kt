@@ -176,6 +176,7 @@ class UnionGraphController(
         val description = requestBody?.description
         val resourceIds = requestBody?.resourceIds?.ifEmpty { null }
         val resourceUris = requestBody?.resourceUris?.ifEmpty { null }
+        val includeCatalog = requestBody?.includeCatalog ?: true
 
         // Validate name is provided for creation
         if (name.isNullOrBlank()) {
@@ -201,6 +202,7 @@ class UnionGraphController(
                     description,
                     resourceIds,
                     resourceUris,
+                    includeCatalog,
                 )
             } catch (e: IllegalArgumentException) {
                 // Handle validation errors (e.g., invalid webhook URL, invalid updateTtlHours)
@@ -248,7 +250,7 @@ class UnionGraphController(
      *
      * This endpoint allows updating various fields of a union graph order.
      * If fields that affect the graph content are changed (resourceTypes, resourceFilters,
-     * resourceIds, resourceUris, expandDistributionAccessServices), the order will be
+     * resourceIds, resourceUris, expandDistributionAccessServices, includeCatalog), the order will be
      * reset to PENDING status to trigger a rebuild with the new configuration.
      *
      * Safe fields that don't require a rebuild (updateTtlHours, webhookUrl, name, description) can be
@@ -265,7 +267,7 @@ class UnionGraphController(
             "Update an existing union graph order. " +
                 "You can update any field of the union graph configuration. " +
                 "If fields that affect the graph content are changed (resourceTypes, resourceFilters, " +
-                "resourceIds, resourceUris, expandDistributionAccessServices), the order will be " +
+                "resourceIds, resourceUris, expandDistributionAccessServices, includeCatalog), the order will be " +
                 "reset to PENDING status to trigger a rebuild with the new configuration. " +
                 "Safe fields that don't require a rebuild (updateTtlHours, webhookUrl, name, description) can be " +
                 "updated without affecting the graph status. " +
@@ -361,6 +363,7 @@ class UnionGraphController(
                 "description",
                 "resourceIds",
                 "resourceUris",
+                "includeCatalog",
             )
         val providedFields = fieldNames.filter { hasField(it) }.toSet()
 
@@ -383,6 +386,7 @@ class UnionGraphController(
                             description = getIfPresent("description", request.description),
                             resourceIds = resourceIds,
                             resourceUris = resourceUris,
+                            includeCatalog = getIfPresent("includeCatalog", request.includeCatalog),
                             providedFields = providedFields,
                         ),
                 )
@@ -861,6 +865,21 @@ class UnionGraphController(
             example = "[\"https://example.com/resource1\", \"https://example.com/resource2\"]",
         )
         val resourceUris: List<String>? = null,
+        /**
+         * If true (default), Catalog and CatalogRecord resources are included in union graph snapshots.
+         * If false, Catalog and CatalogRecord resources are removed from snapshots (as subjects),
+         * but references to their URIs (as objects) are preserved.
+         *
+         * Default: true
+         */
+        @io.swagger.v3.oas.annotations.media.Schema(
+            description =
+                "If true (default), Catalog and CatalogRecord resources are included in union graph snapshots. " +
+                    "If false, Catalog and CatalogRecord resources are removed from snapshots (as subjects), " +
+                    "but references to their URIs (as objects) are preserved.",
+            example = "true",
+        )
+        val includeCatalog: Boolean? = null,
     ) {
         fun toDomainFilters(): UnionGraphResourceFilters? = resourceFilters?.toDomain()
     }

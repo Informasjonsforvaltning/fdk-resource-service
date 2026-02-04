@@ -69,7 +69,7 @@ class UnionGraphServiceTest {
         val updateTtlHours = 24
         val webhookUrl = "https://example.com/webhook"
 
-        every { unionGraphOrderRepository.findByConfiguration(any(), any(), any(), any(), any(), any(), any()) } returns null
+        every { unionGraphOrderRepository.findByConfiguration(any(), any(), any(), any(), any(), any(), any(), any()) } returns null
         every { unionGraphOrderRepository.save(any()) } answers { firstArg() }
 
         // When
@@ -107,6 +107,7 @@ class UnionGraphServiceTest {
                 false,
                 null,
                 null,
+                true,
             )
         } returns existingOrder
 
@@ -174,7 +175,7 @@ class UnionGraphServiceTest {
     @Test
     fun `createOrder should accept updateTtlHours of 0`() {
         // Given
-        every { unionGraphOrderRepository.findByConfiguration(any(), any(), any(), any(), any(), any(), any()) } returns null
+        every { unionGraphOrderRepository.findByConfiguration(any(), any(), any(), any(), any(), any(), any(), any()) } returns null
         every { unionGraphOrderRepository.save(any()) } answers { firstArg() }
 
         // When
@@ -196,7 +197,7 @@ class UnionGraphServiceTest {
     @Test
     fun `createOrder should accept updateTtlHours of 24`() {
         // Given
-        every { unionGraphOrderRepository.findByConfiguration(any(), any(), any(), any(), any(), any(), any()) } returns null
+        every { unionGraphOrderRepository.findByConfiguration(any(), any(), any(), any(), any(), any(), any(), any()) } returns null
         every { unionGraphOrderRepository.save(any()) } answers { firstArg() }
 
         // When
@@ -229,7 +230,7 @@ class UnionGraphServiceTest {
     @Test
     fun `createOrder should accept null webhook URL`() {
         // Given
-        every { unionGraphOrderRepository.findByConfiguration(any(), any(), any(), any(), any(), any(), any()) } returns null
+        every { unionGraphOrderRepository.findByConfiguration(any(), any(), any(), any(), any(), any(), any(), any()) } returns null
         every { unionGraphOrderRepository.save(any()) } answers { firstArg() }
 
         // When
@@ -243,7 +244,7 @@ class UnionGraphServiceTest {
     @Test
     fun `createOrder should accept empty resource types list`() {
         // Given
-        every { unionGraphOrderRepository.findByConfiguration(null, any(), any(), any(), any(), any(), any()) } returns null
+        every { unionGraphOrderRepository.findByConfiguration(null, any(), any(), any(), any(), any(), any(), any()) } returns null
         every { unionGraphOrderRepository.save(any()) } answers { firstArg() }
 
         // When
@@ -259,7 +260,7 @@ class UnionGraphServiceTest {
     fun `createOrder should sort resource types for consistency`() {
         // Given
         val resourceTypes = listOf(ResourceType.DATASET, ResourceType.CONCEPT)
-        every { unionGraphOrderRepository.findByConfiguration(any(), any(), any(), any(), any(), any(), any()) } returns null
+        every { unionGraphOrderRepository.findByConfiguration(any(), any(), any(), any(), any(), any(), any(), any()) } returns null
         every { unionGraphOrderRepository.save(any()) } answers { firstArg() }
 
         // When
@@ -280,7 +281,7 @@ class UnionGraphServiceTest {
                         isRelatedToTransportportal = null,
                     ),
             )
-        every { unionGraphOrderRepository.findByConfiguration(any(), any(), any(), any(), any(), any(), any()) } returns null
+        every { unionGraphOrderRepository.findByConfiguration(any(), any(), any(), any(), any(), any(), any(), any()) } returns null
         every { unionGraphOrderRepository.save(any()) } answers { firstArg() }
 
         // When
@@ -328,7 +329,7 @@ class UnionGraphServiceTest {
     @Test
     fun `createOrder should persist expandDistributionAccessServices flag`() {
         // Given
-        every { unionGraphOrderRepository.findByConfiguration(any(), any(), any(), any(), any(), any(), any()) } returns null
+        every { unionGraphOrderRepository.findByConfiguration(any(), any(), any(), any(), any(), any(), any(), any()) } returns null
         every { unionGraphOrderRepository.save(any()) } answers { firstArg() }
 
         // When
@@ -371,6 +372,7 @@ class UnionGraphServiceTest {
                 false,
                 null,
                 null,
+                true,
             )
         } returns order1
         every {
@@ -382,6 +384,7 @@ class UnionGraphServiceTest {
                 true,
                 null,
                 null,
+                true,
             )
         } returns order2
 
@@ -537,6 +540,7 @@ class UnionGraphServiceTest {
                 any(),
                 any(),
                 any(),
+                any(),
                 false,
             )
         } returns
@@ -562,7 +566,7 @@ class UnionGraphServiceTest {
         assertEquals(UnionGraphOrder.GraphStatus.COMPLETED, result!!.status)
         assertEquals(24, result.updateTtlHours)
         assertEquals("https://example.com/new-webhook", result.webhookUrl)
-        verify { unionGraphOrderRepository.updateOrder(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), false) }
+        verify { unionGraphOrderRepository.updateOrder(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), false) }
     }
 
     @Test
@@ -601,6 +605,7 @@ class UnionGraphServiceTest {
                 any(),
                 any(),
                 any(),
+                any(),
                 true,
             )
         } returns
@@ -617,7 +622,7 @@ class UnionGraphServiceTest {
         assertNotNull(result)
         assertEquals(UnionGraphOrder.GraphStatus.PENDING, result!!.status)
         assertEquals(listOf("DATASET"), result.resourceTypes)
-        verify { unionGraphOrderRepository.updateOrder(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), true) }
+        verify { unionGraphOrderRepository.updateOrder(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), true) }
     }
 
     @Test
@@ -632,7 +637,7 @@ class UnionGraphServiceTest {
         // Then
         assertNull(result)
         verify(exactly = 0) {
-            unionGraphOrderRepository.updateOrder(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any())
+            unionGraphOrderRepository.updateOrder(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any())
         }
     }
 
@@ -700,6 +705,7 @@ class UnionGraphServiceTest {
                 any(),
                 any(),
                 any(),
+                any(),
                 false,
             )
         } returns
@@ -752,6 +758,7 @@ class UnionGraphServiceTest {
                 any(),
                 any(),
                 any(),
+                any(),
                 true,
             )
         } returns
@@ -767,7 +774,7 @@ class UnionGraphServiceTest {
         // Then
         assertNotNull(result)
         assertEquals(UnionGraphOrder.GraphStatus.PENDING, result!!.status)
-        verify { unionGraphOrderRepository.updateOrder(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), true) }
+        verify { unionGraphOrderRepository.updateOrder(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), true) }
     }
 
     @Test
@@ -903,7 +910,7 @@ class UnionGraphServiceTest {
     fun `createOrder should persist resourceIds`() {
         // Given
         val resourceIds = listOf("resource-id-1", "resource-id-2")
-        every { unionGraphOrderRepository.findByConfiguration(any(), any(), any(), any(), any(), any(), any()) } returns null
+        every { unionGraphOrderRepository.findByConfiguration(any(), any(), any(), any(), any(), any(), any(), any()) } returns null
         every { unionGraphOrderRepository.save(any()) } answers { firstArg() }
 
         // When
@@ -924,7 +931,7 @@ class UnionGraphServiceTest {
     fun `createOrder should persist resourceUris`() {
         // Given
         val resourceUris = listOf("https://example.com/resource1", "https://example.com/resource2")
-        every { unionGraphOrderRepository.findByConfiguration(any(), any(), any(), any(), any(), any(), any()) } returns null
+        every { unionGraphOrderRepository.findByConfiguration(any(), any(), any(), any(), any(), any(), any(), any()) } returns null
         every { unionGraphOrderRepository.save(any()) } answers { firstArg() }
 
         // When
@@ -970,6 +977,7 @@ class UnionGraphServiceTest {
                 false,
                 "{id-1,id-2}",
                 null,
+                true,
             )
         } returns order1
         every {
@@ -981,6 +989,7 @@ class UnionGraphServiceTest {
                 false,
                 "{id-3,id-4}",
                 null,
+                true,
             )
         } returns order2
 
@@ -1034,6 +1043,7 @@ class UnionGraphServiceTest {
                 false,
                 null,
                 "{https://example.com/resource1}",
+                true,
             )
         } returns order1
         every {
@@ -1045,6 +1055,7 @@ class UnionGraphServiceTest {
                 false,
                 null,
                 "{https://example.com/resource2}",
+                true,
             )
         } returns order2
 

@@ -179,21 +179,25 @@ The FDK Resource Service is built on a microservices architecture with multiple 
 - Supports resource filtering and expansion (e.g., expand distribution access services)
 - Handles TTL-based automatic updates
 - Manages resource snapshots for union graphs
+- Filters Catalog and CatalogRecord resources when `includeCatalog = false`
 
 **Key Methods**:
 - `createOrder()` - Creates a new union graph order
 - `processOrder()` - Processes a union graph order (full processing)
 - `processNextBatch()` - Processes next batch incrementally
+- `buildUnionGraph()` - Builds union graph snapshots from resources
 - `getUnionGraph()` - Retrieves union graph data
 - `getUnionGraphStatus()` - Gets union graph processing status
 - `resetToPending()` - Resets union graph to pending state
 - `deleteUnionGraph()` - Deletes union graph
+- `filterCatalogFromRdfXml()` - Filters Catalog/CatalogRecord from RDF/XML snapshots
 
 **Union Graph Features**:
 - **Resource Type Filtering**: Include/exclude specific resource types
 - **Resource Filters**: Per-resource-type filters (e.g., `isOpenData`, `isRelatedToTransportportal`)
 - **Resource ID/URI Filtering**: Include specific resources by ID or URI
 - **Distribution Expansion**: Automatically include DataService graphs referenced by datasets
+- **Catalog Filtering**: Optionally exclude Catalog and CatalogRecord resources from snapshots
 - **TTL Management**: Automatic updates based on time-to-live
 - **Webhook Support**: Notifications on status changes
 
@@ -202,6 +206,13 @@ The FDK Resource Service is built on a microservices architecture with multiple 
 - `PROCESSING` - Currently being built
 - `COMPLETED` - Successfully built and ready
 - `FAILED` - Processing failed
+
+**Transaction Management**:
+- `buildUnionGraph()` uses `REQUIRES_NEW` transaction propagation
+- This ensures the method runs in a separate transaction from the caller
+- **Important**: When testing methods that call `buildUnionGraph()`, ensure test data is committed before calling it
+- Test methods should NOT use `@Transactional` annotation when calling `buildUnionGraph()` directly
+- Use `transactionTemplate.execute {}` to commit test data before calling `buildUnionGraph()`
 
 ---
 
@@ -391,6 +402,60 @@ HTTP Response (with content negotiation)
 
 ---
 
+## Transaction Management Considerations
+
+### Testing Methods with REQUIRES_NEW Transactions
+
+When testing methods that use `REQUIRES_NEW` transaction propagation (like `buildUnionGraph()`), special care must be taken:
+
+**Problem**: 
+- Methods annotated with `@Transactional(propagation = Propagation.REQUIRES_NEW)` start a new transaction
+- This new transaction cannot see uncommitted data from the outer transaction
+- If a test method is annotated with `@Transactional`, all test data remains uncommitted
+- The `REQUIRES_NEW` method will not see the test data, causing failures
+
+**Solution**:
+1. **Remove `@Transactional` from test methods** that directly call methods with `REQUIRES_NEW`
+2. **Use `transactionTemplate.execute {}`** to commit test data before calling the method
+3. **Ensure data is committed** before invoking methods that use `REQUIRES_NEW`
+
+**Example**:
+```kotlin
+@Test
+fun `buildUnionGraph should process resources correctly`() {
+    // Save resource in a transaction that commits
+    transactionTemplate.execute {
+        resourceRepository.save(resourceEntity)
+        resourceRepository.flush()
+    }
+    
+    // Ensure transaction is committed and resource is visible
+    transactionTemplate.execute {
+        resourceRepository.flush()
+    }
+
+    // Now buildUnionGraph (which uses REQUIRES_NEW) can see the committed data
+    val result = unionGraphService.buildUnionGraph(
+        listOf(ResourceType.DATASET),
+        orderId = "test-order"
+    )
+    
+    assertTrue(result)
+}
+```
+
+**Methods Using REQUIRES_NEW**:
+- `UnionGraphService.buildUnionGraph()` - Uses `REQUIRES_NEW` to ensure data consistency
+- `UnionGraphService.processNextBatch()` - Uses `NOT_SUPPORTED` to run outside transactions
+
+**Why REQUIRES_NEW is Used**:
+- Ensures that union graph building happens in a separate transaction
+- Prevents long-running operations from holding locks on the main transaction
+- Allows the main transaction to commit independently
+- Ensures data visibility across different transaction boundaries
+
+---
+
 ## Future Enhancements
 
 Potential improvements for agents:
@@ -400,6 +465,3 @@ Potential improvements for agents:
 - Support for more RDF formats
 - Enhanced webhook retry logic
 - Streaming union graph processing for very large graphs
-
-
-
