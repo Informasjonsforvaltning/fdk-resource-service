@@ -250,6 +250,32 @@ class UnionGraphService(
     }
 
     /**
+     * Gets the count of resources in a union graph from snapshots.
+     * During rebuilds (PROCESSING status), only counts old snapshots to prevent inconsistency.
+     * When COMPLETED, counts all snapshots (latest per resource).
+     *
+     * @param orderId The union graph order ID
+     * @return The count of unique resources in the union graph
+     */
+    fun getResourceCount(orderId: String): Long {
+        val order = unionGraphOrderRepository.findById(orderId).orElse(null) ?: return 0L
+
+        // During rebuilds (PROCESSING status), only count old snapshots to prevent inconsistency
+        // When COMPLETED, count all snapshots (latest per resource)
+        // Use a far future timestamp as sentinel value when we don't want to filter
+        // This avoids PostgreSQL type inference issues with NULL parameters
+        val sentinelTimestamp = java.sql.Timestamp.valueOf("2099-12-31 23:59:59")
+        val beforeTimestamp =
+            if (order.status == UnionGraphOrder.GraphStatus.PROCESSING) {
+                order.processingStartedAt?.let { java.sql.Timestamp.from(it) } ?: sentinelTimestamp
+            } else {
+                sentinelTimestamp
+            }
+
+        return unionGraphResourceSnapshotRepository.countByUnionGraphId(orderId, beforeTimestamp)
+    }
+
+    /**
      * Calculate total resources for progress tracking.
      */
     private fun calculateTotalResources(
