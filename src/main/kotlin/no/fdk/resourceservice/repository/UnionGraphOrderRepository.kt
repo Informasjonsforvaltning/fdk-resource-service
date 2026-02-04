@@ -23,7 +23,7 @@ interface UnionGraphOrderRepository : JpaRepository<UnionGraphOrder, String> {
                update_ttl_hours, error_message, 
                created_at, updated_at, processed_at, processing_started_at, 
                locked_by, locked_at, webhook_url, expand_distribution_access_services,
-               processing_state, resource_ids, resource_uris
+               processing_state, resource_ids, resource_uris, include_catalog
         FROM union_graphs 
         WHERE status = 'PENDING' 
         AND (locked_by IS NULL OR (locked_at AT TIME ZONE 'UTC') < (:lockTimeout AT TIME ZONE 'UTC'))
@@ -54,7 +54,7 @@ interface UnionGraphOrderRepository : JpaRepository<UnionGraphOrder, String> {
                update_ttl_hours, error_message, 
                created_at, updated_at, processed_at, processing_started_at, 
                locked_by, locked_at, webhook_url, expand_distribution_access_services,
-               processing_state, resource_ids, resource_uris
+               processing_state, resource_ids, resource_uris, include_catalog
         FROM union_graphs 
         WHERE status = 'PENDING' 
         AND (locked_by IS NULL OR (locked_at AT TIME ZONE 'UTC') < (:lockTimeout AT TIME ZONE 'UTC'))
@@ -200,7 +200,7 @@ interface UnionGraphOrderRepository : JpaRepository<UnionGraphOrder, String> {
                update_ttl_hours, error_message, 
                created_at, updated_at, processed_at, processing_started_at, 
                locked_by, locked_at, webhook_url, expand_distribution_access_services,
-               processing_state, resource_ids, resource_uris
+               processing_state, resource_ids, resource_uris, include_catalog
         FROM union_graphs 
         WHERE status = :status
     """,
@@ -221,7 +221,7 @@ interface UnionGraphOrderRepository : JpaRepository<UnionGraphOrder, String> {
                update_ttl_hours, error_message, 
                created_at, updated_at, processed_at, processing_started_at, 
                locked_by, locked_at, webhook_url, expand_distribution_access_services,
-               processing_state, resource_ids, resource_uris
+               processing_state, resource_ids, resource_uris, include_catalog
         FROM union_graphs 
         WHERE status IN ('COMPLETED', 'PROCESSING')
         ORDER BY created_at DESC
@@ -240,7 +240,7 @@ interface UnionGraphOrderRepository : JpaRepository<UnionGraphOrder, String> {
                update_ttl_hours, error_message, 
                created_at, updated_at, processed_at, processing_started_at, 
                locked_by, locked_at, webhook_url, expand_distribution_access_services,
-               processing_state, resource_ids, resource_uris
+               processing_state, resource_ids, resource_uris, include_catalog
         FROM union_graphs 
         ORDER BY created_at DESC
     """,
@@ -272,7 +272,7 @@ interface UnionGraphOrderRepository : JpaRepository<UnionGraphOrder, String> {
                update_ttl_hours, error_message, 
                created_at, updated_at, processed_at, processing_started_at, 
                locked_by, locked_at, webhook_url, expand_distribution_access_services,
-               processing_state, resource_ids, resource_uris
+               processing_state, resource_ids, resource_uris, include_catalog
         FROM union_graphs 
         WHERE (
             CASE
@@ -306,6 +306,7 @@ interface UnionGraphOrderRepository : JpaRepository<UnionGraphOrder, String> {
                 ELSE resource_uris = CAST(:resourceUris AS text[])
             END
         )
+        AND include_catalog = :includeCatalog
         ORDER BY 
             CASE status 
                 WHEN 'COMPLETED' THEN 1
@@ -326,6 +327,7 @@ interface UnionGraphOrderRepository : JpaRepository<UnionGraphOrder, String> {
         @Param("expandDistributionAccessServices") expandDistributionAccessServices: Boolean,
         @Param("resourceIds") resourceIds: String?,
         @Param("resourceUris") resourceUris: String?,
+        @Param("includeCatalog") includeCatalog: Boolean,
     ): UnionGraphOrder?
 
     /**
@@ -368,6 +370,7 @@ interface UnionGraphOrderRepository : JpaRepository<UnionGraphOrder, String> {
                 WHEN :resourceUris IS NULL THEN NULL 
                 ELSE CAST(:resourceUris AS text[]) 
             END,
+            include_catalog = :includeCatalog,
             updated_at = CURRENT_TIMESTAMP
         WHERE id = :id
     """,
@@ -384,6 +387,7 @@ interface UnionGraphOrderRepository : JpaRepository<UnionGraphOrder, String> {
         @Param("description") description: String?,
         @Param("resourceIds") resourceIds: String?,
         @Param("resourceUris") resourceUris: String?,
+        @Param("includeCatalog") includeCatalog: Boolean,
     ): Int
 
     /**
@@ -417,6 +421,7 @@ interface UnionGraphOrderRepository : JpaRepository<UnionGraphOrder, String> {
             expand_distribution_access_services = :expandDistributionAccessServices,
             name = :name,
             description = :description,
+            include_catalog = :includeCatalog,
             status = 'PENDING',
             error_message = NULL,
             locked_by = NULL,
@@ -439,6 +444,7 @@ interface UnionGraphOrderRepository : JpaRepository<UnionGraphOrder, String> {
         @Param("description") description: String?,
         @Param("resourceIds") resourceIds: String?,
         @Param("resourceUris") resourceUris: String?,
+        @Param("includeCatalog") includeCatalog: Boolean,
     ): Int
 
     /**
@@ -456,6 +462,7 @@ interface UnionGraphOrderRepository : JpaRepository<UnionGraphOrder, String> {
         description: String?,
         resourceIds: String?,
         resourceUris: String?,
+        includeCatalog: Boolean,
         resetToPending: Boolean,
     ): Int =
         if (resetToPending) {
@@ -470,6 +477,7 @@ interface UnionGraphOrderRepository : JpaRepository<UnionGraphOrder, String> {
                 description = description,
                 resourceIds = resourceIds,
                 resourceUris = resourceUris,
+                includeCatalog = includeCatalog,
             )
         } else {
             updateOrderWithoutReset(
@@ -483,6 +491,7 @@ interface UnionGraphOrderRepository : JpaRepository<UnionGraphOrder, String> {
                 description = description,
                 resourceIds = resourceIds,
                 resourceUris = resourceUris,
+                includeCatalog = includeCatalog,
             )
         }
 }

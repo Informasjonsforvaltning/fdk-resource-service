@@ -1549,4 +1549,205 @@ class UnionGraphIntegrationTest : BaseIntegrationTest() {
         val dataServiceSnapshots = snapshots.filter { it.resourceId == dataServiceId }
         assertEquals(0, dataServiceSnapshots.size, "Should not create separate DataService snapshot")
     }
+
+    @Test
+    fun `buildUnionGraph should remove Catalog and CatalogRecord when includeCatalog is false`() {
+        // Given - create a dataset resource that contains Catalog and CatalogRecord
+        val datasetId = "dataset-with-catalog"
+        val datasetUri = "https://example.com/dataset/1"
+        val catalogUri = "https://example.com/catalog/1"
+        val catalogRecordUri = "https://example.com/catalog-record/1"
+
+        val datasetGraph =
+            """
+            @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+            @prefix dcat: <http://www.w3.org/ns/dcat#> .
+            @prefix dct: <http://purl.org/dc/terms/> .
+            @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+            
+            <$datasetUri> a dcat:Dataset ;
+                dcat:title "Test Dataset" ;
+                dct:isPartOf <$catalogUri> .
+            
+            <$catalogUri> a dcat:Catalog ;
+                dcat:title "Test Catalog" ;
+                dct:description "Catalog description" ;
+                dcat:dataset <$datasetUri> .
+            
+            <$catalogRecordUri> a dcat:CatalogRecord ;
+                dct:modified "2024-01-01"^^xsd:date ;
+                dct:conformsTo <$catalogUri> .
+            """.trimIndent()
+
+        val datasetJson =
+            mapOf(
+                "@id" to datasetUri,
+                "title" to "Test Dataset",
+            )
+
+        // Save resource in a transaction that commits
+        transactionTemplate.execute {
+            resourceRepository.save(
+                no.fdk.resourceservice.model.ResourceEntity(
+                    id = datasetId,
+                    uri = datasetUri,
+                    resourceType = ResourceType.DATASET.name,
+                    resourceGraphData = datasetGraph,
+                    resourceGraphFormat = "TURTLE",
+                    resourceJson = datasetJson,
+                    deleted = false,
+                    timestamp = System.currentTimeMillis(),
+                ),
+            )
+            resourceRepository.flush()
+        }
+
+        // Ensure transaction is committed and resource is visible
+        transactionTemplate.execute {
+            resourceRepository.flush()
+        }
+
+        // When - build union graph with includeCatalog = false
+        val orderId = "test-order-no-catalog"
+        val result =
+            unionGraphService.buildUnionGraph(
+                listOf(ResourceType.DATASET),
+                includeCatalog = false,
+                orderId = orderId,
+            )
+
+        // Then - verify build succeeded
+        assertTrue(result, "buildUnionGraph should return true")
+
+        // Then - verify snapshot exists
+        val snapshots = unionGraphResourceSnapshotRepository.findAll().filter { it.unionGraphId == orderId }
+        assertEquals(1, snapshots.size, "Should have one snapshot")
+        val snapshot = snapshots[0]
+        assertEquals(datasetId, snapshot.resourceId)
+        assertEquals(ResourceType.DATASET.name, snapshot.resourceType)
+
+        // Then - verify Catalog and CatalogRecord are removed from snapshot
+        val snapshotContent = snapshot.resourceGraphData
+        assertTrue(
+            snapshotContent.contains("Test Dataset") || snapshotContent.contains(datasetUri),
+            "Snapshot should contain dataset data",
+        )
+
+        // Verify Catalog resource is removed (as subject)
+        assertFalse(
+            snapshotContent.contains("Test Catalog") ||
+                (snapshotContent.contains(catalogUri) && snapshotContent.contains("dcat:Catalog")),
+            "Snapshot should not contain Catalog resource with its properties",
+        )
+
+        // Verify CatalogRecord resource is removed (as subject)
+        assertFalse(
+            snapshotContent.contains("2024-01-01") ||
+                (snapshotContent.contains(catalogRecordUri) && snapshotContent.contains("dcat:CatalogRecord")),
+            "Snapshot should not contain CatalogRecord resource with its properties",
+        )
+
+        // Verify reference to Catalog URI is preserved (as object)
+        assertTrue(
+            snapshotContent.contains("isPartOf") || snapshotContent.contains("dct:isPartOf"),
+            "Snapshot should contain reference to Catalog URI (as object)",
+        )
+    }
+
+    @Test
+    fun `buildUnionGraph should preserve Catalog and CatalogRecord when includeCatalog is true`() {
+        // Given - create a dataset resource that contains Catalog and CatalogRecord
+        val datasetId = "dataset-with-catalog-preserved"
+        val datasetUri = "https://example.com/dataset/2"
+        val catalogUri = "https://example.com/catalog/2"
+        val catalogRecordUri = "https://example.com/catalog-record/2"
+
+        val datasetGraph =
+            """
+            @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+            @prefix dcat: <http://www.w3.org/ns/dcat#> .
+            @prefix dct: <http://purl.org/dc/terms/> .
+            @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+            @prefix foaf: <http://xmlns.com/foaf/0.1/> .
+            
+            <$datasetUri> a dcat:Dataset ;
+                dcat:title "Test Dataset" ;
+                dct:isPartOf <$catalogUri> .
+            
+            <$catalogUri> a dcat:Catalog ;
+                dcat:title "Test Catalog" ;
+                dct:description "Catalog description" .
+            
+            <$catalogRecordUri> a dcat:CatalogRecord ;
+                dct:modified "2024-01-01"^^xsd:date ;
+                dct:conformsTo <$catalogUri> ;
+                foaf:primaryTopic <$datasetUri> .
+            """.trimIndent()
+
+        val datasetJson =
+            mapOf(
+                "@id" to datasetUri,
+                "title" to "Test Dataset",
+            )
+
+        // Save resource in a transaction that commits
+        transactionTemplate.execute {
+            resourceRepository.save(
+                no.fdk.resourceservice.model.ResourceEntity(
+                    id = datasetId,
+                    uri = datasetUri,
+                    resourceType = ResourceType.DATASET.name,
+                    resourceGraphData = datasetGraph,
+                    resourceGraphFormat = "TURTLE",
+                    resourceJson = datasetJson,
+                    deleted = false,
+                    timestamp = System.currentTimeMillis(),
+                ),
+            )
+            resourceRepository.flush()
+        }
+
+        // Ensure transaction is committed and resource is visible
+        transactionTemplate.execute {
+            resourceRepository.flush()
+        }
+
+        // When - build union graph with includeCatalog = true (default)
+        val orderId = "test-order-with-catalog"
+        val result =
+            unionGraphService.buildUnionGraph(
+                listOf(ResourceType.DATASET),
+                includeCatalog = true,
+                orderId = orderId,
+            )
+
+        // Then - verify build succeeded
+        assertTrue(result, "buildUnionGraph should return true")
+
+        // Then - verify snapshot exists
+        val snapshots = unionGraphResourceSnapshotRepository.findAll().filter { it.unionGraphId == orderId }
+        assertEquals(1, snapshots.size, "Should have one snapshot")
+        val snapshot = snapshots[0]
+
+        // Then - verify Catalog is preserved in snapshot
+        val snapshotContent = snapshot.resourceGraphData
+        assertTrue(
+            snapshotContent.contains("Test Dataset") || snapshotContent.contains(datasetUri),
+            "Snapshot should contain dataset data",
+        )
+
+        // Verify Catalog resource is preserved (as subject)
+        assertTrue(
+            snapshotContent.contains("Test Catalog") ||
+                (snapshotContent.contains(catalogUri) && snapshotContent.contains("dcat:Catalog")),
+            "Snapshot should contain Catalog resource with its properties when includeCatalog is true",
+        )
+
+        // Verify CatalogRecord resource is preserved (as subject)
+        assertTrue(
+            snapshotContent.contains("2024-01-01") ||
+                (snapshotContent.contains(catalogRecordUri) && snapshotContent.contains("dcat:CatalogRecord")),
+            "Snapshot should contain CatalogRecord resource with its properties when includeCatalog is true",
+        )
+    }
 }
