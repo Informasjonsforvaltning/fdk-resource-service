@@ -412,11 +412,31 @@ class OaiPmhController(
             listIdentifiers.appendChild(header)
         }
 
-        // Add resumption token if there are more snapshots
+        // Get total count for completeListSize
+        val totalCount =
+            if (order.resourceTypes != null && order.resourceTypes.size == 1) {
+                unionGraphResourceSnapshotRepository.countByUnionGraphIdAndResourceType(
+                    id,
+                    currentResourceType.name,
+                    beforeTimestamp,
+                )
+            } else {
+                unionGraphResourceSnapshotRepository.countByUnionGraphId(id, beforeTimestamp)
+            }
+
+        // Add resumption token if there are more snapshots, or add empty token with completeListSize on first/last page
         if (snapshots.size >= pageSize) {
             val resumptionTokenElement = doc.createElement("resumptionToken")
             val nextToken = createResumptionToken(id, actualMetadataPrefix, resourceOffset + snapshots.size)
             resumptionTokenElement.textContent = nextToken
+            // Add completeListSize attribute (OAI-PMH 2.0 optional attribute)
+            resumptionTokenElement.setAttribute("completeListSize", totalCount.toString())
+            listIdentifiers.appendChild(resumptionTokenElement)
+        } else if (resourceOffset == 0) {
+            // First page with no more records - include empty resumption token with completeListSize
+            // This is a common pattern to provide the total count even when there's only one page
+            val resumptionTokenElement = doc.createElement("resumptionToken")
+            resumptionTokenElement.setAttribute("completeListSize", totalCount.toString())
             listIdentifiers.appendChild(resumptionTokenElement)
         }
 
@@ -533,11 +553,31 @@ class OaiPmhController(
             listRecords.appendChild(record)
         }
 
-        // Add resumption token if there are more snapshots
+        // Get total count for completeListSize
+        val totalCount =
+            if (order.resourceTypes != null && order.resourceTypes.size == 1) {
+                unionGraphResourceSnapshotRepository.countByUnionGraphIdAndResourceType(
+                    id,
+                    currentResourceType.name,
+                    beforeTimestamp,
+                )
+            } else {
+                unionGraphResourceSnapshotRepository.countByUnionGraphId(id, beforeTimestamp)
+            }
+
+        // Add resumption token if there are more snapshots, or add empty token with completeListSize on first/last page
         if (snapshots.size >= pageSize) {
             val resumptionTokenElement = doc.createElement("resumptionToken")
             val nextToken = createResumptionToken(id, actualMetadataPrefix, resourceOffset + snapshots.size)
             resumptionTokenElement.textContent = nextToken
+            // Add completeListSize attribute (OAI-PMH 2.0 optional attribute)
+            resumptionTokenElement.setAttribute("completeListSize", totalCount.toString())
+            listRecords.appendChild(resumptionTokenElement)
+        } else if (resourceOffset == 0) {
+            // First page with no more records - include empty resumption token with completeListSize
+            // This is a common pattern to provide the total count even when there's only one page
+            val resumptionTokenElement = doc.createElement("resumptionToken")
+            resumptionTokenElement.setAttribute("completeListSize", totalCount.toString())
             listRecords.appendChild(resumptionTokenElement)
         }
 

@@ -488,6 +488,13 @@ class OaiPmhControllerTest : BaseControllerTest() {
                 java.sql.Timestamp.valueOf("2099-12-31 23:59:59"),
             )
         } returns snapshots
+        every {
+            unionGraphResourceSnapshotRepository.countByUnionGraphIdAndResourceType(
+                "test-order-identifiers",
+                "CONCEPT",
+                java.sql.Timestamp.valueOf("2099-12-31 23:59:59"),
+            )
+        } returns 1L
 
         // When & Then
         mockMvc
@@ -535,6 +542,13 @@ class OaiPmhControllerTest : BaseControllerTest() {
                 java.sql.Timestamp.valueOf("2099-12-31 23:59:59"),
             )
         } returns snapshotsPage2
+        every {
+            unionGraphResourceSnapshotRepository.countByUnionGraphIdAndResourceType(
+                "test-order-identifiers",
+                "CONCEPT",
+                java.sql.Timestamp.valueOf("2099-12-31 23:59:59"),
+            )
+        } returns 2L
 
         // When & Then
         val resumptionToken = "test-order-identifiers:rdfxml:1"

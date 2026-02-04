@@ -647,6 +647,7 @@ class UnionGraphController(
 
         val response =
             orders.map { order ->
+                val count = unionGraphService.getResourceCount(order.id)
                 UnionGraphMinimalInfoResponse(
                     id = order.id,
                     name = order.name,
@@ -654,6 +655,7 @@ class UnionGraphController(
                     resourceTypes = order.resourceTypes,
                     createdAt = order.createdAt.toString(),
                     updatedAt = order.updatedAt.toString(),
+                    count = count,
                 )
             }
 
@@ -709,6 +711,8 @@ class UnionGraphController(
             return ResponseEntity.notFound().build()
         }
 
+        val count = unionGraphService.getResourceCount(id)
+
         val response =
             UnionGraphMinimalInfoResponse(
                 id = order.id,
@@ -717,6 +721,7 @@ class UnionGraphController(
                 resourceTypes = order.resourceTypes,
                 createdAt = order.createdAt.toString(),
                 updatedAt = order.updatedAt.toString(),
+                count = count,
             )
 
         return ResponseEntity
@@ -1058,6 +1063,10 @@ class UnionGraphController(
          * When the union graph was last updated.
          */
         val updatedAt: String,
+        /**
+         * The number of resources in the union graph.
+         */
+        val count: Long,
     )
 
     /**

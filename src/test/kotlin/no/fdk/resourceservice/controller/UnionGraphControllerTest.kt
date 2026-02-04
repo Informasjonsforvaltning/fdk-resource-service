@@ -733,6 +733,8 @@ class UnionGraphControllerTest : BaseControllerTest() {
             )
 
         every { unionGraphService.getAvailableOrders() } returns orders
+        every { unionGraphService.getResourceCount("order-1") } returns 100L
+        every { unionGraphService.getResourceCount("order-2") } returns 200L
 
         // When & Then
         mockMvc
@@ -774,6 +776,7 @@ class UnionGraphControllerTest : BaseControllerTest() {
             )
 
         every { unionGraphService.getOrder("test-order-info") } returns order
+        every { unionGraphService.getResourceCount("test-order-info") } returns 150L
 
         // When & Then
         mockMvc
