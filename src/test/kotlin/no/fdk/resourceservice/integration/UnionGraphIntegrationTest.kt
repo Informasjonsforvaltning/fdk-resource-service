@@ -1750,4 +1750,396 @@ class UnionGraphIntegrationTest : BaseIntegrationTest() {
             "Snapshot should contain CatalogRecord resource with its properties when includeCatalog is true",
         )
     }
+
+    @Test
+    fun `buildUnionGraph should include only DatasetSeries when isDatasetSeries is true`() {
+        // Given - create a regular dataset and a DatasetSeries
+        val regularDatasetId = "regular-dataset"
+        val regularDatasetUri = "https://example.com/dataset/regular"
+        val seriesDatasetId = "series-dataset"
+        val seriesDatasetUri = "https://example.com/dataset/series"
+
+        val regularDatasetGraph =
+            """
+            @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+            @prefix dcat: <http://www.w3.org/ns/dcat#> .
+            @prefix dct: <http://purl.org/dc/terms/> .
+            
+            <$regularDatasetUri> a dcat:Dataset ;
+                dcat:title "Regular Dataset" ;
+                dct:description "This is a regular dataset" .
+            """.trimIndent()
+
+        val seriesDatasetGraph =
+            """
+            @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+            @prefix dcat: <http://www.w3.org/ns/dcat#> .
+            @prefix dct: <http://purl.org/dc/terms/> .
+            
+            <$seriesDatasetUri> a dcat:DatasetSeries ;
+                dcat:title "Dataset Series" ;
+                dct:description "This is a dataset series" .
+            """.trimIndent()
+
+        val regularDatasetJson = mapOf("@id" to regularDatasetUri, "title" to "Regular Dataset")
+        val seriesDatasetJson = mapOf("@id" to seriesDatasetUri, "title" to "Dataset Series")
+
+        // Save resources in transactions that commit
+        transactionTemplate.execute {
+            resourceRepository.save(
+                no.fdk.resourceservice.model.ResourceEntity(
+                    id = regularDatasetId,
+                    uri = regularDatasetUri,
+                    resourceType = ResourceType.DATASET.name,
+                    resourceGraphData = regularDatasetGraph,
+                    resourceGraphFormat = "TURTLE",
+                    resourceJson = regularDatasetJson,
+                    deleted = false,
+                    timestamp = System.currentTimeMillis(),
+                ),
+            )
+            resourceRepository.save(
+                no.fdk.resourceservice.model.ResourceEntity(
+                    id = seriesDatasetId,
+                    uri = seriesDatasetUri,
+                    resourceType = ResourceType.DATASET.name,
+                    resourceGraphData = seriesDatasetGraph,
+                    resourceGraphFormat = "TURTLE",
+                    resourceJson = seriesDatasetJson,
+                    deleted = false,
+                    timestamp = System.currentTimeMillis(),
+                ),
+            )
+            resourceRepository.flush()
+        }
+
+        // Ensure transaction is committed
+        transactionTemplate.execute {
+            resourceRepository.flush()
+        }
+
+        // When - build union graph with isDatasetSeries = true
+        val orderId = "test-order-series-only"
+        val result =
+            unionGraphService.buildUnionGraph(
+                listOf(ResourceType.DATASET),
+                resourceFilters =
+                    UnionGraphResourceFilters(
+                        dataset = UnionGraphResourceFilters.DatasetFilters(isDatasetSeries = true),
+                    ),
+                orderId = orderId,
+            )
+
+        // Then - verify build succeeded
+        assertTrue(result, "buildUnionGraph should return true")
+
+        // Then - verify only DatasetSeries is included
+        val snapshots = unionGraphResourceSnapshotRepository.findAll().filter { it.unionGraphId == orderId }
+        assertEquals(1, snapshots.size, "Should have one snapshot (only DatasetSeries)")
+        val snapshot = snapshots[0]
+        assertEquals(seriesDatasetId, snapshot.resourceId, "Should be the DatasetSeries resource")
+
+        // Verify the snapshot contains DatasetSeries data
+        val snapshotContent = snapshot.resourceGraphData
+        assertTrue(
+            snapshotContent.contains("Dataset Series") || snapshotContent.contains(seriesDatasetUri),
+            "Snapshot should contain DatasetSeries data",
+        )
+        assertTrue(
+            snapshotContent.contains("DatasetSeries") || snapshotContent.contains("dcat:DatasetSeries"),
+            "Snapshot should contain DatasetSeries type",
+        )
+
+        // Verify regular dataset is NOT included
+        assertFalse(
+            snapshotContent.contains("Regular Dataset") || snapshotContent.contains(regularDatasetUri),
+            "Snapshot should not contain regular dataset",
+        )
+    }
+
+    @Test
+    fun `buildUnionGraph should include only non-DatasetSeries when isDatasetSeries is false`() {
+        // Given - create a regular dataset and a DatasetSeries
+        val regularDatasetId = "regular-dataset-2"
+        val regularDatasetUri = "https://example.com/dataset/regular-2"
+        val seriesDatasetId = "series-dataset-2"
+        val seriesDatasetUri = "https://example.com/dataset/series-2"
+
+        val regularDatasetGraph =
+            """
+            @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+            @prefix dcat: <http://www.w3.org/ns/dcat#> .
+            @prefix dct: <http://purl.org/dc/terms/> .
+            
+            <$regularDatasetUri> a dcat:Dataset ;
+                dcat:title "Regular Dataset 2" ;
+                dct:description "This is a regular dataset" .
+            """.trimIndent()
+
+        val seriesDatasetGraph =
+            """
+            @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+            @prefix dcat: <http://www.w3.org/ns/dcat#> .
+            @prefix dct: <http://purl.org/dc/terms/> .
+            
+            <$seriesDatasetUri> a dcat:DatasetSeries ;
+                dcat:title "Dataset Series 2" ;
+                dct:description "This is a dataset series" .
+            """.trimIndent()
+
+        val regularDatasetJson = mapOf("@id" to regularDatasetUri, "title" to "Regular Dataset 2")
+        val seriesDatasetJson = mapOf("@id" to seriesDatasetUri, "title" to "Dataset Series 2")
+
+        // Save resources in transactions that commit
+        transactionTemplate.execute {
+            resourceRepository.save(
+                no.fdk.resourceservice.model.ResourceEntity(
+                    id = regularDatasetId,
+                    uri = regularDatasetUri,
+                    resourceType = ResourceType.DATASET.name,
+                    resourceGraphData = regularDatasetGraph,
+                    resourceGraphFormat = "TURTLE",
+                    resourceJson = regularDatasetJson,
+                    deleted = false,
+                    timestamp = System.currentTimeMillis(),
+                ),
+            )
+            resourceRepository.save(
+                no.fdk.resourceservice.model.ResourceEntity(
+                    id = seriesDatasetId,
+                    uri = seriesDatasetUri,
+                    resourceType = ResourceType.DATASET.name,
+                    resourceGraphData = seriesDatasetGraph,
+                    resourceGraphFormat = "TURTLE",
+                    resourceJson = seriesDatasetJson,
+                    deleted = false,
+                    timestamp = System.currentTimeMillis(),
+                ),
+            )
+            resourceRepository.flush()
+        }
+
+        // Ensure transaction is committed
+        transactionTemplate.execute {
+            resourceRepository.flush()
+        }
+
+        // When - build union graph with isDatasetSeries = false
+        val orderId = "test-order-no-series"
+        val result =
+            unionGraphService.buildUnionGraph(
+                listOf(ResourceType.DATASET),
+                resourceFilters =
+                    UnionGraphResourceFilters(
+                        dataset = UnionGraphResourceFilters.DatasetFilters(isDatasetSeries = false),
+                    ),
+                orderId = orderId,
+            )
+
+        // Then - verify build succeeded
+        assertTrue(result, "buildUnionGraph should return true")
+
+        // Then - verify only regular dataset is included
+        val snapshots = unionGraphResourceSnapshotRepository.findAll().filter { it.unionGraphId == orderId }
+        assertEquals(1, snapshots.size, "Should have one snapshot (only regular dataset)")
+        val snapshot = snapshots[0]
+        assertEquals(regularDatasetId, snapshot.resourceId, "Should be the regular dataset resource")
+
+        // Verify the snapshot contains regular dataset data
+        val snapshotContent = snapshot.resourceGraphData
+        assertTrue(
+            snapshotContent.contains("Regular Dataset 2") || snapshotContent.contains(regularDatasetUri),
+            "Snapshot should contain regular dataset data",
+        )
+
+        // Verify DatasetSeries is NOT included
+        assertFalse(
+            snapshotContent.contains("Dataset Series 2") || snapshotContent.contains(seriesDatasetUri),
+            "Snapshot should not contain DatasetSeries",
+        )
+    }
+
+    @Test
+    fun `buildUnionGraph should include both DatasetSeries and regular datasets when isDatasetSeries is null`() {
+        // Given - create a regular dataset and a DatasetSeries
+        val regularDatasetId = "regular-dataset-3"
+        val regularDatasetUri = "https://example.com/dataset/regular-3"
+        val seriesDatasetId = "series-dataset-3"
+        val seriesDatasetUri = "https://example.com/dataset/series-3"
+
+        val regularDatasetGraph =
+            """
+            @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+            @prefix dcat: <http://www.w3.org/ns/dcat#> .
+            @prefix dct: <http://purl.org/dc/terms/> .
+            
+            <$regularDatasetUri> a dcat:Dataset ;
+                dcat:title "Regular Dataset 3" ;
+                dct:description "This is a regular dataset" .
+            """.trimIndent()
+
+        val seriesDatasetGraph =
+            """
+            @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+            @prefix dcat: <http://www.w3.org/ns/dcat#> .
+            @prefix dct: <http://purl.org/dc/terms/> .
+            
+            <$seriesDatasetUri> a dcat:DatasetSeries ;
+                dcat:title "Dataset Series 3" ;
+                dct:description "This is a dataset series" .
+            """.trimIndent()
+
+        val regularDatasetJson = mapOf("@id" to regularDatasetUri, "title" to "Regular Dataset 3")
+        val seriesDatasetJson = mapOf("@id" to seriesDatasetUri, "title" to "Dataset Series 3")
+
+        // Save resources in transactions that commit
+        transactionTemplate.execute {
+            resourceRepository.save(
+                no.fdk.resourceservice.model.ResourceEntity(
+                    id = regularDatasetId,
+                    uri = regularDatasetUri,
+                    resourceType = ResourceType.DATASET.name,
+                    resourceGraphData = regularDatasetGraph,
+                    resourceGraphFormat = "TURTLE",
+                    resourceJson = regularDatasetJson,
+                    deleted = false,
+                    timestamp = System.currentTimeMillis(),
+                ),
+            )
+            resourceRepository.save(
+                no.fdk.resourceservice.model.ResourceEntity(
+                    id = seriesDatasetId,
+                    uri = seriesDatasetUri,
+                    resourceType = ResourceType.DATASET.name,
+                    resourceGraphData = seriesDatasetGraph,
+                    resourceGraphFormat = "TURTLE",
+                    resourceJson = seriesDatasetJson,
+                    deleted = false,
+                    timestamp = System.currentTimeMillis(),
+                ),
+            )
+            resourceRepository.flush()
+        }
+
+        // Ensure transaction is committed
+        transactionTemplate.execute {
+            resourceRepository.flush()
+        }
+
+        // When - build union graph with isDatasetSeries = null (no filter)
+        val orderId = "test-order-both-types"
+        val result =
+            unionGraphService.buildUnionGraph(
+                listOf(ResourceType.DATASET),
+                resourceFilters =
+                    UnionGraphResourceFilters(
+                        dataset = UnionGraphResourceFilters.DatasetFilters(isDatasetSeries = null),
+                    ),
+                orderId = orderId,
+            )
+
+        // Then - verify build succeeded
+        assertTrue(result, "buildUnionGraph should return true")
+
+        // Then - verify both datasets are included
+        val snapshots = unionGraphResourceSnapshotRepository.findAll().filter { it.unionGraphId == orderId }
+        assertEquals(2, snapshots.size, "Should have two snapshots (both regular and series)")
+
+        val snapshotIds = snapshots.map { it.resourceId }.toSet()
+        assertTrue(
+            snapshotIds.contains(regularDatasetId),
+            "Should include regular dataset",
+        )
+        assertTrue(
+            snapshotIds.contains(seriesDatasetId),
+            "Should include DatasetSeries",
+        )
+
+        // Verify both snapshots contain their respective data
+        val regularSnapshot = snapshots.find { it.resourceId == regularDatasetId }
+        assertNotNull(regularSnapshot, "Should have regular dataset snapshot")
+        assertTrue(
+            regularSnapshot!!.resourceGraphData.contains("Regular Dataset 3") ||
+                regularSnapshot.resourceGraphData.contains(regularDatasetUri),
+            "Regular dataset snapshot should contain its data",
+        )
+
+        val seriesSnapshot = snapshots.find { it.resourceId == seriesDatasetId }
+        assertNotNull(seriesSnapshot, "Should have DatasetSeries snapshot")
+        assertTrue(
+            seriesSnapshot!!.resourceGraphData.contains("Dataset Series 3") ||
+                seriesSnapshot.resourceGraphData.contains(seriesDatasetUri),
+            "DatasetSeries snapshot should contain its data",
+        )
+    }
+
+    @Test
+    fun `buildUnionGraph should handle datasets with multiple types including DatasetSeries`() {
+        // Given - create a dataset that has both dcat:Dataset and dcat:DatasetSeries types
+        val multiTypeDatasetId = "multi-type-dataset"
+        val multiTypeDatasetUri = "https://example.com/dataset/multi-type"
+
+        val multiTypeDatasetGraph =
+            """
+            @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+            @prefix dcat: <http://www.w3.org/ns/dcat#> .
+            @prefix dct: <http://purl.org/dc/terms/> .
+            
+            <$multiTypeDatasetUri> a dcat:Dataset, dcat:DatasetSeries ;
+                dcat:title "Multi-Type Dataset" ;
+                dct:description "This dataset has both Dataset and DatasetSeries types" .
+            """.trimIndent()
+
+        val multiTypeDatasetJson = mapOf("@id" to multiTypeDatasetUri, "title" to "Multi-Type Dataset")
+
+        // Save resource in a transaction that commits
+        transactionTemplate.execute {
+            resourceRepository.save(
+                no.fdk.resourceservice.model.ResourceEntity(
+                    id = multiTypeDatasetId,
+                    uri = multiTypeDatasetUri,
+                    resourceType = ResourceType.DATASET.name,
+                    resourceGraphData = multiTypeDatasetGraph,
+                    resourceGraphFormat = "TURTLE",
+                    resourceJson = multiTypeDatasetJson,
+                    deleted = false,
+                    timestamp = System.currentTimeMillis(),
+                ),
+            )
+            resourceRepository.flush()
+        }
+
+        // Ensure transaction is committed
+        transactionTemplate.execute {
+            resourceRepository.flush()
+        }
+
+        // When - build union graph with isDatasetSeries = true
+        val orderId = "test-order-multi-type"
+        val result =
+            unionGraphService.buildUnionGraph(
+                listOf(ResourceType.DATASET),
+                resourceFilters =
+                    UnionGraphResourceFilters(
+                        dataset = UnionGraphResourceFilters.DatasetFilters(isDatasetSeries = true),
+                    ),
+                orderId = orderId,
+            )
+
+        // Then - verify build succeeded
+        assertTrue(result, "buildUnionGraph should return true")
+
+        // Then - verify the multi-type dataset is included (since it has DatasetSeries type)
+        val snapshots = unionGraphResourceSnapshotRepository.findAll().filter { it.unionGraphId == orderId }
+        assertEquals(1, snapshots.size, "Should have one snapshot")
+        val snapshot = snapshots[0]
+        assertEquals(multiTypeDatasetId, snapshot.resourceId, "Should be the multi-type dataset resource")
+
+        // Verify the snapshot contains the dataset data
+        val snapshotContent = snapshot.resourceGraphData
+        assertTrue(
+            snapshotContent.contains("Multi-Type Dataset") || snapshotContent.contains(multiTypeDatasetUri),
+            "Snapshot should contain multi-type dataset data",
+        )
+    }
 }

@@ -393,6 +393,116 @@ class UnionGraphControllerTest : BaseControllerTest() {
     }
 
     @Test
+    fun `createOrder should accept isDatasetSeries filter`() {
+        // Given
+        val filters =
+            UnionGraphResourceFilters(
+                dataset =
+                    UnionGraphResourceFilters.DatasetFilters(
+                        isDatasetSeries = true,
+                    ),
+            )
+        val order =
+            UnionGraphOrder(
+                id = "dataset-series-order",
+                name = "Dataset Series Order",
+                status = UnionGraphOrder.GraphStatus.PENDING,
+                resourceTypes = listOf("DATASET"),
+                resourceFilters = filters,
+            )
+
+        every {
+            unionGraphService.createOrder(
+                listOf(ResourceType.DATASET),
+                0,
+                null,
+                filters,
+                false,
+                "Dataset Series Order",
+            )
+        } returns UnionGraphService.CreateOrderResult(order, isNew = true)
+
+        // When & Then
+        mockMvc
+            .perform(
+                post("/v1/union-graphs")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(
+                        """
+                        {
+                            "name": "Dataset Series Order",
+                            "resourceTypes": ["DATASET"],
+                            "resourceFilters": {
+                                "dataset": {
+                                    "isDatasetSeries": true
+                                }
+                            }
+                        }
+                        """.trimIndent(),
+                    ),
+            ).andExpect(status().isCreated)
+            .andExpect(jsonPath("$.resourceFilters.dataset.isDatasetSeries").value(true))
+    }
+
+    @Test
+    fun `createOrder should accept all dataset filters including isDatasetSeries`() {
+        // Given
+        val filters =
+            UnionGraphResourceFilters(
+                dataset =
+                    UnionGraphResourceFilters.DatasetFilters(
+                        isOpenData = true,
+                        isRelatedToTransportportal = false,
+                        isDatasetSeries = true,
+                    ),
+            )
+        val order =
+            UnionGraphOrder(
+                id = "all-filters-order",
+                name = "All Filters Order",
+                status = UnionGraphOrder.GraphStatus.PENDING,
+                resourceTypes = listOf("DATASET"),
+                resourceFilters = filters,
+            )
+
+        every {
+            unionGraphService.createOrder(
+                listOf(ResourceType.DATASET),
+                0,
+                null,
+                filters,
+                false,
+                "All Filters Order",
+            )
+        } returns UnionGraphService.CreateOrderResult(order, isNew = true)
+
+        // When & Then
+        mockMvc
+            .perform(
+                post("/v1/union-graphs")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(
+                        """
+                        {
+                            "name": "All Filters Order",
+                            "resourceTypes": ["DATASET"],
+                            "resourceFilters": {
+                                "dataset": {
+                                    "isOpenData": true,
+                                    "isRelatedToTransportportal": false,
+                                    "isDatasetSeries": true
+                                }
+                            }
+                        }
+                        """.trimIndent(),
+                    ),
+            ).andExpect(status().isCreated)
+            .andExpect(jsonPath("$.resourceFilters.dataset.isOpenData").value(true))
+            .andExpect(jsonPath("$.resourceFilters.dataset.isRelatedToTransportportal").value(false))
+            .andExpect(jsonPath("$.resourceFilters.dataset.isDatasetSeries").value(true))
+    }
+
+    @Test
     fun `createOrder should return 400 when dataset filters lack dataset type`() {
         // Given
         val filters =

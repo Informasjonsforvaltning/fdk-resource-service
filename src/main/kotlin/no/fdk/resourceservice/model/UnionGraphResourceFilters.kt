@@ -40,16 +40,21 @@ data class UnionGraphResourceFilters(
      *                                   If true, only datasets related to transport portal are included.
      *                                   If false, only datasets not related to transport portal are included.
      *                                   If null, this filter is not applied.
+     * @param isDatasetSeries Filter by whether the dataset is a DatasetSeries (has rdf:type = dcat:DatasetSeries).
+     *                        If true, only datasets that ARE DatasetSeries are included.
+     *                        If false, only datasets that are NOT DatasetSeries are included.
+     *                        If null, this filter is not applied (both series and non-series are included).
      */
     @JsonIgnoreProperties(ignoreUnknown = true)
     data class DatasetFilters(
         val isOpenData: Boolean? = null,
         val isRelatedToTransportportal: Boolean? = null,
+        val isDatasetSeries: Boolean? = null,
     ) {
         /**
          * Checks if all filter fields are null (empty filter).
          */
-        fun isEmpty(): Boolean = isOpenData == null && isRelatedToTransportportal == null
+        fun isEmpty(): Boolean = isOpenData == null && isRelatedToTransportportal == null && isDatasetSeries == null
     }
 
     /**

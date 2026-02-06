@@ -51,7 +51,7 @@ data class UnionGraphOrder(
      * collecting resources for the union graph.
      *
      * Filters allow you to include only resources that match specific criteria.
-     * For example, dataset filters can filter by isOpenData and isRelatedToTransportportal fields.
+     * For example, dataset filters can filter by isOpenData, isRelatedToTransportportal, and isDatasetSeries fields.
      * Filters are part of the order configuration, so orders with different filters
      * are considered different orders.
      *
