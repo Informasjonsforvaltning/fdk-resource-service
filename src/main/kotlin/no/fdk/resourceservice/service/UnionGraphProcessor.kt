@@ -143,6 +143,9 @@ class UnionGraphProcessor(
         try {
             logger.debug("Scheduler running: checking for PROCESSING orders to process incrementally")
 
+            // Log scheduler activity at info level to help diagnose issues
+            logger.debug("processIncrementalBatches scheduler triggered")
+
             // Find the oldest PROCESSING order (first created should be handled first)
             val processingOrders =
                 unionGraphOrderRepository
@@ -154,16 +157,20 @@ class UnionGraphProcessor(
                 return
             }
 
+            logger.debug("Found {} PROCESSING order(s) for incremental processing", processingOrders.size)
+
             // Process only the oldest order (first created)
             val oldestOrder = processingOrders.first()
-            logger.debug(
-                "Processing one batch for oldest PROCESSING order {} (created at {})",
+            logger.info(
+                "Processing one batch for oldest PROCESSING order {} (created at {}, processing state: {})",
                 oldestOrder.id,
                 oldestOrder.createdAt,
+                if (oldestOrder.processingState != null) "present" else "null",
             )
 
             try {
                 val shouldContinue = unionGraphService.processNextBatch(oldestOrder.id)
+                logger.info("processNextBatch returned shouldContinue={} for order {}", shouldContinue, oldestOrder.id)
                 if (!shouldContinue) {
                     // Order is complete or failed, call webhook if configured
                     val updatedOrder = unionGraphOrderRepository.findById(oldestOrder.id).orElse(null)

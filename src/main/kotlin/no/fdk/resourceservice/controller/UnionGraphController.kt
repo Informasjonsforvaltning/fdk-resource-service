@@ -61,7 +61,7 @@ class UnionGraphController(
                 "configuration already exists. The graph will be built asynchronously in the background. " +
                 "You can specify which resource types to include, or leave empty to include all types. " +
                 "Optionally, you can provide resource filters to filter resources by type-specific criteria. " +
-                "For example, dataset filters can filter by isOpenData and isRelatedToTransportportal fields. " +
+                "For example, dataset filters can filter by isOpenData, isRelatedToTransportportal, and isDatasetSeries fields. " +
                 "You can also filter by specific resource IDs (fdkId) using resourceIds, or by resource URIs using resourceUris. " +
                 "If both resourceIds and resourceUris are provided, resources matching either filter will be included. " +
                 "You can also enable automatic expansion of DataService graphs when datasets reference them " +
@@ -108,6 +108,7 @@ class UnionGraphController(
                             value =
                                 """
                                 {
+                                    "name": "My Union Graph",
                                     "resourceTypes": ["DATASET", "DATA_SERVICE"],
                                     "updateTtlHours": 24,
                                     "webhookUrl": "https://example.com/webhook"
@@ -119,13 +120,16 @@ class UnionGraphController(
                             value =
                                 """
                                 {
+                                    "name": "Open Data Datasets with Data Services",
+                                    "description": "Union graph containing only open data datasets with expanded data services",
                                     "resourceTypes": ["DATASET"],
                                     "updateTtlHours": 24,
                                     "webhookUrl": "https://example.com/webhook",
                                     "resourceFilters": {
                                         "dataset": {
                                             "isOpenData": true,
-                                            "isRelatedToTransportportal": false
+                                            "isRelatedToTransportportal": false,
+                                            "isDatasetSeries": false
                                         }
                                     },
                                     "expandDistributionAccessServices": true
@@ -138,10 +142,41 @@ class UnionGraphController(
                                 """
                                 {
                                     "name": "Filtered Union Graph",
+                                    "description": "Union graph with specific resources",
                                     "resourceTypes": ["DATASET", "DATA_SERVICE"],
                                     "updateTtlHours": 24,
                                     "resourceIds": ["resource-id-1", "resource-id-2"],
                                     "resourceUris": ["https://example.com/dataset/1", "https://example.com/dataset/2"]
+                                }
+                                """,
+                        ),
+                        io.swagger.v3.oas.annotations.media.ExampleObject(
+                            name = "DatasetSeries only",
+                            value =
+                                """
+                                {
+                                    "name": "Dataset Series Union Graph",
+                                    "description": "Union graph containing only DatasetSeries resources",
+                                    "resourceTypes": ["DATASET"],
+                                    "updateTtlHours": 48,
+                                    "resourceFilters": {
+                                        "dataset": {
+                                            "isDatasetSeries": true
+                                        }
+                                    }
+                                }
+                                """,
+                        ),
+                        io.swagger.v3.oas.annotations.media.ExampleObject(
+                            name = "Without Catalog resources",
+                            value =
+                                """
+                                {
+                                    "name": "Union Graph Without Catalogs",
+                                    "description": "Union graph excluding Catalog and CatalogRecord resources",
+                                    "resourceTypes": ["DATASET", "CONCEPT"],
+                                    "updateTtlHours": 24,
+                                    "includeCatalog": false
                                 }
                                 """,
                         ),
@@ -819,7 +854,7 @@ class UnionGraphController(
         /**
          * Optional per-resource-type filters to apply when building the union graph.
          * Filters allow you to include only resources that match specific criteria.
-         * For example, dataset filters can filter by isOpenData and isRelatedToTransportportal.
+         * For example, dataset filters can filter by isOpenData, isRelatedToTransportportal, and isDatasetSeries.
          * Filters are part of the union graph configuration, so union graphs with different filters are considered different.
          */
         val resourceFilters: ResourceFiltersRequest? = null,
@@ -924,12 +959,27 @@ class UnionGraphController(
          * If null, this filter is not applied.
          */
         val isRelatedToTransportportal: Boolean? = null,
+        /**
+         * Filter datasets by whether they are DatasetSeries (have rdf:type = dcat:DatasetSeries).
+         * If true, only datasets that ARE DatasetSeries are included.
+         * If false, only datasets that are NOT DatasetSeries are included.
+         * If null, this filter is not applied (both series and non-series are included).
+         */
+        @io.swagger.v3.oas.annotations.media.Schema(
+            description =
+                "Filter datasets by whether they are DatasetSeries (have rdf:type = dcat:DatasetSeries). " +
+                    "If true, only datasets that ARE DatasetSeries are included. " +
+                    "If false, only datasets that are NOT DatasetSeries are included. " +
+                    "If null, this filter is not applied (both series and non-series are included).",
+            example = "true",
+        )
+        val isDatasetSeries: Boolean? = null,
     ) {
         fun toDomain(): UnionGraphResourceFilters.DatasetFilters? =
-            if (isOpenData == null && isRelatedToTransportportal == null) {
+            if (isOpenData == null && isRelatedToTransportportal == null && isDatasetSeries == null) {
                 null
             } else {
-                UnionGraphResourceFilters.DatasetFilters(isOpenData, isRelatedToTransportportal)
+                UnionGraphResourceFilters.DatasetFilters(isOpenData, isRelatedToTransportportal, isDatasetSeries)
             }
     }
 
@@ -1113,6 +1163,11 @@ class UnionGraphController(
          * Null if this filter was not specified.
          */
         val isRelatedToTransportportal: Boolean?,
+        /**
+         * The isDatasetSeries filter value that was applied.
+         * Null if this filter was not specified.
+         */
+        val isDatasetSeries: Boolean?,
     )
 
     private fun toResponseFilters(filters: UnionGraphResourceFilters?): ResourceFiltersResponse? {
@@ -1124,6 +1179,7 @@ class UnionGraphController(
                 DatasetFiltersResponse(
                     isOpenData = dataset.isOpenData,
                     isRelatedToTransportportal = dataset.isRelatedToTransportportal,
+                    isDatasetSeries = dataset.isDatasetSeries,
                 ),
         )
     }

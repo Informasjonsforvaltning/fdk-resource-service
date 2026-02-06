@@ -194,7 +194,7 @@ The FDK Resource Service is built on a microservices architecture with multiple 
 
 **Union Graph Features**:
 - **Resource Type Filtering**: Include/exclude specific resource types
-- **Resource Filters**: Per-resource-type filters (e.g., `isOpenData`, `isRelatedToTransportportal`)
+- **Resource Filters**: Per-resource-type filters (e.g., `isOpenData`, `isRelatedToTransportportal`, `isDatasetSeries`)
 - **Resource ID/URI Filtering**: Include specific resources by ID or URI
 - **Distribution Expansion**: Automatically include DataService graphs referenced by datasets
 - **Catalog Filtering**: Optionally exclude Catalog and CatalogRecord resources from snapshots

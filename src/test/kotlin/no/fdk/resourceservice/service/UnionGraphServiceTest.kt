@@ -55,7 +55,6 @@ class UnionGraphServiceTest {
                 resourceService,
                 objectMapper,
                 webhookService,
-                rdfService,
                 metricsService,
                 unionGraphConfig,
                 unionGraphResourceSnapshotRepository,
@@ -305,6 +304,69 @@ class UnionGraphServiceTest {
                 ?.dataset
                 ?.isRelatedToTransportportal,
         )
+    }
+
+    @Test
+    fun `createOrder should persist isDatasetSeries filter`() {
+        // Given
+        val filters =
+            UnionGraphResourceFilters(
+                dataset =
+                    UnionGraphResourceFilters.DatasetFilters(
+                        isDatasetSeries = true,
+                    ),
+            )
+        every { unionGraphOrderRepository.findByConfiguration(any(), any(), any(), any(), any(), any(), any(), any()) } returns null
+        every { unionGraphOrderRepository.save(any()) } answers { firstArg() }
+
+        // When
+        val result =
+            unionGraphService.createOrder(
+                resourceTypes = listOf(ResourceType.DATASET),
+                resourceFilters = filters,
+                name = "Test Order",
+            )
+
+        // Then
+        assertTrue(result.isNew)
+        assertEquals(
+            true,
+            result.order.resourceFilters
+                ?.dataset
+                ?.isDatasetSeries,
+        )
+    }
+
+    @Test
+    fun `createOrder should persist all dataset filters including isDatasetSeries`() {
+        // Given
+        val filters =
+            UnionGraphResourceFilters(
+                dataset =
+                    UnionGraphResourceFilters.DatasetFilters(
+                        isOpenData = true,
+                        isRelatedToTransportportal = false,
+                        isDatasetSeries = true,
+                    ),
+            )
+        every { unionGraphOrderRepository.findByConfiguration(any(), any(), any(), any(), any(), any(), any(), any()) } returns null
+        every { unionGraphOrderRepository.save(any()) } answers { firstArg() }
+
+        // When
+        val result =
+            unionGraphService.createOrder(
+                resourceTypes = listOf(ResourceType.DATASET),
+                resourceFilters = filters,
+                name = "Test Order",
+            )
+
+        // Then
+        assertTrue(result.isNew)
+        val datasetFilters = result.order.resourceFilters?.dataset
+        assertNotNull(datasetFilters)
+        assertEquals(true, datasetFilters?.isOpenData)
+        assertEquals(false, datasetFilters?.isRelatedToTransportportal)
+        assertEquals(true, datasetFilters?.isDatasetSeries)
     }
 
     @Test
