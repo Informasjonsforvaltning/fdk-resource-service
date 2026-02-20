@@ -831,7 +831,7 @@ class UnionGraphController(
          * If null or empty, all resource types will be included.
          * Valid values: CONCEPT, DATASET, DATA_SERVICE, INFORMATION_MODEL, SERVICE, EVENT
          */
-        @io.swagger.v3.oas.annotations.media.Schema(
+        @param:io.swagger.v3.oas.annotations.media.Schema(
             description =
                 "List of resource types to include in the union graph. " +
                     "Valid values: CONCEPT, DATASET, DATA_SERVICE, INFORMATION_MODEL, SERVICE, EVENT",
@@ -882,7 +882,7 @@ class UnionGraphController(
          * Optional list of resource IDs (fdkId) to filter by.
          * If provided, only resources with matching IDs will be included in the union graph.
          */
-        @io.swagger.v3.oas.annotations.media.Schema(
+        @param:io.swagger.v3.oas.annotations.media.Schema(
             description =
                 "Optional list of resource IDs (fdkId) to filter by. " +
                     "If provided, only resources with matching IDs will be included in the union graph.",
@@ -893,7 +893,7 @@ class UnionGraphController(
          * Optional list of resource URIs to filter by.
          * If provided, only resources with matching URIs will be included in the union graph.
          */
-        @io.swagger.v3.oas.annotations.media.Schema(
+        @param:io.swagger.v3.oas.annotations.media.Schema(
             description =
                 "Optional list of resource URIs to filter by. " +
                     "If provided, only resources with matching URIs will be included in the union graph.",
@@ -907,7 +907,7 @@ class UnionGraphController(
          *
          * Default: true
          */
-        @io.swagger.v3.oas.annotations.media.Schema(
+        @param:io.swagger.v3.oas.annotations.media.Schema(
             description =
                 "If true (default), Catalog and CatalogRecord resources are included in union graph snapshots. " +
                     "If false, Catalog and CatalogRecord resources are removed from snapshots (as subjects), " +
@@ -965,7 +965,7 @@ class UnionGraphController(
          * If false, only datasets that are NOT DatasetSeries are included.
          * If null, this filter is not applied (both series and non-series are included).
          */
-        @io.swagger.v3.oas.annotations.media.Schema(
+        @param:io.swagger.v3.oas.annotations.media.Schema(
             description =
                 "Filter datasets by whether they are DatasetSeries (have rdf:type = dcat:DatasetSeries). " +
                     "If true, only datasets that ARE DatasetSeries are included. " +

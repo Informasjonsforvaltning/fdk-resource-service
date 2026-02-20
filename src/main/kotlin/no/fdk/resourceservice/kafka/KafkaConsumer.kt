@@ -261,7 +261,7 @@ class KafkaConsumer(
                         .setFdkId(fields.fdkId)
                         .setType(InformationModelEventType.valueOf(fields.type))
                         .setTimestamp(fields.timestamp)
-                        .setGraph(fields.graph)                      
+                        .setGraph(fields.graph)
                         .setHarvestRunId(value.get("harvestRunId")?.toString())
                         .setUri(value.get("uri")?.toString())
                         .build()

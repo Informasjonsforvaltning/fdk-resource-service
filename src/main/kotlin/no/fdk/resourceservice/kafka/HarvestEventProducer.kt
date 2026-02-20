@@ -19,7 +19,7 @@ import java.time.Instant
 @Service
 class HarvestEventProducer(
     private val kafkaTemplate: KafkaTemplate<String, HarvestEvent>,
-    @Value("\${app.kafka.topics.harvest}") private val harvestTopic: String,
+    @param:Value("\${app.kafka.topics.harvest}") private val harvestTopic: String,
 ) {
     private val logger = LoggerFactory.getLogger(HarvestEventProducer::class.java)
 

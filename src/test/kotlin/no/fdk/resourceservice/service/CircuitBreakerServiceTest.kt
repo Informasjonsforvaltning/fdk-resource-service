@@ -53,7 +53,7 @@ class CircuitBreakerServiceTest {
             RdfParseEvent().apply {
                 setFdkId("test-id")
                 setResourceType(RdfParseResourceType.CONCEPT)
-                setData("""{"id": "test-id", "title": "Test Concept"}""")
+                setData("""{"id": "test-id", "title": "Test Concept", "uri": "https://example.com/concept/1"}""")
                 setTimestamp(System.currentTimeMillis())
             }
         every { resourceService.shouldUpdateResource("test-id", any()) } returns true
@@ -64,6 +64,39 @@ class CircuitBreakerServiceTest {
         // Then
         verify { resourceService.shouldUpdateResource("test-id", any()) }
         verify { resourceService.storeResourceJson("test-id", ResourceType.CONCEPT, any(), any()) }
+        // harvestRunId is null so produceResourceFinishedEvent returns early without sending
+        verify(exactly = 0) { harvestEventProducer.produceResourceFailedEvent(any(), any(), any(), any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `should call produceResourceFinishedEvent when RdfParseEvent has harvestRunId`() {
+        // Given
+        val event =
+            RdfParseEvent().apply {
+                setFdkId("test-id")
+                setResourceType(RdfParseResourceType.DATASET)
+                setData("""{"id": "test-id", "uri": "https://example.com/dataset/1"}""")
+                setTimestamp(System.currentTimeMillis())
+                setHarvestRunId("harvest-run-123")
+                setUri("https://example.com/dataset/1")
+            }
+        every { resourceService.shouldUpdateResource("test-id", any()) } returns true
+
+        // When
+        circuitBreakerService.handleRdfParseEvent(event)
+
+        // Then
+        verify { resourceService.storeResourceJson("test-id", ResourceType.DATASET, any(), any()) }
+        verify(exactly = 1) {
+            harvestEventProducer.produceResourceFinishedEvent(
+                harvestRunId = "harvest-run-123",
+                resourceType = ResourceType.DATASET,
+                fdkId = "test-id",
+                resourceUri = "https://example.com/dataset/1",
+                startTime = any(),
+                endTime = any(),
+            )
+        }
     }
 
     @Test
@@ -100,9 +133,6 @@ class CircuitBreakerServiceTest {
                 timestamp = System.currentTimeMillis()
             }
 
-        // Mock the RDF processing service
-        every { rdfService.convertTurtleToJsonLdMap("test-graph", true) }
-            .returns(mapOf("@id" to "http://example.com/concept"))
         every { resourceService.shouldUpdateResource("test-concept-id", any()) } returns true
 
         // When
@@ -125,9 +155,6 @@ class CircuitBreakerServiceTest {
                 timestamp = System.currentTimeMillis()
             }
 
-        // Mock the RDF processing service
-        every { rdfService.convertTurtleToJsonLdMap("test-graph", true) }
-            .returns(mapOf("@id" to "http://example.com/dataset"))
         every { resourceService.shouldUpdateResource("test-dataset-id", any()) } returns true
 
         // When
@@ -150,9 +177,6 @@ class CircuitBreakerServiceTest {
                 timestamp = System.currentTimeMillis()
             }
 
-        // Mock the RDF processing service
-        every { rdfService.convertTurtleToJsonLdMap("test-graph", true) }
-            .returns(mapOf("@id" to "http://example.com/dataservice"))
         every { resourceService.shouldUpdateResource("test-dataservice-id", any()) } returns true
 
         // When
@@ -175,9 +199,6 @@ class CircuitBreakerServiceTest {
                 timestamp = System.currentTimeMillis()
             }
 
-        // Mock the RDF processing service
-        every { rdfService.convertTurtleToJsonLdMap("test-graph", true) }
-            .returns(mapOf("@id" to "http://example.com/informationmodel"))
         every { resourceService.shouldUpdateResource("test-informationmodel-id", any()) } returns true
 
         // When
@@ -200,9 +221,6 @@ class CircuitBreakerServiceTest {
                 timestamp = System.currentTimeMillis()
             }
 
-        // Mock the RDF processing service
-        every { rdfService.convertTurtleToJsonLdMap("test-graph", true) }
-            .returns(mapOf("@id" to "http://example.com/service"))
         every { resourceService.shouldUpdateResource("test-service-id", any()) } returns true
 
         // When
@@ -225,9 +243,6 @@ class CircuitBreakerServiceTest {
                 timestamp = System.currentTimeMillis()
             }
 
-        // Mock the RDF processing service
-        every { rdfService.convertTurtleToJsonLdMap("test-graph", true) }
-            .returns(mapOf("@id" to "http://example.com/event"))
         every { resourceService.shouldUpdateResource("test-event-id", any()) } returns true
 
         // When
@@ -260,6 +275,17 @@ class CircuitBreakerServiceTest {
         } catch (e: SQLException) {
             assert(e.message == "Database connection failed")
         }
+        verify(exactly = 1) {
+            harvestEventProducer.produceResourceFailedEvent(
+                harvestRunId = null,
+                resourceType = ResourceType.CONCEPT,
+                fdkId = "test-id",
+                resourceUri = null,
+                startTime = any(),
+                endTime = any(),
+                errorMessage = "Database connection failed",
+            )
+        }
     }
 
     @Test
@@ -274,9 +300,6 @@ class CircuitBreakerServiceTest {
                 timestamp = System.currentTimeMillis()
             }
 
-        // Mock the RDF processing service
-        every { rdfService.convertTurtleToJsonLdMap("test-graph", true) }
-            .returns(mapOf("@id" to "http://example.com/concept"))
         every { resourceService.shouldUpdateResource("test-concept-id", any()) } returns true
 
         // When ResourceService throws an exception
@@ -301,6 +324,8 @@ class CircuitBreakerServiceTest {
                 fdkId = "test-concept-id"
                 graph = "test-graph"
                 timestamp = System.currentTimeMillis()
+                setHarvestRunId("run-1")
+                setUri("https://example.com/concept/1")
             }
 
         // When
@@ -308,6 +333,16 @@ class CircuitBreakerServiceTest {
 
         // Then
         verify { resourceService.markResourceAsDeleted("test-concept-id", ResourceType.CONCEPT, any()) }
+        verify(exactly = 1) {
+            harvestEventProducer.produceResourceRemovedEvent(
+                harvestRunId = "run-1",
+                resourceType = ResourceType.CONCEPT,
+                fdkId = "test-concept-id",
+                resourceUri = "https://example.com/concept/1",
+                startTime = any(),
+                endTime = any(),
+            )
+        }
     }
 
     @Test
@@ -327,7 +362,6 @@ class CircuitBreakerServiceTest {
         // Then - verify no processing occurred
         verify(exactly = 0) { resourceService.shouldUpdateResource(any(), any()) }
         verify(exactly = 0) { resourceService.storeResourceGraphData(any(), any(), any(), any(), any()) }
-        verify(exactly = 0) { rdfService.convertTurtleToJsonLdMap(any(), any()) }
     }
 
     @Test
@@ -347,7 +381,6 @@ class CircuitBreakerServiceTest {
         // Then - verify no processing occurred
         verify(exactly = 0) { resourceService.shouldUpdateResource(any(), any()) }
         verify(exactly = 0) { resourceService.storeResourceGraphData(any(), any(), any(), any(), any()) }
-        verify(exactly = 0) { rdfService.convertTurtleToJsonLdMap(any(), any()) }
     }
 
     @Test
@@ -367,7 +400,6 @@ class CircuitBreakerServiceTest {
         // Then - verify no processing occurred
         verify(exactly = 0) { resourceService.shouldUpdateResource(any(), any()) }
         verify(exactly = 0) { resourceService.storeResourceGraphData(any(), any(), any(), any(), any()) }
-        verify(exactly = 0) { rdfService.convertTurtleToJsonLdMap(any(), any()) }
     }
 
     @Test
@@ -387,7 +419,6 @@ class CircuitBreakerServiceTest {
         // Then - verify no processing occurred
         verify(exactly = 0) { resourceService.shouldUpdateResource(any(), any()) }
         verify(exactly = 0) { resourceService.storeResourceGraphData(any(), any(), any(), any(), any()) }
-        verify(exactly = 0) { rdfService.convertTurtleToJsonLdMap(any(), any()) }
     }
 
     @Test
@@ -407,7 +438,6 @@ class CircuitBreakerServiceTest {
         // Then - verify no processing occurred
         verify(exactly = 0) { resourceService.shouldUpdateResource(any(), any()) }
         verify(exactly = 0) { resourceService.storeResourceGraphData(any(), any(), any(), any(), any()) }
-        verify(exactly = 0) { rdfService.convertTurtleToJsonLdMap(any(), any()) }
     }
 
     @Test
@@ -427,7 +457,6 @@ class CircuitBreakerServiceTest {
         // Then - verify no processing occurred
         verify(exactly = 0) { resourceService.shouldUpdateResource(any(), any()) }
         verify(exactly = 0) { resourceService.storeResourceGraphData(any(), any(), any(), any(), any()) }
-        verify(exactly = 0) { rdfService.convertTurtleToJsonLdMap(any(), any()) }
     }
 
     @Test

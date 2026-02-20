@@ -23,9 +23,9 @@ import java.util.concurrent.Executor
 @EnableAsync
 @EnableScheduling
 class UnionGraphConfig(
-    @Value("\${app.union-graphs.resource-batch-size:250}")
+    @param:Value("\${app.union-graphs.resource-batch-size:250}")
     val resourceBatchSize: Int,
-    @Value("\${app.union-graphs.batch-delay-ms:0}")
+    @param:Value("\${app.union-graphs.batch-delay-ms:0}")
     val batchDelayMs: Long,
 ) : SchedulingConfigurer {
     companion object {
