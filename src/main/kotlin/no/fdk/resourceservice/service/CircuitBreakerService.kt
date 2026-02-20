@@ -133,6 +133,7 @@ class CircuitBreakerService(
             // Produce harvest event on failure
             val resourceUri =
                 try {
+                    @Suppress("UNCHECKED_CAST")
                     val resourceJson = objectMapper.readValue(event.data, Map::class.java) as Map<String, Any>
                     resourceJson["uri"] as? String ?: event.uri
                 } catch (ex: Exception) {

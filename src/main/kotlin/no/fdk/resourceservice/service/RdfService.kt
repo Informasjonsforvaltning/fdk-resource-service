@@ -1,23 +1,19 @@
 package no.fdk.resourceservice.service
 
-import com.fasterxml.jackson.core.type.TypeReference
 import com.fasterxml.jackson.databind.ObjectMapper
 import no.fdk.resourceservice.model.ResourceType
+import org.apache.jena.riot.Lang
+import org.apache.jena.riot.RDFDataMgr
 import org.eclipse.rdf4j.model.Model
 import org.eclipse.rdf4j.model.ModelFactory
 import org.eclipse.rdf4j.model.impl.LinkedHashModelFactory
 import org.eclipse.rdf4j.rio.RDFFormat
-import org.eclipse.rdf4j.rio.Rio
-import org.eclipse.rdf4j.rio.WriterConfig
-import org.eclipse.rdf4j.rio.helpers.BasicWriterSettings
-import org.eclipse.rdf4j.rio.helpers.JSONLDMode
-import org.eclipse.rdf4j.rio.helpers.JSONLDSettings
 import org.slf4j.LoggerFactory
 import org.springframework.http.MediaType
 import org.springframework.stereotype.Service
 import java.io.ByteArrayInputStream
-import java.io.ByteArrayOutputStream
 import java.io.StringWriter
+import org.apache.jena.rdf.model.ModelFactory as JenaModelFactory
 
 /**
  * Unified service for RDF processing, format conversion, and content negotiation.
@@ -126,7 +122,7 @@ class RdfService(
                     return null
                 }
 
-        val model = ModelFactory.createDefaultModel()
+        val model = JenaModelFactory.createDefaultModel()
         try {
             ByteArrayInputStream(graphData.toByteArray()).use { inputStream ->
                 RDFDataMgr.read(model, inputStream, fromLang)
@@ -208,7 +204,7 @@ class RdfService(
         val workingModel =
             if (needsCopy) {
                 // Create a copy only when we need to add resource-specific prefixes
-                val copy = ModelFactory.createDefaultModel()
+                val copy = JenaModelFactory.createDefaultModel()
                 copy.add(model)
                 copy
             } else {
@@ -221,17 +217,17 @@ class RdfService(
                 workingModel.clearNsPrefixMap()
             } else {
                 // Add prefixes: resource-specific if resourceType provided, common otherwise
-                addPrefixesForResourceType(workingModel, resourceType)
+                addPrefixesForResourceTypeJena(workingModel, resourceType)
             }
 
-            val rdfFormat = getRdfFormat(toFormat)
+            val jenaLang = getJenaLang(toFormat)
             val result =
                 StringWriter().use { outputStream ->
-                    RDFDataMgr.write(outputStream, workingModel, rdfFormat)
+                    RDFDataMgr.write(outputStream, workingModel, jenaLang)
                     outputStream.toString()
                 }
 
-            return handleSpecialCases(result, rdfFormat)
+            return handleSpecialCases(result, getRdfFormat(toFormat))
         } catch (e: Exception) {
             logger.error("Failed to convert model to format {}: {}", toFormat, e.message, e)
             return null
@@ -240,46 +236,6 @@ class RdfService(
             if (needsCopy) {
                 workingModel.close()
             }
-        }
-    }
-
-    /**
-     * Converts from JSON-LD format to any target format.
-     *
-     * @param jsonLdData The JSON-LD data to convert
-     * @param toFormat The target RDF format
-     * @param style The format style (PRETTY or STANDARD)
-     * @param expandUris Whether to expand URIs (clear namespace prefixes, default: false)
-     * @param resourceType Optional resource type to use resource-specific namespace prefixes
-     */
-    fun convertFromJsonLd(
-        jsonLdData: Map<String, Any>,
-        toFormat: RdfFormat,
-        style: RdfFormatStyle,
-        expandUris: Boolean = false,
-        resourceType: ResourceType? = null,
-    ): String? {
-        // Handle JSON-LD pretty printing (no RDF conversion needed)
-        if (toFormat == RdfFormat.JSON_LD && style == RdfFormatStyle.PRETTY && expandUris) {
-            return objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(jsonLdData)
-        }
-
-        // Convert Map to JSON string and parse to model
-        val jsonString = objectMapper.writeValueAsString(jsonLdData)
-        val model =
-            try {
-                ByteArrayInputStream(jsonString.toByteArray()).use { inputStream ->
-                    Rio.parse(inputStream, "", RDFFormat.JSONLD)
-                }
-            } catch (e: Exception) {
-                logger.error("Failed to parse JSON-LD data", e)
-                return null
-            }
-
-            // Use the new convertFromModel method
-            return convertFromModel(model, toFormat, style, expandUris, resourceType)
-        } finally {
-            model.clear()
         }
     }
 
@@ -309,120 +265,118 @@ class RdfService(
         }
 
     /**
-     * Converts Turtle RDF to JSON-LD Map.
-     *
-     * This method converts Turtle RDF data to JSON-LD format and returns it as a Map.
-     * It's specifically designed for storing in the database where JSON-LD data is expected as Map<String, Any>.
-     *
-     * Optimized version using RDF4J that:
-     * - Uses memory-efficient LinkedHashModel for better performance
-     * - Directly writes to byte array instead of StringWriter
-     * - Uses Jackson's streaming parser for faster JSON parsing
-     * - Avoids unnecessary string intermediate steps
-     *
-     * @param turtleData The Turtle RDF data as a string
-     * @param expandUris Whether to expand URIs (clear namespace prefixes, default: true for expanded URIs)
-     * @return JSON-LD data as Map<String, Any>, or empty map if conversion fails
+     * Maps RdfFormat to Jena Lang for RDFDataMgr.write.
      */
-    fun convertTurtleToJsonLdMap(
-        turtleData: String,
-        expandUris: Boolean = true,
-    ): Map<String, Any> {
-        return try {
-            logger.debug("Converting Turtle to JSON-LD Map (expandUris: $expandUris, size: ${turtleData.length})")
-
-            // Use memory-efficient model with minimal overhead (RDF4J LinkedHashModel is optimized)
-            val model =
-                try {
-                    // Read Turtle directly from byte array (faster than String)
-                    val turtleBytes = turtleData.toByteArray(Charsets.UTF_8)
-                    ByteArrayInputStream(turtleBytes).use { inputStream ->
-                        Rio.parse(inputStream, "", RDFFormat.TURTLE)
-                    }
-                } catch (e: Exception) {
-                    logger.error("Failed to parse Turtle data in convertTurtleToJsonLdMap", e)
-                    return emptyMap<String, Any>()
-                }
-
-            try {
-                if (expandUris) {
-                    // RDF4J doesn't have clearNamespaces(), so we remove them individually
-                    // Collect prefixes first to avoid ConcurrentModificationException
-                    val prefixes = model.namespaces.map { it.prefix }.toList()
-                    prefixes.forEach { model.removeNamespace(it) }
-                }
-
-                // Write directly to byte array output stream (more efficient than StringWriter)
-                val outputStream = ByteArrayOutputStream()
-                val writer = Rio.createWriter(RDFFormat.JSONLD, outputStream)
-                val config = WriterConfig()
-
-                // Configure JSON-LD to include namespace prefixes in @context when expandUris is false
-                if (!expandUris) {
-                    // COMPACT mode will automatically use the model's namespaces in the @context
-                    config.set(JSONLDSettings.JSONLD_MODE, JSONLDMode.COMPACT)
-                } else {
-                    // Use EXPAND mode when expandUris is true to ensure full URIs
-                    config.set(JSONLDSettings.JSONLD_MODE, JSONLDMode.EXPAND)
-                }
-
-                writer.setWriterConfig(config)
-                Rio.write(model, writer)
-
-                // Parse JSON-LD directly from bytes (faster than string conversion)
-                // RDF4J may output JSON-LD as an array, so we handle both cases
-                val jsonBytes = outputStream.toByteArray()
-                if (jsonBytes.isEmpty()) {
-                    logger.warn("RDF4J produced empty JSON-LD output")
-                    return emptyMap<String, Any>()
-                }
-
-                val jsonString = String(jsonBytes, Charsets.UTF_8)
-                logger.debug("RDF4J JSON-LD output (first 500 chars): ${jsonString.take(500)}")
-
-                val jsonNode =
-                    try {
-                        objectMapper.readTree(jsonBytes)
-                    } catch (e: Exception) {
-                        logger.error("Failed to parse JSON-LD from RDF4J output: ${jsonString.take(200)}", e)
-                        return emptyMap<String, Any>()
-                    }
-
-                val jsonLdMap =
-                    when {
-                        jsonNode.isObject -> {
-                            @Suppress("UNCHECKED_CAST")
-                            objectMapper.convertValue(jsonNode, Map::class.java) as Map<String, Any>
-                        }
-                        jsonNode.isArray -> {
-                            if (jsonNode.size() == 0) {
-                                logger.warn("RDF4J produced empty JSON-LD array")
-                                emptyMap<String, Any>()
-                            } else if (jsonNode.size() == 1) {
-                                // Single graph in array - extract it
-                                @Suppress("UNCHECKED_CAST")
-                                objectMapper.convertValue(jsonNode[0], Map::class.java) as Map<String, Any>
-                            } else {
-                                // Multiple graphs - wrap in @graph
-                                @Suppress("UNCHECKED_CAST")
-                                mapOf("@graph" to objectMapper.convertValue(jsonNode, List::class.java)) as Map<String, Any>
-                            }
-                        }
-                        else -> {
-                            logger.warn("Unexpected JSON-LD format: ${jsonNode.nodeType}")
-                            emptyMap<String, Any>()
-                        }
-                    }
-
-                logger.debug("Successfully converted Turtle to JSON-LD Map (result size: ${jsonLdMap.size})")
-                jsonLdMap
-            } finally {
-                model.clear()
-            }
-        } catch (e: Exception) {
-            logger.error("Failed to convert Turtle to JSON-LD Map", e)
-            emptyMap<String, Any>()
+    private fun getJenaLang(format: RdfFormat): Lang =
+        when (format) {
+            RdfFormat.TURTLE -> Lang.TURTLE
+            RdfFormat.RDF_XML -> Lang.RDFXML
+            RdfFormat.N_TRIPLES -> Lang.NTRIPLES
+            RdfFormat.N_QUADS -> Lang.NQUADS
+            RdfFormat.JSON_LD -> Lang.JSONLD
         }
+
+    /**
+     * Adds resource-type-specific prefixes to a Jena model.
+     */
+    private fun addPrefixesForResourceTypeJena(
+        model: org.apache.jena.rdf.model.Model,
+        resourceType: ResourceType?,
+    ) {
+        when (resourceType) {
+            ResourceType.DATASET -> addDatasetPrefixesJena(model)
+            ResourceType.DATA_SERVICE -> addDataServicePrefixesJena(model)
+            ResourceType.CONCEPT -> addConceptPrefixesJena(model)
+            ResourceType.INFORMATION_MODEL -> addInformationModelPrefixesJena(model)
+            ResourceType.SERVICE -> addServicePrefixesJena(model)
+            ResourceType.EVENT -> addEventPrefixesJena(model)
+            null -> addCommonPrefixesJena(model)
+        }
+    }
+
+    private fun addDatasetPrefixesJena(model: org.apache.jena.rdf.model.Model) {
+        model.setNsPrefix("rdf", "http://www.w3.org/1999/02/22-rdf-syntax-ns#")
+        model.setNsPrefix("rdfs", "http://www.w3.org/2000/01/rdf-schema#")
+        model.setNsPrefix("owl", "http://www.w3.org/2002/07/owl#")
+        model.setNsPrefix("xsd", "http://www.w3.org/2001/XMLSchema#")
+        model.setNsPrefix("dcat", "http://www.w3.org/ns/dcat#")
+        model.setNsPrefix("dcatap", "http://data.europa.eu/r5r/")
+        model.setNsPrefix("dcatno", "https://data.norge.no/vocabulary/dcatno#")
+        model.setNsPrefix("dct", "http://purl.org/dc/terms/")
+        model.setNsPrefix("adms", "http://www.w3.org/ns/adms#")
+        model.setNsPrefix("cv", "http://data.europa.eu/m8g/")
+        model.setNsPrefix("cpsv", "http://purl.org/vocab/cpsv#")
+        model.setNsPrefix("dqv", "http://www.w3.org/ns/dqv#")
+        model.setNsPrefix("eli", "http://data.europa.eu/eli/ontology#")
+        model.setNsPrefix("foaf", "http://xmlns.com/foaf/0.1/")
+        model.setNsPrefix("locn", "http://www.w3.org/ns/locn#")
+        model.setNsPrefix("odrl", "http://www.w3.org/ns/odrl/2/")
+        model.setNsPrefix("odrs", "http://schema.theodi.org/odrs#")
+        model.setNsPrefix("prov", "http://www.w3.org/ns/prov#")
+        model.setNsPrefix("skos", "http://www.w3.org/2004/02/skos/core#")
+        model.setNsPrefix("spdx", "http://spdx.org/rdf/terms#")
+        model.setNsPrefix("time", "http://www.w3.org/2006/time#")
+        model.setNsPrefix("vcard", "http://www.w3.org/2006/vcard/ns#")
+    }
+
+    private fun addDataServicePrefixesJena(model: org.apache.jena.rdf.model.Model) = addDatasetPrefixesJena(model)
+
+    private fun addConceptPrefixesJena(model: org.apache.jena.rdf.model.Model) {
+        model.setNsPrefix("rdf", "http://www.w3.org/1999/02/22-rdf-syntax-ns#")
+        model.setNsPrefix("rdfs", "http://www.w3.org/2000/01/rdf-schema#")
+        model.setNsPrefix("owl", "http://www.w3.org/2002/07/owl#")
+        model.setNsPrefix("xsd", "http://www.w3.org/2001/XMLSchema#")
+        model.setNsPrefix("adms", "http://www.w3.org/ns/adms#")
+        model.setNsPrefix("dcat", "http://www.w3.org/ns/dcat#")
+        model.setNsPrefix("dct", "http://purl.org/dc/terms/")
+        model.setNsPrefix("euvoc", "http://publications.europa.eu/ontology/euvoc#")
+        model.setNsPrefix("org", "http://www.w3.org/ns/org#")
+        model.setNsPrefix("skos", "http://www.w3.org/2004/02/skos/core#")
+        model.setNsPrefix("skosno", "https://data.norge.no/vocabulary/skosno#")
+        model.setNsPrefix("vcard", "http://www.w3.org/2006/vcard/ns#")
+        model.setNsPrefix("xkos", "http://rdf-vocabulary.ddialliance.org/xkos#")
+    }
+
+    private fun addInformationModelPrefixesJena(model: org.apache.jena.rdf.model.Model) {
+        model.setNsPrefix("rdf", "http://www.w3.org/1999/02/22-rdf-syntax-ns#")
+        model.setNsPrefix("rdfs", "http://www.w3.org/2000/01/rdf-schema#")
+        model.setNsPrefix("owl", "http://www.w3.org/2002/07/owl#")
+        model.setNsPrefix("xsd", "http://www.w3.org/2001/XMLSchema#")
+        model.setNsPrefix("dcat", "http://www.w3.org/ns/dcat#")
+        model.setNsPrefix("dct", "http://purl.org/dc/terms/")
+        model.setNsPrefix("modelldcatno", "https://data.norge.no/vocabulary/modelldcatno#")
+        model.setNsPrefix("modelldcat", "https://data.norge.no/vocabulary/modelldcat#")
+        model.setNsPrefix("skos", "http://www.w3.org/2004/02/skos/core#")
+    }
+
+    private fun addServicePrefixesJena(model: org.apache.jena.rdf.model.Model) {
+        model.setNsPrefix("rdf", "http://www.w3.org/1999/02/22-rdf-syntax-ns#")
+        model.setNsPrefix("rdfs", "http://www.w3.org/2000/01/rdf-schema#")
+        model.setNsPrefix("cpsv", "http://purl.org/vocab/cpsv#")
+        model.setNsPrefix("dct", "http://purl.org/dc/terms/")
+        model.setNsPrefix("spdx", "http://spdx.org/rdf/terms#")
+        model.setNsPrefix("vcard", "http://www.w3.org/2006/vcard/ns#")
+    }
+
+    private fun addEventPrefixesJena(model: org.apache.jena.rdf.model.Model) {
+        addServicePrefixesJena(model)
+    }
+
+    private fun addCommonPrefixesJena(model: org.apache.jena.rdf.model.Model) {
+        model.setNsPrefix("rdf", "http://www.w3.org/1999/02/22-rdf-syntax-ns#")
+        model.setNsPrefix("rdfs", "http://www.w3.org/2000/01/rdf-schema#")
+        model.setNsPrefix("owl", "http://www.w3.org/2002/07/owl#")
+        model.setNsPrefix("xsd", "http://www.w3.org/2001/XMLSchema#")
+        model.setNsPrefix("dcat", "http://www.w3.org/ns/dcat#")
+        model.setNsPrefix("dct", "http://purl.org/dc/terms/")
+        model.setNsPrefix("dc", "http://purl.org/dc/elements/1.1/")
+        model.setNsPrefix("foaf", "http://xmlns.com/foaf/0.1/")
+        model.setNsPrefix("skos", "http://www.w3.org/2004/02/skos/core#")
+        model.setNsPrefix("schema", "http://schema.org/")
+        model.setNsPrefix("vcard", "http://www.w3.org/2006/vcard/ns#")
+        model.setNsPrefix("prov", "http://www.w3.org/ns/prov#")
+        model.setNsPrefix("adms", "http://www.w3.org/ns/adms#")
+        model.setNsPrefix("locn", "http://www.w3.org/ns/locn#")
     }
 
     /**

@@ -707,10 +707,9 @@ class UnionGraphService(
                                         if (type == ResourceType.DATASET && datasetFilters?.isDatasetSeries != null) {
                                             val isDatasetSeries = isDatasetSeriesInModel(model, resource.uri)
                                             // Filter logic: null = both, true = only series, false = no series
-                                            when (datasetFilters.isDatasetSeries) {
+                                            when (datasetFilters.isDatasetSeries!!) {
                                                 true -> isDatasetSeries // Include only if IS DatasetSeries
                                                 false -> !isDatasetSeries // Include only if NOT DatasetSeries
-                                                null -> true // Include both (shouldn't reach here, but safe)
                                             }
                                         } else {
                                             true // No filter, include all
@@ -1078,8 +1077,7 @@ class UnionGraphService(
             // Merge DataService graphs if needed
             if (expandDistributionAccessServices && resource.resourceType == ResourceType.DATASET.name) {
                 val datasetJson = resource.resourceJson
-                if (datasetJson != null && datasetJson is Map<*, *>) {
-                    @Suppress("UNCHECKED_CAST")
+                if (datasetJson != null) {
                     val dataServiceUris = mutableSetOf<String>()
                     extractDataServiceUris(datasetJson, dataServiceUris)
                     if (dataServiceUris.isNotEmpty()) {
@@ -1140,7 +1138,10 @@ class UnionGraphService(
             val distributions =
                 when (val distValue = datasetJson["distribution"]) {
                     is List<*> -> distValue.filterIsInstance<Map<String, Any>>()
-                    is Map<*, *> -> listOf(distValue as Map<String, Any>)
+                    is Map<*, *> -> {
+                        @Suppress("UNCHECKED_CAST")
+                        listOf(distValue as Map<String, Any>)
+                    }
                     else -> emptyList()
                 }
 
@@ -1149,7 +1150,10 @@ class UnionGraphService(
                 val accessServices =
                     when (val accessServiceValue = distribution["accessService"]) {
                         is List<*> -> accessServiceValue.filterIsInstance<Map<String, Any>>()
-                        is Map<*, *> -> listOf(accessServiceValue as Map<String, Any>)
+                        is Map<*, *> -> {
+                            @Suppress("UNCHECKED_CAST")
+                            listOf(accessServiceValue as Map<String, Any>)
+                        }
                         else -> emptyList()
                     }
 
@@ -1459,10 +1463,9 @@ class UnionGraphService(
                             if (currentResourceType == ResourceType.DATASET && datasetFilters?.isDatasetSeries != null) {
                                 val isDatasetSeries = isDatasetSeriesInModel(model, resource.uri)
                                 // Filter logic: null = both, true = only series, false = no series
-                                when (datasetFilters.isDatasetSeries) {
+                                when (datasetFilters.isDatasetSeries!!) {
                                     true -> isDatasetSeries // Include only if IS DatasetSeries
                                     false -> !isDatasetSeries // Include only if NOT DatasetSeries
-                                    null -> true // Include both (shouldn't reach here, but safe)
                                 }
                             } else {
                                 true // No filter, include all

@@ -142,9 +142,7 @@ The FDK Resource Service is built on a microservices architecture with multiple 
 **Key Methods**:
 - `convertFromFormat()` - Converts from any RDF format to any target format
 - `convertFromTurtle()` - Converts Turtle to target format
-- `convertFromJsonLd()` - Converts JSON-LD to target format
 - `convertFromModel()` - Converts Jena Model to target format
-- `convertTurtleToJsonLdMap()` - Converts Turtle to JSON-LD Map
 - `getBestFormat()` - Determines best format from Accept header
 - `getContentType()` - Returns MediaType for RDF format
 

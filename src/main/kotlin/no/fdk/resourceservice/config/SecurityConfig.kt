@@ -15,7 +15,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource
 @Configuration
 @EnableWebSecurity
 class SecurityConfig(
-    @Value("\${app.union-graphs.api-key:}")
+    @param:Value("\${app.union-graphs.api-key:}")
     private val unionGraphsApiKey: String,
 ) {
     @Bean
