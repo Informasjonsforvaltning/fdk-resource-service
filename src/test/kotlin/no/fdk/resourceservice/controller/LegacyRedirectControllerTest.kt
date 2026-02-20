@@ -77,4 +77,44 @@ class LegacyRedirectControllerTest : BaseControllerTest() {
             .andExpect(status().isTemporaryRedirect)
             .andExpect(header().string("Location", "/v1/services/test-service-id"))
     }
+
+    @Test
+    fun `should redirect data-service by id endpoint`() {
+        mockMvc
+            .perform(get("/data-services/test-dataservice-id"))
+            .andExpect(status().isTemporaryRedirect)
+            .andExpect(header().string("Location", "/v1/data-services/test-dataservice-id"))
+    }
+
+    @Test
+    fun `should redirect event by id endpoint`() {
+        mockMvc
+            .perform(get("/events/test-event-id"))
+            .andExpect(status().isTemporaryRedirect)
+            .andExpect(header().string("Location", "/v1/events/test-event-id"))
+    }
+
+    @Test
+    fun `should redirect information-model by id endpoint`() {
+        mockMvc
+            .perform(get("/information-models/test-infomodel-id"))
+            .andExpect(status().isTemporaryRedirect)
+            .andExpect(header().string("Location", "/v1/information-models/test-infomodel-id"))
+    }
+
+    @Test
+    fun `should redirect ping to health`() {
+        mockMvc
+            .perform(get("/ping"))
+            .andExpect(status().isTemporaryRedirect)
+            .andExpect(header().string("Location", "/health"))
+    }
+
+    @Test
+    fun `should redirect ready to health`() {
+        mockMvc
+            .perform(get("/ready"))
+            .andExpect(status().isTemporaryRedirect)
+            .andExpect(header().string("Location", "/health"))
+    }
 }

@@ -82,7 +82,6 @@ class HarvestEventProducer(
                     .setAcceptHeader(null)
                     .setErrorMessage(null)
                     .setChangedResourcesCount(null)
-                    .setUnchangedResourcesCount(null)
                     .setRemovedResourcesCount(null)
                     .build()
 
@@ -137,7 +136,6 @@ class HarvestEventProducer(
                     .setAcceptHeader(null)
                     .setErrorMessage(null)
                     .setChangedResourcesCount(null)
-                    .setUnchangedResourcesCount(null)
                     .setRemovedResourcesCount(null)
                     .build()
 
@@ -196,7 +194,6 @@ class HarvestEventProducer(
                     .setDataSourceUrl(null)
                     .setAcceptHeader(null)
                     .setChangedResourcesCount(null)
-                    .setUnchangedResourcesCount(null)
                     .setRemovedResourcesCount(null)
                     .build()
 
