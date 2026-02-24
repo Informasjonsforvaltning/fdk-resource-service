@@ -372,6 +372,12 @@
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
                 <version>0.8.14</version>
+                <configuration>
+                    <excludes>
+                        <!-- Avro-generated classes; recompilation can cause execution data mismatch -->
+                        <exclude>no/fdk/**/*</exclude>
+                    </excludes>
+                </configuration>
                 <executions>
                     <execution>
                         <id>prepare-agent</id>
