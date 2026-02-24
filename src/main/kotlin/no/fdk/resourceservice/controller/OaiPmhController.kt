@@ -23,6 +23,7 @@ import org.w3c.dom.Element
 import java.time.Instant
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
+import java.time.format.DateTimeParseException
 import javax.xml.parsers.DocumentBuilderFactory
 import javax.xml.transform.OutputKeys
 import javax.xml.transform.TransformerFactory
@@ -115,6 +116,12 @@ class OaiPmhController(
         @RequestParam(required = false) identifier: String?,
         @Parameter(description = "Resumption token (for pagination in ListIdentifiers and ListRecords)")
         @RequestParam(required = false) resumptionToken: String?,
+        @Parameter(description = "OAI-PMH from date (optional, for ListIdentifiers/ListRecords). ISO-8601 UTC.")
+        @RequestParam(required = false) from: String?,
+        @Parameter(description = "OAI-PMH until date (optional, for ListIdentifiers/ListRecords). ISO-8601 UTC.")
+        @RequestParam(required = false) until: String?,
+        @Parameter(description = "OAI-PMH set (optional, for ListIdentifiers/ListRecords). Use org:{orgnr} to filter by publisher.")
+        @RequestParam(required = false) set: String?,
         request: HttpServletRequest,
     ): ResponseEntity<String> {
         logger.debug("OAI-PMH request: verb={}, id={}, metadataPrefix={}, identifier={}", verb, id, metadataPrefix, identifier)
@@ -127,12 +134,13 @@ class OaiPmhController(
             "IDENTIFY" -> handleIdentify(id, request)
             "LISTMETADATAFORMATS" -> handleListMetadataFormats(id, identifier, request)
             "GETRECORD" -> handleGetRecord(id, identifier, metadataPrefix, request)
-            "LISTIDENTIFIERS" -> handleListIdentifiers(id, metadataPrefix, resumptionToken, request)
-            "LISTRECORDS" -> handleListRecords(id, metadataPrefix, resumptionToken, request)
+            "LISTIDENTIFIERS" -> handleListIdentifiers(id, metadataPrefix, resumptionToken, from, until, set, request)
+            "LISTRECORDS" -> handleListRecords(id, metadataPrefix, resumptionToken, from, until, set, request)
+            "LISTSETS" -> handleListSets(id, request)
             else ->
                 errorResponse(
                     "badVerb",
-                    "Illegal verb: $actualVerb. Supported verbs: Identify, ListMetadataFormats, GetRecord, ListIdentifiers, ListRecords",
+                    "Illegal verb: $actualVerb. Supported verbs: Identify, ListMetadataFormats, GetRecord, ListIdentifiers, ListRecords, ListSets",
                 )
         }
     }
@@ -260,8 +268,8 @@ class OaiPmhController(
             unionGraphService.getOrder(id)
                 ?: return errorResponse("idDoesNotExist", "Union graph with id '$id' does not exist")
 
-        // Only allow access if the union graph is completed (has snapshots available)
-        if (order.status == UnionGraphOrder.GraphStatus.PENDING || order.status == UnionGraphOrder.GraphStatus.FAILED) {
+        // Block only when union graph has failed; PENDING (updating) or COMPLETED may still have snapshots
+        if (order.status == UnionGraphOrder.GraphStatus.FAILED) {
             return errorResponse("idDoesNotExist", "Union graph with id '$id' is not available (status: ${order.status})")
         }
 
@@ -309,10 +317,41 @@ class OaiPmhController(
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_XML).body(documentToString(doc))
     }
 
+    private fun handleListSets(
+        id: String,
+        httpRequest: HttpServletRequest,
+    ): ResponseEntity<String> {
+        val order =
+            unionGraphService.getOrder(id)
+                ?: return errorResponse("idDoesNotExist", "Union graph with id '$id' does not exist")
+        if (order.status == UnionGraphOrder.GraphStatus.FAILED) {
+            return errorResponse("idDoesNotExist", "Union graph with id '$id' is not available (status: ${order.status})")
+        }
+        val doc = createOaiPmhDocument()
+        val request = createRequestElement(doc, "ListSets", id, emptyMap(), httpRequest)
+        val listSets = doc.createElement("ListSets")
+        val set = doc.createElement("set")
+        set.appendChild(createTextElement(doc, "setSpec", "org"))
+        set.appendChild(createTextElement(doc, "setName", "Organization (by orgnr)"))
+        val setDescription = doc.createElement("setDescription")
+        val dc = doc.createElementNS("http://purl.org/dc/elements/1.1/", "dc:description")
+        dc.textContent = "Filter by publisher organization number. Use set=org:{orgnr} in ListIdentifiers/ListRecords."
+        setDescription.appendChild(dc)
+        set.appendChild(setDescription)
+        listSets.appendChild(set)
+        val response = doc.getElementsByTagName("OAI-PMH").item(0) as Element
+        response.appendChild(request)
+        response.appendChild(listSets)
+        return ResponseEntity.ok().contentType(MediaType.APPLICATION_XML).body(documentToString(doc))
+    }
+
     private fun handleListIdentifiers(
         id: String,
         metadataPrefix: String?,
         resumptionToken: String?,
+        from: String?,
+        until: String?,
+        set: String?,
         httpRequest: HttpServletRequest,
     ): ResponseEntity<String> {
         // Get union graph order
@@ -320,8 +359,8 @@ class OaiPmhController(
             unionGraphService.getOrder(id)
                 ?: return errorResponse("idDoesNotExist", "Union graph with id '$id' does not exist")
 
-        // Only allow access if the union graph is completed (has snapshots available)
-        if (order.status == UnionGraphOrder.GraphStatus.PENDING || order.status == UnionGraphOrder.GraphStatus.FAILED) {
+        // Block only when union graph has failed; PENDING (updating) or COMPLETED may still have snapshots
+        if (order.status == UnionGraphOrder.GraphStatus.FAILED) {
             return errorResponse("idDoesNotExist", "Union graph with id '$id' is not available (status: ${order.status})")
         }
 
@@ -334,13 +373,36 @@ class OaiPmhController(
             return errorResponse("badArgument", "Missing required argument: metadataPrefix")
         }
 
-        // Parse resumption token or start from beginning
-        val (resourceOffset, actualMetadataPrefix) =
+        // Parse resumption token or start from beginning (including optional from/until/set)
+        val (resourceOffset, actualMetadataPrefix, filterParams) =
             if (resumptionToken != null) {
-                parseResumptionToken(resumptionToken, id)
-                    ?: return errorResponse("badResumptionToken", "Invalid resumption token")
+                val parsed =
+                    parseResumptionTokenWithFilters(resumptionToken, id)
+                        ?: return errorResponse("badResumptionToken", "Invalid resumption token")
+                Triple(parsed.first, parsed.second, parsed.third)
             } else {
-                Pair(0, metadataPrefix?.lowercase() ?: "rdfxml")
+                val filters =
+                    if (from != null || until != null || set != null) {
+                        val f = parseAndValidateFilters(from, until, set)
+                        if (f == null) {
+                            if (set != null && set.isNotBlank() && parseSetOrgnr(set) == null) {
+                                return errorResponse("badArgument", "Invalid set format. Expected org:{orgnr}")
+                            }
+                            if (from != null && until != null) {
+                                val fromTs = parseOaiDate(from)
+                                val untilTs = parseOaiDate(until)
+                                if (fromTs != null && untilTs != null && fromTs.isAfter(untilTs)) {
+                                    return errorResponse("badArgument", "from must be less than or equal to until")
+                                }
+                            }
+                            null
+                        } else {
+                            f
+                        }
+                    } else {
+                        null
+                    }
+                Triple(0, metadataPrefix?.lowercase() ?: "rdfxml", filters)
             }
 
         // Validate that the metadataPrefix is rdfxml (from token or parameter)
@@ -373,24 +435,53 @@ class OaiPmhController(
                 sentinelTimestamp
             }
 
-        // Fetch snapshots from database (50 per page)
+        val fromTs = filterParams?.fromTs
+        val untilTs = filterParams?.untilTs
+        val publisherOrgnr = filterParams?.publisherOrgnr
+
+        // Fetch snapshots from database (50 per page), with optional from/until/set filters
         val pageSize = 50
         val snapshots =
-            if (order.resourceTypes != null && order.resourceTypes.size == 1) {
-                unionGraphResourceSnapshotRepository.findByUnionGraphIdAndResourceTypePaginated(
-                    id,
-                    currentResourceType.name,
-                    resourceOffset,
-                    pageSize,
-                    beforeTimestamp,
-                )
+            if (fromTs != null || untilTs != null || !publisherOrgnr.isNullOrBlank()) {
+                if (order.resourceTypes != null && order.resourceTypes.size == 1) {
+                    unionGraphResourceSnapshotRepository.findByUnionGraphIdAndResourceTypePaginated(
+                        id,
+                        currentResourceType.name,
+                        resourceOffset,
+                        pageSize,
+                        beforeTimestamp,
+                        fromTs,
+                        untilTs,
+                        publisherOrgnr,
+                    )
+                } else {
+                    unionGraphResourceSnapshotRepository.findByUnionGraphIdPaginated(
+                        id,
+                        resourceOffset,
+                        pageSize,
+                        beforeTimestamp,
+                        fromTs,
+                        untilTs,
+                        publisherOrgnr,
+                    )
+                }
             } else {
-                unionGraphResourceSnapshotRepository.findByUnionGraphIdPaginated(
-                    id,
-                    resourceOffset,
-                    pageSize,
-                    beforeTimestamp,
-                )
+                if (order.resourceTypes != null && order.resourceTypes.size == 1) {
+                    unionGraphResourceSnapshotRepository.findByUnionGraphIdAndResourceTypePaginated(
+                        id,
+                        currentResourceType.name,
+                        resourceOffset,
+                        pageSize,
+                        beforeTimestamp,
+                    )
+                } else {
+                    unionGraphResourceSnapshotRepository.findByUnionGraphIdPaginated(
+                        id,
+                        resourceOffset,
+                        pageSize,
+                        beforeTimestamp,
+                    )
+                }
             }
 
         val doc = createOaiPmhDocument()
@@ -398,43 +489,55 @@ class OaiPmhController(
             mutableMapOf<String, String>().apply {
                 if (resumptionToken == null) {
                     put("metadataPrefix", actualMetadataPrefix)
+                    from?.takeIf { it.isNotBlank() }?.let { put("from", it) }
+                    until?.takeIf { it.isNotBlank() }?.let { put("until", it) }
+                    set?.takeIf { it.isNotBlank() }?.let { put("set", it) }
                 }
             }
         val request = createRequestElement(doc, "ListIdentifiers", id, requestParams, httpRequest)
         val listIdentifiers = doc.createElement("ListIdentifiers")
 
-        // Create a header for each snapshot (no metadata)
         for (snapshot in snapshots) {
             val header = doc.createElement("header")
             val resourceIdentifier = createIdentifier(id, snapshot.resourceId, httpRequest)
             header.appendChild(createTextElement(doc, "identifier", resourceIdentifier))
-            header.appendChild(createTextElement(doc, "datestamp", formatDate(order.processedAt ?: order.updatedAt)))
+            val datestamp = snapshot.resourceModifiedAt ?: order.processedAt ?: order.updatedAt
+            header.appendChild(createTextElement(doc, "datestamp", formatDate(datestamp)))
+            snapshot.publisherOrgnr?.let { orgnr ->
+                header.appendChild(createTextElement(doc, "setSpec", "org:$orgnr"))
+            }
             listIdentifiers.appendChild(header)
         }
 
-        // Get total count for completeListSize
         val totalCount =
-            if (order.resourceTypes != null && order.resourceTypes.size == 1) {
-                unionGraphResourceSnapshotRepository.countByUnionGraphIdAndResourceType(
-                    id,
-                    currentResourceType.name,
-                    beforeTimestamp,
-                )
+            if (fromTs != null || untilTs != null || !publisherOrgnr.isNullOrBlank()) {
+                if (order.resourceTypes != null && order.resourceTypes.size == 1) {
+                    unionGraphResourceSnapshotRepository.countByUnionGraphIdAndResourceType(
+                        id,
+                        currentResourceType.name,
+                        beforeTimestamp,
+                        fromTs,
+                        untilTs,
+                        publisherOrgnr,
+                    )
+                } else {
+                    unionGraphResourceSnapshotRepository.countByUnionGraphId(id, beforeTimestamp, fromTs, untilTs, publisherOrgnr)
+                }
             } else {
-                unionGraphResourceSnapshotRepository.countByUnionGraphId(id, beforeTimestamp)
+                if (order.resourceTypes != null && order.resourceTypes.size == 1) {
+                    unionGraphResourceSnapshotRepository.countByUnionGraphIdAndResourceType(id, currentResourceType.name, beforeTimestamp)
+                } else {
+                    unionGraphResourceSnapshotRepository.countByUnionGraphId(id, beforeTimestamp)
+                }
             }
 
-        // Add resumption token if there are more snapshots, or add empty token with completeListSize on first/last page
         if (snapshots.size >= pageSize) {
             val resumptionTokenElement = doc.createElement("resumptionToken")
-            val nextToken = createResumptionToken(id, actualMetadataPrefix, resourceOffset + snapshots.size)
+            val nextToken = createResumptionToken(id, actualMetadataPrefix, resourceOffset + snapshots.size, filterParams)
             resumptionTokenElement.textContent = nextToken
-            // Add completeListSize attribute (OAI-PMH 2.0 optional attribute)
             resumptionTokenElement.setAttribute("completeListSize", totalCount.toString())
             listIdentifiers.appendChild(resumptionTokenElement)
         } else if (resourceOffset == 0) {
-            // First page with no more records - include empty resumption token with completeListSize
-            // This is a common pattern to provide the total count even when there's only one page
             val resumptionTokenElement = doc.createElement("resumptionToken")
             resumptionTokenElement.setAttribute("completeListSize", totalCount.toString())
             listIdentifiers.appendChild(resumptionTokenElement)
@@ -451,18 +554,18 @@ class OaiPmhController(
         id: String,
         metadataPrefix: String?,
         resumptionToken: String?,
+        from: String?,
+        until: String?,
+        set: String?,
         httpRequest: HttpServletRequest,
     ): ResponseEntity<String> {
-        // Get union graph order
         val order =
             unionGraphService.getOrder(id)
                 ?: return errorResponse("idDoesNotExist", "Union graph with id '$id' does not exist")
 
-        // Only allow access if the union graph is completed (has snapshots available)
-        if (order.status == UnionGraphOrder.GraphStatus.PENDING || order.status == UnionGraphOrder.GraphStatus.FAILED) {
+        if (order.status == UnionGraphOrder.GraphStatus.FAILED) {
             return errorResponse("idDoesNotExist", "Union graph with id '$id' is not available (status: ${order.status})")
         }
-        // Validate metadataPrefix - must be "rdfxml" if provided
         if (metadataPrefix != null && metadataPrefix.lowercase() != "rdfxml") {
             return errorResponse("badArgument", "Only 'rdfxml' metadataPrefix is supported. Received: $metadataPrefix")
         }
@@ -471,22 +574,41 @@ class OaiPmhController(
             return errorResponse("badArgument", "Missing required argument: metadataPrefix")
         }
 
-        // Parse resumption token or start from beginning
-        // Default to "rdfxml" since it's the only supported format
-        val (resourceOffset, actualMetadataPrefix) =
+        val (resourceOffset, actualMetadataPrefix, filterParams) =
             if (resumptionToken != null) {
-                parseResumptionToken(resumptionToken, id)
-                    ?: return errorResponse("badResumptionToken", "Invalid resumption token")
+                val parsed =
+                    parseResumptionTokenWithFilters(resumptionToken, id)
+                        ?: return errorResponse("badResumptionToken", "Invalid resumption token")
+                Triple(parsed.first, parsed.second, parsed.third)
             } else {
-                Pair(0, metadataPrefix?.lowercase() ?: "rdfxml")
+                val filters =
+                    if (from != null || until != null || set != null) {
+                        val f = parseAndValidateFilters(from, until, set)
+                        if (f == null) {
+                            if (set != null && set.isNotBlank() && parseSetOrgnr(set) == null) {
+                                return errorResponse("badArgument", "Invalid set format. Expected org:{orgnr}")
+                            }
+                            if (from != null && until != null) {
+                                val fromTs = parseOaiDate(from)
+                                val untilTs = parseOaiDate(until)
+                                if (fromTs != null && untilTs != null && fromTs.isAfter(untilTs)) {
+                                    return errorResponse("badArgument", "from must be less than or equal to until")
+                                }
+                            }
+                            null
+                        } else {
+                            f
+                        }
+                    } else {
+                        null
+                    }
+                Triple(0, metadataPrefix?.lowercase() ?: "rdfxml", filters)
             }
 
-        // Validate that the metadataPrefix is rdfxml (from token or parameter)
         if (actualMetadataPrefix.lowercase() != "rdfxml") {
             return errorResponse("badArgument", "Only 'rdfxml' metadataPrefix is supported. Received: $actualMetadataPrefix")
         }
 
-        // Determine resource types to query (if order specifies types, filter by first type for simplicity)
         val resourceTypes =
             order.resourceTypes?.mapNotNull { typeName ->
                 try {
@@ -498,15 +620,10 @@ class OaiPmhController(
                 }
             } ?: no.fdk.resourceservice.model.ResourceType.entries
 
-        // Use first resource type (or all if none specified)
         val currentResourceType =
             resourceTypes.firstOrNull()
                 ?: return errorResponse("badArgument", "No valid resource types found")
 
-        // During rebuilds (PROCESSING status), only return old snapshots to prevent inconsistency
-        // When COMPLETED, return all snapshots (latest per resource)
-        // Use a far future timestamp as sentinel value when we don't want to filter
-        // This avoids PostgreSQL type inference issues with NULL parameters
         val sentinelTimestamp = java.sql.Timestamp.valueOf("2099-12-31 23:59:59")
         val beforeTimestamp =
             if (order.status == UnionGraphOrder.GraphStatus.PROCESSING) {
@@ -515,26 +632,52 @@ class OaiPmhController(
                 sentinelTimestamp
             }
 
-        // Fetch snapshots from database (50 per page)
+        val fromTs = filterParams?.fromTs
+        val untilTs = filterParams?.untilTs
+        val publisherOrgnr = filterParams?.publisherOrgnr
+
         val pageSize = 50
         val snapshots =
-            if (order.resourceTypes != null && order.resourceTypes.size == 1) {
-                // Filter by resource type if order specifies a single type
-                unionGraphResourceSnapshotRepository.findByUnionGraphIdAndResourceTypePaginated(
-                    id,
-                    currentResourceType.name,
-                    resourceOffset,
-                    pageSize,
-                    beforeTimestamp,
-                )
+            if (fromTs != null || untilTs != null || !publisherOrgnr.isNullOrBlank()) {
+                if (order.resourceTypes != null && order.resourceTypes.size == 1) {
+                    unionGraphResourceSnapshotRepository.findByUnionGraphIdAndResourceTypePaginated(
+                        id,
+                        currentResourceType.name,
+                        resourceOffset,
+                        pageSize,
+                        beforeTimestamp,
+                        fromTs,
+                        untilTs,
+                        publisherOrgnr,
+                    )
+                } else {
+                    unionGraphResourceSnapshotRepository.findByUnionGraphIdPaginated(
+                        id,
+                        resourceOffset,
+                        pageSize,
+                        beforeTimestamp,
+                        fromTs,
+                        untilTs,
+                        publisherOrgnr,
+                    )
+                }
             } else {
-                // Otherwise fetch all snapshots (order by resource_id ensures consistent pagination)
-                unionGraphResourceSnapshotRepository.findByUnionGraphIdPaginated(
-                    id,
-                    resourceOffset,
-                    pageSize,
-                    beforeTimestamp,
-                )
+                if (order.resourceTypes != null && order.resourceTypes.size == 1) {
+                    unionGraphResourceSnapshotRepository.findByUnionGraphIdAndResourceTypePaginated(
+                        id,
+                        currentResourceType.name,
+                        resourceOffset,
+                        pageSize,
+                        beforeTimestamp,
+                    )
+                } else {
+                    unionGraphResourceSnapshotRepository.findByUnionGraphIdPaginated(
+                        id,
+                        resourceOffset,
+                        pageSize,
+                        beforeTimestamp,
+                    )
+                }
             }
 
         val doc = createOaiPmhDocument()
@@ -542,40 +685,48 @@ class OaiPmhController(
             mutableMapOf<String, String>().apply {
                 if (resumptionToken == null) {
                     put("metadataPrefix", actualMetadataPrefix)
+                    from?.takeIf { it.isNotBlank() }?.let { put("from", it) }
+                    until?.takeIf { it.isNotBlank() }?.let { put("until", it) }
+                    set?.takeIf { it.isNotBlank() }?.let { put("set", it) }
                 }
             }
         val request = createRequestElement(doc, "ListRecords", id, requestParams, httpRequest)
         val listRecords = doc.createElement("ListRecords")
 
-        // Create a record for each snapshot
         for (snapshot in snapshots) {
             val record = createRecordFromSnapshot(doc, id, snapshot, order, actualMetadataPrefix, httpRequest)
             listRecords.appendChild(record)
         }
 
-        // Get total count for completeListSize
         val totalCount =
-            if (order.resourceTypes != null && order.resourceTypes.size == 1) {
-                unionGraphResourceSnapshotRepository.countByUnionGraphIdAndResourceType(
-                    id,
-                    currentResourceType.name,
-                    beforeTimestamp,
-                )
+            if (fromTs != null || untilTs != null || !publisherOrgnr.isNullOrBlank()) {
+                if (order.resourceTypes != null && order.resourceTypes.size == 1) {
+                    unionGraphResourceSnapshotRepository.countByUnionGraphIdAndResourceType(
+                        id,
+                        currentResourceType.name,
+                        beforeTimestamp,
+                        fromTs,
+                        untilTs,
+                        publisherOrgnr,
+                    )
+                } else {
+                    unionGraphResourceSnapshotRepository.countByUnionGraphId(id, beforeTimestamp, fromTs, untilTs, publisherOrgnr)
+                }
             } else {
-                unionGraphResourceSnapshotRepository.countByUnionGraphId(id, beforeTimestamp)
+                if (order.resourceTypes != null && order.resourceTypes.size == 1) {
+                    unionGraphResourceSnapshotRepository.countByUnionGraphIdAndResourceType(id, currentResourceType.name, beforeTimestamp)
+                } else {
+                    unionGraphResourceSnapshotRepository.countByUnionGraphId(id, beforeTimestamp)
+                }
             }
 
-        // Add resumption token if there are more snapshots, or add empty token with completeListSize on first/last page
         if (snapshots.size >= pageSize) {
             val resumptionTokenElement = doc.createElement("resumptionToken")
-            val nextToken = createResumptionToken(id, actualMetadataPrefix, resourceOffset + snapshots.size)
+            val nextToken = createResumptionToken(id, actualMetadataPrefix, resourceOffset + snapshots.size, filterParams)
             resumptionTokenElement.textContent = nextToken
-            // Add completeListSize attribute (OAI-PMH 2.0 optional attribute)
             resumptionTokenElement.setAttribute("completeListSize", totalCount.toString())
             listRecords.appendChild(resumptionTokenElement)
         } else if (resourceOffset == 0) {
-            // First page with no more records - include empty resumption token with completeListSize
-            // This is a common pattern to provide the total count even when there's only one page
             val resumptionTokenElement = doc.createElement("resumptionToken")
             resumptionTokenElement.setAttribute("completeListSize", totalCount.toString())
             listRecords.appendChild(resumptionTokenElement)
@@ -591,6 +742,8 @@ class OaiPmhController(
     /**
      * Creates an OAI-PMH record from a resource snapshot.
      * Each snapshot becomes a separate record with its own identifier.
+     * Datestamp uses resource_modified_at (harvest.modified) when present, else order.processedAt.
+     * setSpec org:{publisherOrgnr} is added when publisher_orgnr is set.
      */
     private fun createRecordFromSnapshot(
         doc: Document,
@@ -603,10 +756,13 @@ class OaiPmhController(
         val record = doc.createElement("record")
         val header = doc.createElement("header")
 
-        // Use resource ID as identifier (valid URI format)
         val resourceIdentifier = createIdentifier(id, snapshot.resourceId, httpRequest)
         header.appendChild(createTextElement(doc, "identifier", resourceIdentifier))
-        header.appendChild(createTextElement(doc, "datestamp", formatDate(order.processedAt ?: order.updatedAt)))
+        val datestamp = snapshot.resourceModifiedAt ?: order.processedAt ?: order.updatedAt
+        header.appendChild(createTextElement(doc, "datestamp", formatDate(datestamp)))
+        snapshot.publisherOrgnr?.let { orgnr ->
+            header.appendChild(createTextElement(doc, "setSpec", "org:$orgnr"))
+        }
         record.appendChild(header)
 
         val metadata = doc.createElement("metadata")
@@ -770,28 +926,85 @@ class OaiPmhController(
         return result.toString()
     }
 
+    /** OAI-PMH optional filter params (from/until dates and set orgnr). */
+    private data class OaiPmhFilterParams(
+        val fromTs: java.sql.Timestamp?,
+        val untilTs: java.sql.Timestamp?,
+        val publisherOrgnr: String?,
+    )
+
+    /**
+     * Parses OAI-PMH date (from/until). Supports yyyy-MM-dd and yyyy-MM-dd'T'HH:mm:ss'Z'.
+     */
+    private fun parseOaiDate(s: String?): Instant? {
+        if (s.isNullOrBlank()) return null
+        return try {
+            if (s.length == 10) {
+                java.time.LocalDate
+                    .parse(s)
+                    .atStartOfDay(java.time.ZoneOffset.UTC)
+                    .toInstant()
+            } else {
+                Instant.parse(s)
+            }
+        } catch (e: DateTimeParseException) {
+            null
+        }
+    }
+
+    /**
+     * Parses set parameter: must be org:{orgnr}. Returns orgnr or null if invalid.
+     */
+    private fun parseSetOrgnr(set: String?): String? {
+        if (set.isNullOrBlank()) return null
+        if (!set.startsWith("org:")) return null
+        val orgnr = set.removePrefix("org:").trim()
+        return orgnr.takeIf { it.isNotEmpty() }
+    }
+
     /**
      * Creates a resumption token for pagination.
-     * Format: {id}:{metadataPrefix}:{startIndex}
+     * Format without filters: {id}:{metadataPrefix}:{startIndex}
+     * Format with filters: {id}:{metadataPrefix}:{startIndex}|{from}|{until}|{publisherOrgnr} (empty segment for absent)
      */
     private fun createResumptionToken(
         id: String,
         metadataPrefix: String,
         startIndex: Int,
-    ): String = "$id:$metadataPrefix:$startIndex"
+        filterParams: OaiPmhFilterParams? = null,
+    ): String {
+        val base = "$id:$metadataPrefix:$startIndex"
+        if (filterParams == null ||
+            (filterParams.fromTs == null && filterParams.untilTs == null && filterParams.publisherOrgnr.isNullOrBlank())
+        ) {
+            return base
+        }
+        val fromStr = filterParams.fromTs?.toInstant()?.toString() ?: ""
+        val untilStr = filterParams.untilTs?.toInstant()?.toString() ?: ""
+        val setStr = filterParams.publisherOrgnr ?: ""
+        return "$base|$fromStr|$untilStr|$setStr"
+    }
 
     /**
-     * Parses a resumption token to extract union graph ID, metadata prefix, and start index.
+     * Parses a resumption token to extract offset, metadata prefix, and optional filter params.
      * Returns null if the token is invalid.
      */
     private fun parseResumptionToken(
         token: String,
         expectedId: String,
-    ): Pair<Int, String>? {
-        val parts = token.split(":")
-        if (parts.size != 3) {
-            return null
-        }
+    ): Pair<Int, String>? = parseResumptionTokenWithFilters(token, expectedId)?.let { (offset, prefix, _) -> Pair(offset, prefix) }
+
+    /**
+     * Parses a resumption token including optional from/until/set. Returns (offset, metadataPrefix, filterParams) or null.
+     */
+    private fun parseResumptionTokenWithFilters(
+        token: String,
+        expectedId: String,
+    ): Triple<Int, String, OaiPmhFilterParams?>? {
+        val pipe = token.indexOf('|')
+        val base = if (pipe >= 0) token.substring(0, pipe) else token
+        val parts = base.split(":")
+        if (parts.size != 3) return null
         val id = parts[0]
         val metadataPrefix = parts[1]
         val startIndex =
@@ -800,13 +1013,46 @@ class OaiPmhController(
             } catch (e: NumberFormatException) {
                 return null
             }
+        if (id != expectedId) return null
 
-        // Verify the ID matches
-        if (id != expectedId) {
-            return null
+        val filterParams =
+            if (pipe >= 0) {
+                val rest = token.substring(pipe + 1)
+                val segments = rest.split("|", limit = 3)
+                val fromStr = segments.getOrNull(0)?.takeIf { it.isNotEmpty() }
+                val untilStr = segments.getOrNull(1)?.takeIf { it.isNotEmpty() }
+                val setStr = segments.getOrNull(2)?.takeIf { it.isNotEmpty() }
+                val fromTs = parseOaiDate(fromStr)?.let { java.sql.Timestamp.from(it) }
+                val untilTs = parseOaiDate(untilStr)?.let { java.sql.Timestamp.from(it) }
+                OaiPmhFilterParams(fromTs, untilTs, setStr)
+            } else {
+                null
+            }
+
+        return Triple(startIndex, metadataPrefix, filterParams)
+    }
+
+    /**
+     * Parses from/until/set request params and validates. Returns filter params or null if invalid or no filters.
+     */
+    private fun parseAndValidateFilters(
+        from: String?,
+        until: String?,
+        set: String?,
+    ): OaiPmhFilterParams? {
+        val fromTs = parseOaiDate(from)?.let { java.sql.Timestamp.from(it) }
+        val untilTs = parseOaiDate(until)?.let { java.sql.Timestamp.from(it) }
+        val publisherOrgnr = parseSetOrgnr(set)
+        if (set != null && set.isNotBlank() && publisherOrgnr == null) {
+            return null // badArgument: invalid set format
         }
-
-        return Pair(startIndex, metadataPrefix)
+        if (fromTs != null && untilTs != null && fromTs.after(untilTs)) {
+            return null // badArgument: from > until
+        }
+        if (fromTs == null && untilTs == null && publisherOrgnr.isNullOrBlank()) {
+            return null // no filters
+        }
+        return OaiPmhFilterParams(fromTs, untilTs, publisherOrgnr)
     }
 
     /**

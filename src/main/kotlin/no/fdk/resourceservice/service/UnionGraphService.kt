@@ -732,6 +732,8 @@ class UnionGraphService(
 
                                     if (rdfXmlData != null) {
                                         // Create snapshot of resource graph data in RDF-XML format
+                                        val resourceModifiedAt = parseResourceModifiedAt(resource.resourceJson)
+                                        val publisherOrgnr = parsePublisherOrgnr(resource.resourceJson)
                                         val snapshot =
                                             UnionGraphResourceSnapshot(
                                                 unionGraphId = orderId,
@@ -739,6 +741,8 @@ class UnionGraphService(
                                                 resourceType = resource.resourceType,
                                                 resourceGraphData = rdfXmlData,
                                                 resourceGraphFormat = "RDF_XML",
+                                                resourceModifiedAt = resourceModifiedAt,
+                                                publisherOrgnr = publisherOrgnr,
                                             )
                                         snapshotsToSave.add(snapshot)
                                     } else {
@@ -843,6 +847,32 @@ class UnionGraphService(
                 }
             }
         }
+    }
+
+    /**
+     * Extracts resource modified date from FDK resource JSON (harvest.modified, ISO-8601).
+     * Used for OAI-PMH from/until and datestamp.
+     */
+    private fun parseResourceModifiedAt(resourceJson: Map<String, Any>?): java.time.Instant? {
+        if (resourceJson == null) return null
+        val harvest = resourceJson["harvest"] as? Map<*, *> ?: return null
+        val modified = harvest["modified"] as? String ?: return null
+        return try {
+            java.time.Instant.parse(modified)
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    /**
+     * Extracts publisher organization number from FDK resource JSON (publisher.id).
+     * Used for OAI-PMH set filter org:orgnr and setSpec in headers.
+     */
+    private fun parsePublisherOrgnr(resourceJson: Map<String, Any>?): String? {
+        if (resourceJson == null) return null
+        val publisher = resourceJson["publisher"] as? Map<*, *> ?: return null
+        val id = publisher["id"] ?: return null
+        return id.toString().takeIf { it.isNotBlank() }
     }
 
     /**
@@ -1455,6 +1485,8 @@ class UnionGraphService(
 
                         if (rdfXmlData != null) {
                             // Create snapshot of resource graph data in RDF-XML format
+                            val resourceModifiedAt = parseResourceModifiedAt(resource.resourceJson)
+                            val publisherOrgnr = parsePublisherOrgnr(resource.resourceJson)
                             val snapshot =
                                 UnionGraphResourceSnapshot(
                                     unionGraphId = orderId,
@@ -1462,6 +1494,8 @@ class UnionGraphService(
                                     resourceType = resource.resourceType,
                                     resourceGraphData = rdfXmlData,
                                     resourceGraphFormat = "RDF_XML",
+                                    resourceModifiedAt = resourceModifiedAt,
+                                    publisherOrgnr = publisherOrgnr,
                                 )
                             snapshotsToSave.add(snapshot)
                         } else {

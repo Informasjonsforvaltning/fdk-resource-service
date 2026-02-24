@@ -620,25 +620,60 @@ class OaiPmhControllerTest : BaseControllerTest() {
     }
 
     @Test
-    fun `ListIdentifiers should return 404 when union graph is PENDING`() {
-        // Given
+    fun `ListIdentifiers should return 404 when union graph is FAILED`() {
+        val order =
+            UnionGraphOrder(
+                id = "test-order-failed",
+                name = "Test Order",
+                status = UnionGraphOrder.GraphStatus.FAILED,
+            )
+
+        every { unionGraphService.getOrder("test-order-failed") } returns order
+
+        mockMvc
+            .perform(
+                get("/v1/union-graphs/test-order-failed/oai-pmh")
+                    .param("verb", "ListIdentifiers")
+                    .param("metadataPrefix", "rdfxml"),
+            ).andExpect(status().isNotFound)
+            .andExpect(xpath("/OAI-PMH/error/@code").string("idDoesNotExist"))
+    }
+
+    @Test
+    fun `ListIdentifiers should return 200 when union graph is PENDING and allow access to existing snapshots`() {
         val order =
             UnionGraphOrder(
                 id = "test-order-pending",
                 name = "Test Order",
                 status = UnionGraphOrder.GraphStatus.PENDING,
+                resourceTypes = listOf("CONCEPT"),
             )
 
         every { unionGraphService.getOrder("test-order-pending") } returns order
+        every {
+            unionGraphResourceSnapshotRepository.findByUnionGraphIdAndResourceTypePaginated(
+                "test-order-pending",
+                "CONCEPT",
+                0,
+                50,
+                java.sql.Timestamp.valueOf("2099-12-31 23:59:59"),
+            )
+        } returns emptyList()
+        every {
+            unionGraphResourceSnapshotRepository.countByUnionGraphIdAndResourceType(
+                "test-order-pending",
+                "CONCEPT",
+                java.sql.Timestamp.valueOf("2099-12-31 23:59:59"),
+            )
+        } returns 0L
 
-        // When & Then
         mockMvc
             .perform(
                 get("/v1/union-graphs/test-order-pending/oai-pmh")
                     .param("verb", "ListIdentifiers")
                     .param("metadataPrefix", "rdfxml"),
-            ).andExpect(status().isNotFound)
-            .andExpect(xpath("/OAI-PMH/error/@code").string("idDoesNotExist"))
+            ).andExpect(status().isOk)
+            .andExpect(xpath("/OAI-PMH/ListIdentifiers").exists())
     }
 
     @Test
@@ -720,5 +755,219 @@ class OaiPmhControllerTest : BaseControllerTest() {
         assert(isoPattern.matcher(responseDate).matches()) {
             "responseDate should be in ISO format (yyyy-MM-dd'T'HH:mm:ss'Z'), but was: $responseDate"
         }
+    }
+
+    @Test
+    fun `ListSets should return org set with setSpec and setName`() {
+        val order =
+            UnionGraphOrder(
+                id = "test-order-sets",
+                name = "Test Order",
+                status = UnionGraphOrder.GraphStatus.COMPLETED,
+            )
+        every { unionGraphService.getOrder("test-order-sets") } returns order
+
+        mockMvc
+            .perform(get("/v1/union-graphs/test-order-sets/oai-pmh").param("verb", "ListSets"))
+            .andExpect(status().isOk)
+            .andExpect(content().contentType(MediaType.APPLICATION_XML))
+            .andExpect(xpath("/OAI-PMH/ListSets/set/setSpec").string("org"))
+            .andExpect(xpath("/OAI-PMH/ListSets/set/setName").string("Organization (by orgnr)"))
+    }
+
+    @Test
+    fun `ListIdentifiers with from and until should use filtered repository and echo params in request`() {
+        val order =
+            UnionGraphOrder(
+                id = "test-order-dates",
+                name = "Test Order",
+                status = UnionGraphOrder.GraphStatus.COMPLETED,
+                resourceTypes = listOf("CONCEPT"),
+            )
+        val snapshot =
+            UnionGraphResourceSnapshot(
+                unionGraphId = "test-order-dates",
+                resourceId = "resource-1",
+                resourceType = "CONCEPT",
+                resourceGraphData = "<rdf:RDF></rdf:RDF>",
+                resourceGraphFormat = "RDF_XML",
+                resourceModifiedAt = Instant.parse("2024-06-15T10:00:00Z"),
+                publisherOrgnr = null,
+            )
+
+        every { unionGraphService.getOrder("test-order-dates") } returns order
+        every {
+            unionGraphResourceSnapshotRepository.findByUnionGraphIdAndResourceTypePaginated(
+                "test-order-dates",
+                "CONCEPT",
+                0,
+                50,
+                java.sql.Timestamp.valueOf("2099-12-31 23:59:59"),
+                java.sql.Timestamp.from(Instant.parse("2024-01-01T00:00:00Z")),
+                java.sql.Timestamp.from(Instant.parse("2024-12-31T23:59:59Z")),
+                null,
+            )
+        } returns listOf(snapshot)
+        every {
+            unionGraphResourceSnapshotRepository.countByUnionGraphIdAndResourceType(
+                "test-order-dates",
+                "CONCEPT",
+                java.sql.Timestamp.valueOf("2099-12-31 23:59:59"),
+                java.sql.Timestamp.from(Instant.parse("2024-01-01T00:00:00Z")),
+                java.sql.Timestamp.from(Instant.parse("2024-12-31T23:59:59Z")),
+                null,
+            )
+        } returns 1L
+
+        mockMvc
+            .perform(
+                get("/v1/union-graphs/test-order-dates/oai-pmh")
+                    .param("verb", "ListIdentifiers")
+                    .param("metadataPrefix", "rdfxml")
+                    .param("from", "2024-01-01T00:00:00Z")
+                    .param("until", "2024-12-31T23:59:59Z"),
+            ).andExpect(status().isOk)
+            .andExpect(xpath("/OAI-PMH/request/@from").string("2024-01-01T00:00:00Z"))
+            .andExpect(xpath("/OAI-PMH/request/@until").string("2024-12-31T23:59:59Z"))
+            .andExpect(xpath("/OAI-PMH/ListIdentifiers/header/datestamp").string("2024-06-15T10:00:00Z"))
+    }
+
+    @Test
+    fun `ListIdentifiers with set org orgnr should filter by publisher and include setSpec in header`() {
+        val order =
+            UnionGraphOrder(
+                id = "test-order-set",
+                name = "Test Order",
+                status = UnionGraphOrder.GraphStatus.COMPLETED,
+                resourceTypes = listOf("CONCEPT"),
+            )
+        val snapshot =
+            UnionGraphResourceSnapshot(
+                unionGraphId = "test-order-set",
+                resourceId = "resource-1",
+                resourceType = "CONCEPT",
+                resourceGraphData = "<rdf:RDF></rdf:RDF>",
+                resourceGraphFormat = "RDF_XML",
+                resourceModifiedAt = null,
+                publisherOrgnr = "986252932",
+            )
+
+        every { unionGraphService.getOrder("test-order-set") } returns order
+        every {
+            unionGraphResourceSnapshotRepository.findByUnionGraphIdAndResourceTypePaginated(
+                "test-order-set",
+                "CONCEPT",
+                0,
+                50,
+                java.sql.Timestamp.valueOf("2099-12-31 23:59:59"),
+                null,
+                null,
+                "986252932",
+            )
+        } returns listOf(snapshot)
+        every {
+            unionGraphResourceSnapshotRepository.countByUnionGraphIdAndResourceType(
+                "test-order-set",
+                "CONCEPT",
+                java.sql.Timestamp.valueOf("2099-12-31 23:59:59"),
+                null,
+                null,
+                "986252932",
+            )
+        } returns 1L
+
+        mockMvc
+            .perform(
+                get("/v1/union-graphs/test-order-set/oai-pmh")
+                    .param("verb", "ListIdentifiers")
+                    .param("metadataPrefix", "rdfxml")
+                    .param("set", "org:986252932"),
+            ).andExpect(status().isOk)
+            .andExpect(xpath("/OAI-PMH/request/@set").string("org:986252932"))
+            .andExpect(xpath("/OAI-PMH/ListIdentifiers/header/setSpec").string("org:986252932"))
+    }
+
+    @Test
+    fun `ListIdentifiers should return badArgument when set format is invalid`() {
+        val order =
+            UnionGraphOrder(
+                id = "test-order-bad-set",
+                name = "Test Order",
+                status = UnionGraphOrder.GraphStatus.COMPLETED,
+                resourceTypes = listOf("CONCEPT"),
+            )
+        every { unionGraphService.getOrder("test-order-bad-set") } returns order
+
+        mockMvc
+            .perform(
+                get("/v1/union-graphs/test-order-bad-set/oai-pmh")
+                    .param("verb", "ListIdentifiers")
+                    .param("metadataPrefix", "rdfxml")
+                    .param("set", "invalid-set"),
+            ).andExpect(status().isBadRequest)
+            .andExpect(xpath("/OAI-PMH/error/@code").string("badArgument"))
+    }
+
+    @Test
+    fun `ListIdentifiers should return badArgument when from is after until`() {
+        val order =
+            UnionGraphOrder(
+                id = "test-order-bad-dates",
+                name = "Test Order",
+                status = UnionGraphOrder.GraphStatus.COMPLETED,
+            )
+        every { unionGraphService.getOrder("test-order-bad-dates") } returns order
+
+        mockMvc
+            .perform(
+                get("/v1/union-graphs/test-order-bad-dates/oai-pmh")
+                    .param("verb", "ListIdentifiers")
+                    .param("metadataPrefix", "rdfxml")
+                    .param("from", "2024-12-31T00:00:00Z")
+                    .param("until", "2024-01-01T00:00:00Z"),
+            ).andExpect(status().isBadRequest)
+            .andExpect(xpath("/OAI-PMH/error/@code").string("badArgument"))
+    }
+
+    @Test
+    fun `GetRecord should use resourceModifiedAt for datestamp and setSpec when publisherOrgnr present`() {
+        val order =
+            UnionGraphOrder(
+                id = "test-order-get-datestamp",
+                name = "Test Order",
+                status = UnionGraphOrder.GraphStatus.COMPLETED,
+                resourceTypes = listOf("CONCEPT"),
+                processedAt = Instant.parse("2024-01-01T12:00:00Z"),
+            )
+        val snapshot =
+            UnionGraphResourceSnapshot(
+                unionGraphId = "test-order-get-datestamp",
+                resourceId = "resource-1",
+                resourceType = "CONCEPT",
+                resourceGraphData = "<rdf:RDF></rdf:RDF>",
+                resourceGraphFormat = "RDF_XML",
+                resourceModifiedAt = Instant.parse("2024-06-10T14:30:00Z"),
+                publisherOrgnr = "974760673",
+            )
+
+        every { unionGraphService.getOrder("test-order-get-datestamp") } returns order
+        every {
+            unionGraphResourceSnapshotRepository.findByUnionGraphIdAndResourceId(
+                "test-order-get-datestamp",
+                "resource-1",
+                java.sql.Timestamp.valueOf("2099-12-31 23:59:59"),
+            )
+        } returns snapshot
+
+        val baseUrl = "http://localhost/v1/union-graphs/test-order-get-datestamp/oai-pmh"
+        mockMvc
+            .perform(
+                get("/v1/union-graphs/test-order-get-datestamp/oai-pmh")
+                    .param("verb", "GetRecord")
+                    .param("metadataPrefix", "rdfxml")
+                    .param("identifier", "$baseUrl/records/resource-1"),
+            ).andExpect(status().isOk)
+            .andExpect(xpath("/OAI-PMH/GetRecord/record/header/datestamp").string("2024-06-10T14:30:00Z"))
+            .andExpect(xpath("/OAI-PMH/GetRecord/record/header/setSpec").string("org:974760673"))
     }
 }

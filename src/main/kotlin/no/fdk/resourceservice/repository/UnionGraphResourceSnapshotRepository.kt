@@ -41,6 +41,34 @@ interface UnionGraphResourceSnapshotRepository : JpaRepository<UnionGraphResourc
     ): List<UnionGraphResourceSnapshot>
 
     /**
+     * Finds all snapshots for a given union graph with optional OAI-PMH from/until/set filters.
+     * Same as findByUnionGraphIdPaginated but filters by resource_modified_at (inclusive) and publisher_orgnr when provided.
+     */
+    @Query(
+        value = """
+        SELECT DISTINCT ON (resource_id) *
+        FROM union_graph_resource_snapshots 
+        WHERE union_graph_id = CAST(:unionGraphId AS VARCHAR)
+        AND (created_at AT TIME ZONE 'UTC') < (:beforeTimestamp AT TIME ZONE 'UTC')
+        AND (CAST(:fromTs AS TIMESTAMP) IS NULL OR (resource_modified_at IS NOT NULL AND resource_modified_at >= CAST(:fromTs AS TIMESTAMP)))
+        AND (CAST(:untilTs AS TIMESTAMP) IS NULL OR resource_modified_at <= CAST(:untilTs AS TIMESTAMP))
+        AND (CAST(:publisherOrgnr AS VARCHAR) IS NULL OR publisher_orgnr = CAST(:publisherOrgnr AS VARCHAR))
+        ORDER BY resource_id ASC, created_at DESC
+        LIMIT CAST(:limit AS INTEGER) OFFSET CAST(:offset AS INTEGER)
+    """,
+        nativeQuery = true,
+    )
+    fun findByUnionGraphIdPaginated(
+        @Param("unionGraphId") unionGraphId: String,
+        @Param("offset") offset: Int,
+        @Param("limit") limit: Int,
+        @Param("beforeTimestamp") beforeTimestamp: java.sql.Timestamp,
+        @Param("fromTs") fromTs: java.sql.Timestamp?,
+        @Param("untilTs") untilTs: java.sql.Timestamp?,
+        @Param("publisherOrgnr") publisherOrgnr: String?,
+    ): List<UnionGraphResourceSnapshot>
+
+    /**
      * Finds snapshots for a given union graph filtered by resource type, ordered by resource ID.
      * Returns only the latest snapshot per resource (handles duplicates during rebuilds).
      * If beforeTimestamp is provided, only returns snapshots created before that timestamp.
@@ -74,6 +102,35 @@ interface UnionGraphResourceSnapshotRepository : JpaRepository<UnionGraphResourc
     ): List<UnionGraphResourceSnapshot>
 
     /**
+     * Finds snapshots for a given union graph and resource type with optional OAI-PMH from/until/set filters.
+     */
+    @Query(
+        value = """
+        SELECT DISTINCT ON (resource_id) *
+        FROM union_graph_resource_snapshots 
+        WHERE union_graph_id = CAST(:unionGraphId AS VARCHAR)
+        AND resource_type = CAST(:resourceType AS VARCHAR)
+        AND (created_at AT TIME ZONE 'UTC') < (:beforeTimestamp AT TIME ZONE 'UTC')
+        AND (CAST(:fromTs AS TIMESTAMP) IS NULL OR (resource_modified_at IS NOT NULL AND resource_modified_at >= CAST(:fromTs AS TIMESTAMP)))
+        AND (CAST(:untilTs AS TIMESTAMP) IS NULL OR resource_modified_at <= CAST(:untilTs AS TIMESTAMP))
+        AND (CAST(:publisherOrgnr AS VARCHAR) IS NULL OR publisher_orgnr = CAST(:publisherOrgnr AS VARCHAR))
+        ORDER BY resource_id ASC, created_at DESC
+        LIMIT CAST(:limit AS INTEGER) OFFSET CAST(:offset AS INTEGER)
+    """,
+        nativeQuery = true,
+    )
+    fun findByUnionGraphIdAndResourceTypePaginated(
+        @Param("unionGraphId") unionGraphId: String,
+        @Param("resourceType") resourceType: String,
+        @Param("offset") offset: Int,
+        @Param("limit") limit: Int,
+        @Param("beforeTimestamp") beforeTimestamp: java.sql.Timestamp,
+        @Param("fromTs") fromTs: java.sql.Timestamp?,
+        @Param("untilTs") untilTs: java.sql.Timestamp?,
+        @Param("publisherOrgnr") publisherOrgnr: String?,
+    ): List<UnionGraphResourceSnapshot>
+
+    /**
      * Counts unique resources (latest snapshot per resource) for a given union graph.
      * Used to determine total number of resources for pagination.
      * Handles duplicates during rebuilds by counting distinct resource_ids.
@@ -94,6 +151,28 @@ interface UnionGraphResourceSnapshotRepository : JpaRepository<UnionGraphResourc
     fun countByUnionGraphId(
         @Param("unionGraphId") unionGraphId: String,
         @Param("beforeTimestamp") beforeTimestamp: java.sql.Timestamp,
+    ): Long
+
+    /**
+     * Counts unique resources with optional OAI-PMH from/until/set filters. Same WHERE conditions as paginated query.
+     */
+    @Query(
+        value = """
+        SELECT COUNT(DISTINCT resource_id) FROM union_graph_resource_snapshots 
+        WHERE union_graph_id = CAST(:unionGraphId AS VARCHAR)
+        AND (created_at AT TIME ZONE 'UTC') < (:beforeTimestamp AT TIME ZONE 'UTC')
+        AND (CAST(:fromTs AS TIMESTAMP) IS NULL OR (resource_modified_at IS NOT NULL AND resource_modified_at >= CAST(:fromTs AS TIMESTAMP)))
+        AND (CAST(:untilTs AS TIMESTAMP) IS NULL OR resource_modified_at <= CAST(:untilTs AS TIMESTAMP))
+        AND (CAST(:publisherOrgnr AS VARCHAR) IS NULL OR publisher_orgnr = CAST(:publisherOrgnr AS VARCHAR))
+    """,
+        nativeQuery = true,
+    )
+    fun countByUnionGraphId(
+        @Param("unionGraphId") unionGraphId: String,
+        @Param("beforeTimestamp") beforeTimestamp: java.sql.Timestamp,
+        @Param("fromTs") fromTs: java.sql.Timestamp?,
+        @Param("untilTs") untilTs: java.sql.Timestamp?,
+        @Param("publisherOrgnr") publisherOrgnr: String?,
     ): Long
 
     /**
@@ -119,6 +198,30 @@ interface UnionGraphResourceSnapshotRepository : JpaRepository<UnionGraphResourc
         @Param("unionGraphId") unionGraphId: String,
         @Param("resourceType") resourceType: String,
         @Param("beforeTimestamp") beforeTimestamp: java.sql.Timestamp,
+    ): Long
+
+    /**
+     * Counts unique resources by type with optional OAI-PMH from/until/set filters.
+     */
+    @Query(
+        value = """
+        SELECT COUNT(DISTINCT resource_id) FROM union_graph_resource_snapshots 
+        WHERE union_graph_id = CAST(:unionGraphId AS VARCHAR)
+        AND resource_type = CAST(:resourceType AS VARCHAR)
+        AND (created_at AT TIME ZONE 'UTC') < (:beforeTimestamp AT TIME ZONE 'UTC')
+        AND (CAST(:fromTs AS TIMESTAMP) IS NULL OR (resource_modified_at IS NOT NULL AND resource_modified_at >= CAST(:fromTs AS TIMESTAMP)))
+        AND (CAST(:untilTs AS TIMESTAMP) IS NULL OR resource_modified_at <= CAST(:untilTs AS TIMESTAMP))
+        AND (CAST(:publisherOrgnr AS VARCHAR) IS NULL OR publisher_orgnr = CAST(:publisherOrgnr AS VARCHAR))
+    """,
+        nativeQuery = true,
+    )
+    fun countByUnionGraphIdAndResourceType(
+        @Param("unionGraphId") unionGraphId: String,
+        @Param("resourceType") resourceType: String,
+        @Param("beforeTimestamp") beforeTimestamp: java.sql.Timestamp,
+        @Param("fromTs") fromTs: java.sql.Timestamp?,
+        @Param("untilTs") untilTs: java.sql.Timestamp?,
+        @Param("publisherOrgnr") publisherOrgnr: String?,
     ): Long
 
     /**

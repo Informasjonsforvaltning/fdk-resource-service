@@ -26,28 +26,33 @@ class ApiKeyAuthenticationFilter(
         filterChain: FilterChain,
     ) {
         val apiKeyHeader = request.getHeader(API_KEY_HEADER)
+        val trimmedKey = apiKeyHeader?.trim()?.takeIf { it.isNotEmpty() }
 
-        if (apiKeyHeader != null && apiKeyHeader == apiKey) {
-            // Valid API key - set authentication
-            val authorities = listOf(SimpleGrantedAuthority("ROLE_API_USER"))
-            val authentication =
-                UsernamePasswordAuthenticationToken(
-                    "api-user",
-                    null,
-                    authorities,
-                ).apply {
-                    details = WebAuthenticationDetailsSource().buildDetails(request)
-                }
-
-            SecurityContextHolder.getContext().authentication = authentication
-        } else if (apiKeyHeader != null) {
-            // Invalid API key
-            response.status = HttpServletResponse.SC_UNAUTHORIZED
-            response.contentType = "application/json"
-            response.writer.write("""{"error":"Invalid API key"}""")
-            return
+        when {
+            trimmedKey == null -> {
+                // No API key header or blank - let it through (rejected by security config if required)
+                filterChain.doFilter(request, response)
+            }
+            trimmedKey == apiKey -> {
+                // Valid API key (with optional surrounding whitespace) - set authentication
+                val authorities = listOf(SimpleGrantedAuthority("ROLE_API_USER"))
+                val authentication =
+                    UsernamePasswordAuthenticationToken(
+                        "api-user",
+                        null,
+                        authorities,
+                    ).apply {
+                        details = WebAuthenticationDetailsSource().buildDetails(request)
+                    }
+                SecurityContextHolder.getContext().authentication = authentication
+                filterChain.doFilter(request, response)
+            }
+            else -> {
+                // Invalid API key
+                response.status = HttpServletResponse.SC_UNAUTHORIZED
+                response.contentType = "application/json"
+                response.writer.write("""{"error":"Invalid API key"}""")
+            }
         }
-        // No API key header - let it through (will be rejected by security config if required)
-        filterChain.doFilter(request, response)
     }
 }

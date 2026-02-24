@@ -52,7 +52,7 @@ mvn verify
 - **RDF graph support** with multiple serialization formats (JSON-LD, Turtle, RDF/XML, N-Triples, N-Quads)
 - **Union graphs** for combining multiple resource graphs into a single queryable graph
 - **Content negotiation** for RDF graph endpoints
-- **JWT-based authentication** for secured endpoints
+- **API key authentication** for union graph management endpoints
 - **Health checks and monitoring** via Spring Boot Actuator
 
 ## Technology Stack
@@ -62,7 +62,7 @@ mvn verify
 - **Database**: PostgreSQL with JSONB
 - **Message Queue**: Apache Kafka with Avro serialization
 - **Schema Registry**: Confluent Schema Registry
-- **Authentication**: OAuth2 JWT
+- **Authentication**: API key (X-API-Key header) for union graph endpoints
 - **Build Tool**: Maven
 
 ## API Endpoints
@@ -177,8 +177,7 @@ The application uses environment variables for configuration:
 - `POSTGRES_PASSWORD` - Database password (default: postgres)
 - `KAFKA_BOOTSTRAP_SERVERS` - Kafka bootstrap servers (default: kafka:9092)
 - `SCHEMA_REGISTRY_URL` - Schema registry URL (default: http://schema-registry:8081)
-- `JWT_ISSUER_URI` - JWT issuer URI
-- `JWT_JWK_SET_URI` - JWT JWK set URI
+- `UNION_GRAPHS_API_KEY` - API key for union graph management (optional; when set, POST/DELETE union-graphs require X-API-Key header)
 
 ## Development
 
@@ -226,7 +225,7 @@ The application includes:
 
 ## Security
 
-- OAuth2 JWT authentication for secured endpoints
+- API key authentication (X-API-Key) for union graph management endpoints when configured
 - Input validation and sanitization
 - SQL injection prevention through parameterized queries
 - CORS configuration for cross-origin requests
