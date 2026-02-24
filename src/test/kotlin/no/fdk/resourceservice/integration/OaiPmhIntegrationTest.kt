@@ -4,6 +4,7 @@ import no.fdk.resourceservice.model.ResourceType
 import no.fdk.resourceservice.model.UnionGraphOrder
 import no.fdk.resourceservice.repository.ResourceRepository
 import no.fdk.resourceservice.repository.UnionGraphOrderRepository
+import no.fdk.resourceservice.repository.UnionGraphResourceSnapshotRepository
 import no.fdk.resourceservice.service.ResourceService
 import no.fdk.resourceservice.service.UnionGraphService
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -20,6 +21,7 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.xpath
 import org.springframework.transaction.support.TransactionTemplate
 import java.io.File
+import java.sql.Timestamp
 
 /**
  * Integration tests for OAI-PMH endpoint.
@@ -47,6 +49,9 @@ class OaiPmhIntegrationTest : BaseIntegrationTest() {
     @Autowired
     private lateinit var transactionTemplate: TransactionTemplate
 
+    @Autowired
+    private lateinit var unionGraphResourceSnapshotRepository: UnionGraphResourceSnapshotRepository
+
     @BeforeEach
     fun setUp() {
         // Clean up test data
@@ -65,18 +70,18 @@ class OaiPmhIntegrationTest : BaseIntegrationTest() {
         // Given
         val orderId = createAndProcessUnionGraph()
 
-        // Get all resources that were created
-        val allResources =
+        // Expected count = snapshots for this order (same beforeTimestamp as OAI-PMH controller uses for completed orders)
+        val beforeTimestamp = Timestamp.valueOf("2099-12-31 23:59:59")
+        val expectedCount =
             transactionTemplate.execute {
-                resourceRepository.findByResourceTypeAndDeletedFalseWithGraphDataPaginated("CONCEPT", 0, 1000)
+                unionGraphResourceSnapshotRepository.countByUnionGraphId(orderId, beforeTimestamp)
             }!!
 
-        // When & Then - Paginate through all resources using resumption tokens
-        var resourceOffset = 0
+        // When - Paginate through all pages using resumption tokens until none returned
         var resumptionToken: String? = null
         val processedResourceIds = mutableSetOf<String>()
 
-        while (resourceOffset < allResources.size) {
+        do {
             val requestBuilder =
                 get("/v1/union-graphs/$orderId/oai-pmh")
                     .param("verb", "ListRecords")
@@ -88,28 +93,22 @@ class OaiPmhIntegrationTest : BaseIntegrationTest() {
                         }
                     }
 
-            val resultActions = mockMvc.perform(requestBuilder)
-
             val result =
-                resultActions
+                mockMvc
+                    .perform(requestBuilder)
                     .andExpect(status().isOk)
                     .andExpect(content().contentType(MediaType.APPLICATION_XML))
                     .andReturn()
 
             val responseContent = result.response.contentAsString
 
-            // Extract all resource identifiers from the response
             val identifierPattern = Regex("""<identifier>([^<]+)</identifier>""")
             val identifiers = identifierPattern.findAll(responseContent).map { it.groupValues[1] }.toList()
 
-            // Process all resources found in this page
             for (identifier in identifiers) {
-                // Parse the new URI format: {baseURL}/records/{resourceId}
-                // Extract resourceId from the path
                 try {
                     val uri = java.net.URI(identifier)
                     val path = uri.path
-                    // Expected format: /v1/union-graphs/{orderId}/oai-pmh/records/{resourceId}
                     val pathParts = path.split("/").filter { it.isNotEmpty() }
                     if (pathParts.size >= 6 &&
                         pathParts[0] == "v1" &&
@@ -127,30 +126,15 @@ class OaiPmhIntegrationTest : BaseIntegrationTest() {
                 }
             }
 
-            // Extract resumption token if present
             val tokenMatch = Regex("""<resumptionToken[^>]*>([^<]+)</resumptionToken>""").find(responseContent)
             resumptionToken = tokenMatch?.groupValues?.get(1)
+        } while (resumptionToken != null)
 
-            // Check if there are more resources
-            if (resumptionToken != null) {
-                // Parse offset from resumption token (format: orderId:metadataPrefix:offset)
-                val tokenParts = resumptionToken.split(":")
-                if (tokenParts.size >= 3) {
-                    resourceOffset = tokenParts[2].toIntOrNull() ?: resourceOffset
-                } else {
-                    resourceOffset += identifiers.size
-                }
-            } else {
-                // Last page - no more resources
-                break
-            }
-        }
-
-        // Verify we processed all resources
+        // Then - we must get exactly as many records as the snapshot table has for this order
         assertEquals(
-            allResources.size,
+            expectedCount.toInt(),
             processedResourceIds.size,
-            "Should have processed all resources. Processed: ${processedResourceIds.size}, Total: ${allResources.size}",
+            "Should have processed all resources from ListRecords. Processed: ${processedResourceIds.size}, expected (snapshot count): $expectedCount",
         )
     }
 
@@ -167,20 +151,18 @@ class OaiPmhIntegrationTest : BaseIntegrationTest() {
     }
 
     @Test
-    fun `should return 404 when union graph not completed`() {
-        // Given
+    fun `should return 404 when union graph is FAILED`() {
         val order =
             transactionTemplate.execute {
                 unionGraphOrderRepository.save(
                     UnionGraphOrder(
-                        id = "test-order-pending",
-                        name = "Test Order Pending",
-                        status = UnionGraphOrder.GraphStatus.PENDING,
+                        id = "test-order-failed",
+                        name = "Test Order Failed",
+                        status = UnionGraphOrder.GraphStatus.FAILED,
                     ),
                 )
             }!!
 
-        // When & Then
         mockMvc
             .perform(
                 get("/v1/union-graphs/${order.id}/oai-pmh")
@@ -188,6 +170,69 @@ class OaiPmhIntegrationTest : BaseIntegrationTest() {
                     .param("metadataPrefix", "rdfxml"),
             ).andExpect(status().isNotFound)
             .andExpect(xpath("/OAI-PMH/error/@code").string("idDoesNotExist"))
+    }
+
+    /**
+     * Exercises the filtered snapshot repository queries (from/until/set) against real PostgreSQL.
+     * Without explicit CAST of nullable params in the native SQL, PostgreSQL fails with
+     * "could not determine data type of parameter $4". These tests would fail before the CAST fix.
+     */
+    @Test
+    fun `ListIdentifiers with from and until params runs filtered repository query`() {
+        val orderId = createAndProcessUnionGraph()
+        mockMvc
+            .perform(
+                get("/v1/union-graphs/$orderId/oai-pmh")
+                    .param("verb", "ListIdentifiers")
+                    .param("metadataPrefix", "rdfxml")
+                    .param("from", "2020-01-01T00:00:00Z")
+                    .param("until", "2030-01-01T00:00:00Z"),
+            ).andExpect(status().isOk)
+            .andExpect(content().contentType(MediaType.APPLICATION_XML))
+            .andExpect(xpath("/OAI-PMH/ListIdentifiers").exists())
+    }
+
+    @Test
+    fun `ListIdentifiers with only from param runs filtered repository query with null until and set`() {
+        val orderId = createAndProcessUnionGraph()
+        mockMvc
+            .perform(
+                get("/v1/union-graphs/$orderId/oai-pmh")
+                    .param("verb", "ListIdentifiers")
+                    .param("metadataPrefix", "rdfxml")
+                    .param("from", "2020-01-01T00:00:00Z"),
+            ).andExpect(status().isOk)
+            .andExpect(content().contentType(MediaType.APPLICATION_XML))
+            .andExpect(xpath("/OAI-PMH/ListIdentifiers").exists())
+    }
+
+    @Test
+    fun `ListIdentifiers with only set param runs filtered repository query with null from and until`() {
+        val orderId = createAndProcessUnionGraph()
+        mockMvc
+            .perform(
+                get("/v1/union-graphs/$orderId/oai-pmh")
+                    .param("verb", "ListIdentifiers")
+                    .param("metadataPrefix", "rdfxml")
+                    .param("set", "org:986252932"),
+            ).andExpect(status().isOk)
+            .andExpect(content().contentType(MediaType.APPLICATION_XML))
+            .andExpect(xpath("/OAI-PMH/ListIdentifiers").exists())
+    }
+
+    @Test
+    fun `ListRecords with from and until params runs filtered repository query`() {
+        val orderId = createAndProcessUnionGraph()
+        mockMvc
+            .perform(
+                get("/v1/union-graphs/$orderId/oai-pmh")
+                    .param("verb", "ListRecords")
+                    .param("metadataPrefix", "rdfxml")
+                    .param("from", "2020-01-01T00:00:00Z")
+                    .param("until", "2030-01-01T00:00:00Z"),
+            ).andExpect(status().isOk)
+            .andExpect(content().contentType(MediaType.APPLICATION_XML))
+            .andExpect(xpath("/OAI-PMH/ListRecords").exists())
     }
 
     /**

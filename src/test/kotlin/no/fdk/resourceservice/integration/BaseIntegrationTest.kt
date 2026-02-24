@@ -52,7 +52,7 @@ abstract class BaseIntegrationTest {
                         "app.kafka.topics.information-model=information-model-events",
                         "app.kafka.topics.service=service-events",
                         "app.kafka.topics.event=event-events",
-                        "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration,org.springframework.boot.autoconfigure.security.oauth2.resourceserver.OAuth2ResourceServerAutoConfiguration",
+                        "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration",
                         "spring.kafka.enabled=true",
                         "spring.kafka.listener.auto-startup=true",
                         "logging.level.org.apache.kafka=DEBUG",

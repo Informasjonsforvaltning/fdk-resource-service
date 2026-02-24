@@ -52,4 +52,16 @@ data class UnionGraphResourceSnapshot(
      */
     @Column(name = "created_at", nullable = false)
     val createdAt: Instant = Instant.now(),
+    /**
+     * Resource modified date (from harvest.modified) at snapshot time.
+     * Used for OAI-PMH from/until filtering and datestamp in headers.
+     */
+    @Column(name = "resource_modified_at")
+    val resourceModifiedAt: Instant? = null,
+    /**
+     * Publisher organization number (from publisher.id) at snapshot time.
+     * Used for OAI-PMH set filter (org:orgnr) and setSpec in headers.
+     */
+    @Column(name = "publisher_orgnr", length = 50)
+    val publisherOrgnr: String? = null,
 )

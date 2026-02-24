@@ -18,17 +18,10 @@ spring:
   autoconfigure:
     exclude:
       - org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration
-      - org.springframework.boot.autoconfigure.security.oauth2.resourceserver.OAuth2ResourceServerAutoConfiguration
 
   # Exclude Kafka consumer from component scanning
   main:
     lazy-initialization: true
-
-  security:
-    oauth2:
-      resourceserver:
-        jwt:
-          jwk-set-uri: https://login.microsoftonline.com/your-tenant-id/discovery/v2.0/keys
 
 logging:
   level:
