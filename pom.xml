@@ -135,7 +135,7 @@
         <dependency>
             <groupId>io.confluent</groupId>
             <artifactId>kafka-avro-serializer</artifactId>
-            <version>8.1.0</version>
+            <version>8.2.0</version>
             <exclusions>
                 <exclusion>
                     <groupId>io.swagger.core.v3</groupId>
