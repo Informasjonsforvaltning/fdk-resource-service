@@ -1,12 +1,9 @@
 package no.fdk.resourceservice.service
 
-import com.fasterxml.jackson.databind.ObjectMapper
 import no.fdk.resourceservice.model.ResourceType
 import org.apache.jena.riot.Lang
 import org.apache.jena.riot.RDFDataMgr
 import org.eclipse.rdf4j.model.Model
-import org.eclipse.rdf4j.model.ModelFactory
-import org.eclipse.rdf4j.model.impl.LinkedHashModelFactory
 import org.eclipse.rdf4j.rio.RDFFormat
 import org.slf4j.LoggerFactory
 import org.springframework.http.MediaType
@@ -24,11 +21,8 @@ import org.apache.jena.rdf.model.ModelFactory as JenaModelFactory
  * Uses Eclipse RDF4J for better performance and memory efficiency compared to Apache Jena.
  */
 @Service
-class RdfService(
-    private val objectMapper: ObjectMapper,
-) {
+class RdfService {
     private val logger = LoggerFactory.getLogger(RdfService::class.java)
-    private val modelFactory: ModelFactory = LinkedHashModelFactory()
 
     /**
      * Supported RDF formats and their corresponding media types.

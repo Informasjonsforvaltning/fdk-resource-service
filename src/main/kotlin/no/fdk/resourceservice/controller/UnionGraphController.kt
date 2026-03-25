@@ -1,6 +1,5 @@
 package no.fdk.resourceservice.controller
 
-import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.Parameter
@@ -27,6 +26,7 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
+import java.util.Map
 
 /**
  * Controller for union graph operations.
@@ -343,15 +343,15 @@ class UnionGraphController(
             ],
         )
         @org.springframework.web.bind.annotation.RequestBody(required = false)
-        jsonNode: JsonNode?,
+        rawBody: Map<String, Any?>?,
     ): ResponseEntity<UnionGraphOrderResponse> {
         logger.info("Updating union graph order: {}", id)
 
-        // Parse JSON node to request object
+        // Bind request body to Map to avoid Jackson tree-type deserialization issues
         val request =
             try {
-                if (jsonNode != null) {
-                    objectMapper.treeToValue(jsonNode, UnionGraphOrderRequest::class.java)
+                if (rawBody != null) {
+                    objectMapper.convertValue(rawBody, UnionGraphOrderRequest::class.java)
                 } else {
                     UnionGraphOrderRequest()
                 }
@@ -361,7 +361,7 @@ class UnionGraphController(
             }
 
         // Helper function to check if a field was present in the JSON
-        fun hasField(fieldName: String): Boolean = jsonNode?.has(fieldName) == true
+        fun hasField(fieldName: String): Boolean = rawBody?.containsKey(fieldName) == true
 
         // Helper to get value only if field is present
         fun <T> getIfPresent(

@@ -5,7 +5,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.5.10</version>
+        <version>4.0.4</version>
         <relativePath/>
     </parent>
     <groupId>no.fdk</groupId>
@@ -15,8 +15,8 @@
     <description>FDK Resource Service - Kotlin/Spring Boot implementation</description>
     <properties>
         <java.version>21</java.version>
-        <kotlin.version>2.2.20</kotlin.version>
-        <testcontainers.version>1.19.3</testcontainers.version>
+        <kotlin.version>2.2.21</kotlin.version>
+        <testcontainers.version>2.0.4</testcontainers.version>
     </properties>
 
     <repositories>
@@ -25,7 +25,7 @@
             <url>https://packages.confluent.io/maven/</url>
         </repository>
     </repositories>
-    
+
     <dependencyManagement>
         <dependencies>
             <dependency>
@@ -35,30 +35,30 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
-            <!-- Force Jena 5.6.0 version -->
+            <!-- Force Jena 6.0.0 version -->
             <dependency>
                 <groupId>org.apache.jena</groupId>
                 <artifactId>jena-core</artifactId>
-                <version>5.6.0</version>
+                <version>6.0.0</version>
             </dependency>
             <dependency>
                 <groupId>org.apache.jena</groupId>
                 <artifactId>jena-arq</artifactId>
-                <version>5.6.0</version>
+                <version>6.0.0</version>
             </dependency>
             <dependency>
                 <groupId>org.apache.jena</groupId>
                 <artifactId>jena-base</artifactId>
-                <version>5.6.0</version>
+                <version>6.0.0</version>
             </dependency>
             <dependency>
                 <groupId>org.apache.jena</groupId>
                 <artifactId>jena-riot</artifactId>
-                <version>5.6.0</version>
+                <version>6.0.0</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
-    
+
     <dependencies>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -96,15 +96,15 @@
             <scope>runtime</scope>
         </dependency>
         <dependency>
-            <groupId>org.flywaydb</groupId>
-            <artifactId>flyway-core</artifactId>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-flyway</artifactId>
         </dependency>
         <dependency>
             <groupId>org.flywaydb</groupId>
             <artifactId>flyway-database-postgresql</artifactId>
-            <version>11.7.2</version>
+            <version>11.14.1</version>
         </dependency>
-        
+
         <!-- Kafka -->
         <dependency>
             <groupId>org.apache.avro</groupId>
@@ -135,7 +135,7 @@
         <dependency>
             <groupId>io.confluent</groupId>
             <artifactId>kafka-avro-serializer</artifactId>
-            <version>8.1.0</version>
+            <version>8.2.0</version>
             <exclusions>
                 <exclusion>
                     <groupId>io.swagger.core.v3</groupId>
@@ -143,18 +143,24 @@
                 </exclusion>
             </exclusions>
         </dependency>
-        
+
         <!-- JSON Processing -->
         <dependency>
             <groupId>com.fasterxml.jackson.module</groupId>
             <artifactId>jackson-module-kotlin</artifactId>
         </dependency>
-        
+
+        <dependency>
+            <groupId>net.logstash.logback</groupId>
+            <artifactId>logstash-logback-encoder</artifactId>
+            <version>9.0</version>
+        </dependency>
+
         <!-- SpringDoc OpenAPI -->
         <dependency>
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
-            <version>2.8.15</version>
+            <version>3.0.2</version>
             <exclusions>
                 <exclusion>
                     <groupId>org.apache.commons</groupId>
@@ -168,24 +174,19 @@
             <artifactId>commons-lang3</artifactId>
             <version>3.20.0</version>
         </dependency>
-        
+
         <!-- Resilience4j Circuit Breaker -->
         <dependency>
             <groupId>io.github.resilience4j</groupId>
-            <artifactId>resilience4j-spring-boot3</artifactId>
-            <version>2.3.0</version>
+            <artifactId>resilience4j-circuitbreaker</artifactId>
+            <version>2.4.0</version>
         </dependency>
-        <dependency>
-            <groupId>io.github.resilience4j</groupId>
-            <artifactId>resilience4j-reactor</artifactId>
-            <version>2.2.0</version>
-        </dependency>
-        
+
         <!-- Eclipse RDF4J for RDF processing (more memory efficient) -->
         <dependency>
             <groupId>org.eclipse.rdf4j</groupId>
             <artifactId>rdf4j-runtime</artifactId>
-            <version>5.2.0</version>
+            <version>5.2.2</version>
             <type>pom</type>
         </dependency>
 
@@ -193,10 +194,9 @@
         <dependency>
             <groupId>org.apache.jena</groupId>
             <artifactId>apache-jena-libs</artifactId>
-            <version>5.6.0</version>
+            <version>6.0.0</version>
             <type>pom</type>
         </dependency>
-
 
         <!-- Kotlin -->
         <dependency>
@@ -207,11 +207,16 @@
             <groupId>org.jetbrains.kotlin</groupId>
             <artifactId>kotlin-stdlib-jdk8</artifactId>
         </dependency>
-        
+
         <!-- Testing -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-webmvc-test</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -221,17 +226,17 @@
         </dependency>
         <dependency>
             <groupId>org.testcontainers</groupId>
-            <artifactId>junit-jupiter</artifactId>
+            <artifactId>testcontainers-junit-jupiter</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.testcontainers</groupId>
-            <artifactId>postgresql</artifactId>
+            <artifactId>testcontainers-postgresql</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.testcontainers</groupId>
-            <artifactId>kafka</artifactId>
+            <artifactId>testcontainers-kafka</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -247,19 +252,19 @@
         <dependency>
             <groupId>org.mockito.kotlin</groupId>
             <artifactId>mockito-kotlin</artifactId>
-            <version>5.4.0</version>
+            <version>6.3.0</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>io.mockk</groupId>
             <artifactId>mockk-jvm</artifactId>
-            <version>1.14.6</version>
+            <version>1.14.9</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>com.ninja-squad</groupId>
             <artifactId>springmockk</artifactId>
-            <version>3.0.1</version>
+            <version>5.0.1</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -273,57 +278,57 @@
         <sourceDirectory>${project.basedir}/src/main/kotlin</sourceDirectory>
         <testSourceDirectory>${project.basedir}/src/test/kotlin</testSourceDirectory>
         <plugins>
-        <plugin>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-maven-plugin</artifactId>
-        </plugin>
-        <!-- Unit Tests (Surefire) -->
-        <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-surefire-plugin</artifactId>
-            <version>3.5.4</version>
-            <configuration>
-                <includes>
-                    <include>**/*Test.java</include>
-                    <include>**/*Test.kt</include>
-                </includes>
-                <excludes>
-                    <exclude>**/*IntegrationTest.java</exclude>
-                    <exclude>**/*IntegrationTest.kt</exclude>
-                </excludes>
-            </configuration>
-        </plugin>
-        <!-- Integration Tests (Failsafe) -->
-        <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-failsafe-plugin</artifactId>
-            <version>3.5.4</version>
-            <executions>
-                <execution>
-                    <id>integration-test</id>
-                    <phase>integration-test</phase>
-                    <goals>
-                        <goal>integration-test</goal>
-                    </goals>
-                </execution>
-                <execution>
-                    <id>verify</id>
-                    <phase>verify</phase>
-                    <goals>
-                        <goal>verify</goal>
-                    </goals>
-                </execution>
-            </executions>
-            <configuration>
-                <includes>
-                    <include>**/*IntegrationTest.java</include>
-                    <include>**/*IntegrationTest.kt</include>
-                </includes>
-                <excludes>
-                    <exclude>**/*UnionGraph*Test.*</exclude>
-                </excludes>
-            </configuration>
-        </plugin>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+            <!-- Unit Tests (Surefire) -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.5.5</version>
+                <configuration>
+                    <includes>
+                        <include>**/*Test.java</include>
+                        <include>**/*Test.kt</include>
+                    </includes>
+                    <excludes>
+                        <exclude>**/*IntegrationTest.java</exclude>
+                        <exclude>**/*IntegrationTest.kt</exclude>
+                    </excludes>
+                </configuration>
+            </plugin>
+            <!-- Integration Tests (Failsafe) -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <version>3.5.5</version>
+                <executions>
+                    <execution>
+                        <id>integration-test</id>
+                        <phase>integration-test</phase>
+                        <goals>
+                            <goal>integration-test</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>verify</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>verify</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <includes>
+                        <include>**/*IntegrationTest.java</include>
+                        <include>**/*IntegrationTest.kt</include>
+                    </includes>
+                    <excludes>
+                        <exclude>**/*UnionGraph*Test.*</exclude>
+                    </excludes>
+                </configuration>
+            </plugin>
             <plugin>
                 <groupId>org.jetbrains.kotlin</groupId>
                 <artifactId>kotlin-maven-plugin</artifactId>

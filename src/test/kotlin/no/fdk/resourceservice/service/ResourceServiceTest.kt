@@ -1,5 +1,6 @@
 package no.fdk.resourceservice.service
 
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import io.mockk.Runs
 import io.mockk.every
 import io.mockk.just
@@ -20,7 +21,7 @@ class ResourceServiceTest {
 
     @BeforeEach
     fun setUp() {
-        resourceService = ResourceService(resourceRepository)
+        resourceService = ResourceService(resourceRepository, jacksonObjectMapper())
     }
 
     @Test

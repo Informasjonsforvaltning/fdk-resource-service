@@ -57,7 +57,7 @@ class RdfServiceTest {
     @BeforeEach
     fun setUp() {
         objectMapper = ObjectMapper()
-        rdfService = RdfService(objectMapper)
+        rdfService = RdfService()
     }
 
     @Test

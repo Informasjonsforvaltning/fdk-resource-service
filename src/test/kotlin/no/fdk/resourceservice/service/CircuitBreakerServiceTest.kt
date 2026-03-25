@@ -1,5 +1,7 @@
 package no.fdk.resourceservice.service
 
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry
 import io.mockk.Runs
 import io.mockk.clearAllMocks
 import io.mockk.every
@@ -23,7 +25,6 @@ import no.fdk.resourceservice.model.ResourceType
 import no.fdk.service.ServiceEvent
 import no.fdk.service.ServiceEventType
 import org.junit.jupiter.api.BeforeEach
-import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import java.sql.SQLException
@@ -32,12 +33,14 @@ class CircuitBreakerServiceTest {
     private val resourceService = mockk<ResourceService>()
     private val rdfService = mockk<RdfService>()
     private val harvestEventProducer = mockk<HarvestEventProducer>(relaxed = true)
+    private val circuitBreakerRegistry = CircuitBreakerRegistry.ofDefaults()
     private lateinit var circuitBreakerService: CircuitBreakerService
 
     @BeforeEach
     fun setUp() {
         clearAllMocks()
-        circuitBreakerService = CircuitBreakerService(resourceService, rdfService, harvestEventProducer)
+        circuitBreakerService =
+            CircuitBreakerService(resourceService, rdfService, harvestEventProducer, circuitBreakerRegistry, jacksonObjectMapper())
 
         // Mock ResourceService methods with relaxed mocking
         every { resourceService.shouldUpdateResource(any(), any()) } returns true // Default: allow updates
@@ -122,7 +125,6 @@ class CircuitBreakerServiceTest {
     }
 
     @Test
-    @Disabled("Harvest event handling is disabled")
     fun `should handle ConceptEvent successfully`() {
         // Given
         val event =
@@ -144,7 +146,6 @@ class CircuitBreakerServiceTest {
     }
 
     @Test
-    @Disabled("Harvest event handling is disabled")
     fun `should handle DatasetEvent successfully`() {
         // Given
         val event =
@@ -166,7 +167,6 @@ class CircuitBreakerServiceTest {
     }
 
     @Test
-    @Disabled("Harvest event handling is disabled")
     fun `should handle DataServiceEvent successfully`() {
         // Given
         val event =
@@ -188,7 +188,6 @@ class CircuitBreakerServiceTest {
     }
 
     @Test
-    @Disabled("Harvest event handling is disabled")
     fun `should handle InformationModelEvent successfully`() {
         // Given
         val event =
@@ -210,7 +209,6 @@ class CircuitBreakerServiceTest {
     }
 
     @Test
-    @Disabled("Harvest event handling is disabled")
     fun `should handle ServiceEvent successfully`() {
         // Given
         val event =
@@ -232,7 +230,6 @@ class CircuitBreakerServiceTest {
     }
 
     @Test
-    @Disabled("Harvest event handling is disabled")
     fun `should handle EventEvent successfully`() {
         // Given
         val event =
@@ -289,7 +286,6 @@ class CircuitBreakerServiceTest {
     }
 
     @Test
-    @Disabled("Harvest event handling is disabled")
     fun `should trigger fallback when ResourceService throws exception in handleConceptEvent`() {
         // Given
         val event =
