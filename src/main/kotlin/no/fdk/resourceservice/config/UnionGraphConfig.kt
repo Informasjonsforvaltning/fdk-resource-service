@@ -72,7 +72,7 @@ class UnionGraphConfig(
         executor.corePoolSize = UNION_GRAPH_CORE_POOL_SIZE
         executor.maxPoolSize = UNION_GRAPH_MAX_POOL_SIZE
         executor.queueCapacity = UNION_GRAPH_QUEUE_CAPACITY
-        executor.threadNamePrefix = "union-graph-"
+        executor.setThreadNamePrefix("union-graph-")
         executor.setWaitForTasksToCompleteOnShutdown(true)
         executor.setAwaitTerminationSeconds(60)
         executor.initialize()
@@ -101,7 +101,7 @@ class UnionGraphConfig(
         // This ensures scheduled methods run on separate threads and don't block each other
         val scheduler = ThreadPoolTaskScheduler()
         scheduler.poolSize = 3 // Enough threads for all scheduled methods
-        scheduler.threadNamePrefix = "scheduler-"
+        scheduler.setThreadNamePrefix("scheduler-")
         scheduler.setWaitForTasksToCompleteOnShutdown(true)
         scheduler.setAwaitTerminationSeconds(60)
         scheduler.initialize()

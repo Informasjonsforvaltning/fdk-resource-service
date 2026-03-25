@@ -1,6 +1,7 @@
 package no.fdk.resourceservice.service
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
@@ -39,7 +40,7 @@ class UnionGraphServiceTest {
         resourceRepository = mockk(relaxed = true)
         unionGraphResourceSnapshotRepository = mockk(relaxed = true)
         val resourceService = mockk<ResourceService>(relaxed = true)
-        objectMapper = ObjectMapper()
+        objectMapper = jacksonObjectMapper()
         webhookService = mockk(relaxed = true)
         rdfService = mockk(relaxed = true)
         metricsService = mockk<UnionGraphMetricsService>(relaxed = true)

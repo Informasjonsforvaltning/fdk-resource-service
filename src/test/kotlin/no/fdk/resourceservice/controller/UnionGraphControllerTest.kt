@@ -9,8 +9,8 @@ import no.fdk.resourceservice.model.UnionGraphResourceFilters
 import no.fdk.resourceservice.service.UnionGraphService
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest
 import org.springframework.boot.test.context.TestConfiguration
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest
 import org.springframework.context.annotation.Bean
 import org.springframework.http.MediaType
 import org.springframework.test.context.TestPropertySource
@@ -388,8 +388,8 @@ class UnionGraphControllerTest : BaseControllerTest() {
                         """.trimIndent(),
                     ),
             ).andExpect(status().isCreated)
-            .andExpect(jsonPath("$.resourceFilters.dataset.isOpenData").value(true))
-            .andExpect(jsonPath("$.resourceFilters.dataset.isRelatedToTransportportal").value(false))
+            .andExpect(jsonPath("$.resourceFilters.dataset.openData").value(true))
+            .andExpect(jsonPath("$.resourceFilters.dataset.relatedToTransportportal").value(false))
     }
 
     @Test
@@ -441,7 +441,7 @@ class UnionGraphControllerTest : BaseControllerTest() {
                         """.trimIndent(),
                     ),
             ).andExpect(status().isCreated)
-            .andExpect(jsonPath("$.resourceFilters.dataset.isDatasetSeries").value(true))
+            .andExpect(jsonPath("$.resourceFilters.dataset.datasetSeries").value(true))
     }
 
     @Test
@@ -497,9 +497,9 @@ class UnionGraphControllerTest : BaseControllerTest() {
                         """.trimIndent(),
                     ),
             ).andExpect(status().isCreated)
-            .andExpect(jsonPath("$.resourceFilters.dataset.isOpenData").value(true))
-            .andExpect(jsonPath("$.resourceFilters.dataset.isRelatedToTransportportal").value(false))
-            .andExpect(jsonPath("$.resourceFilters.dataset.isDatasetSeries").value(true))
+            .andExpect(jsonPath("$.resourceFilters.dataset.openData").value(true))
+            .andExpect(jsonPath("$.resourceFilters.dataset.relatedToTransportportal").value(false))
+            .andExpect(jsonPath("$.resourceFilters.dataset.datasetSeries").value(true))
     }
 
     @Test

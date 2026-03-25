@@ -3,6 +3,7 @@ package no.fdk.resourceservice.config
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.http.HttpMethod
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity
 import org.springframework.security.config.http.SessionCreationPolicy
@@ -41,13 +42,13 @@ class SecurityConfig(
                     .requestMatchers("/actuator/**")
                     .permitAll()
                     // Union graph endpoints require API key (except public endpoints)
-                    .requestMatchers("GET", "/v1/union-graphs/available")
+                    .requestMatchers(HttpMethod.GET, "/v1/union-graphs/available")
                     .permitAll() // Available graphs list is public
-                    .requestMatchers("GET", "/v1/union-graphs/{id}/info")
+                    .requestMatchers(HttpMethod.GET, "/v1/union-graphs/{id}/info")
                     .permitAll() // Graph info endpoint is public
-                    .requestMatchers("GET", "/v1/union-graphs/{id}/graph")
+                    .requestMatchers(HttpMethod.GET, "/v1/union-graphs/{id}/graph")
                     .permitAll() // Graph endpoint is public
-                    .requestMatchers("GET", "/v1/union-graphs/{id}/oai-pmh")
+                    .requestMatchers(HttpMethod.GET, "/v1/union-graphs/{id}/oai-pmh")
                     .permitAll() // OAI-PMH endpoint is public
                     .requestMatchers("/v1/union-graphs", "/v1/union-graphs/**")
                     .hasRole("API_USER")

@@ -1,10 +1,15 @@
 package no.fdk.resourceservice.controller
 
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.ninjasquad.springmockk.MockkBean
 import no.fdk.resourceservice.service.RdfService
 import no.fdk.resourceservice.service.ResourceService
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest
+import org.springframework.boot.test.context.TestConfiguration
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest
+import org.springframework.context.annotation.Bean
+import org.springframework.context.annotation.Import
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.servlet.MockMvc
 
@@ -20,6 +25,7 @@ import org.springframework.test.web.servlet.MockMvc
  */
 @WebMvcTest
 @ActiveProfiles("test")
+@Import(BaseControllerTest.TestObjectMapperConfig::class)
 abstract class BaseControllerTest {
     @Autowired
     protected lateinit var mockMvc: MockMvc
@@ -29,4 +35,10 @@ abstract class BaseControllerTest {
 
     @MockkBean
     protected lateinit var rdfService: RdfService
+
+    @TestConfiguration
+    class TestObjectMapperConfig {
+        @Bean
+        fun objectMapper(): ObjectMapper = jacksonObjectMapper()
+    }
 }

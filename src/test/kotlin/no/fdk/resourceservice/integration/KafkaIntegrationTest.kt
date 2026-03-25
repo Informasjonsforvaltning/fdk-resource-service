@@ -7,6 +7,7 @@ import no.fdk.dataservice.DataServiceEventType
 import no.fdk.dataset.DatasetEvent
 import no.fdk.dataset.DatasetEventType
 import no.fdk.resourceservice.kafka.KafkaConsumer
+import no.fdk.resourceservice.model.ResourceEntity
 import no.fdk.resourceservice.model.ResourceType
 import no.fdk.resourceservice.service.CircuitBreakerService
 import no.fdk.resourceservice.service.ResourceService
@@ -16,7 +17,6 @@ import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertTrue
-import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import java.util.Properties
@@ -34,12 +34,6 @@ class KafkaIntegrationTest : BaseIntegrationTest() {
 
     @Test
     fun `should verify Kafka infrastructure is working`() {
-        // Simple test to verify Kafka is working
-        println("🔍 Testing Kafka infrastructure...")
-        println("📋 Kafka bootstrap servers: ${kafkaContainer.bootstrapServers}")
-        println("📋 Schema registry URL: http://${schemaRegistryContainer.host}:${schemaRegistryContainer.getMappedPort(8081)}")
-
-        // Test basic Kafka connectivity
         val producerProps =
             Properties().apply {
                 put("bootstrap.servers", kafkaContainer.bootstrapServers)
@@ -48,22 +42,13 @@ class KafkaIntegrationTest : BaseIntegrationTest() {
             }
 
         val producer = KafkaProducer<String, String>(producerProps)
-        try {
-            val testRecord = ProducerRecord<String, String>("test-topic", "test-key", "test-value")
-            producer.send(testRecord).get(5, TimeUnit.SECONDS)
-            println("✅ Kafka producer test successful")
-        } catch (e: Exception) {
-            println("❌ Kafka producer test failed: ${e.message}")
-            throw e
-        } finally {
-            producer.close()
+        producer.use { producer ->
+            producer.send(ProducerRecord("test-topic", "test-key", "test-value")).get(5, TimeUnit.SECONDS)
         }
     }
 
     @Test
-    @Disabled("Harvest event handling is disabled")
     fun `should produce and consume Kafka messages end-to-end`() {
-        // Given
         val topic = "concept-events"
         val resourceId = "test-concept-1"
         val turtleData =
@@ -76,9 +61,7 @@ class KafkaIntegrationTest : BaseIntegrationTest() {
                 dc:description "A test concept for Kafka integration" ;
                 rdf:type <http://example.org/Concept> .
             """.trimIndent()
-        val timestamp = System.currentTimeMillis()
 
-        // Create Kafka producer
         val producerProps =
             Properties().apply {
                 put("bootstrap.servers", kafkaContainer.bootstrapServers)
@@ -89,48 +72,33 @@ class KafkaIntegrationTest : BaseIntegrationTest() {
 
         val producer = KafkaProducer<String, ConceptEvent>(producerProps)
 
-        try {
-            // When: Produce a message to Kafka
+        producer.use { producer ->
             val event =
                 ConceptEvent
                     .newBuilder()
                     .setFdkId(resourceId)
                     .setType(ConceptEventType.CONCEPT_REASONED)
-                    .setTimestamp(timestamp)
+                    .setTimestamp(System.currentTimeMillis())
                     .setGraph(turtleData)
                     .setHarvestRunId(null)
                     .setUri(null)
                     .build()
 
-            val record = ProducerRecord<String, ConceptEvent>(topic, resourceId, event)
-            producer.send(record).get(10, TimeUnit.SECONDS)
-            println("✅ Produced message to topic: $topic")
+            producer.send(ProducerRecord(topic, resourceId, event)).get(10, TimeUnit.SECONDS)
 
-            // Wait a bit for the consumer to process the message
             Thread.sleep(2000)
 
-            // Then: Verify the resource was stored in the database
-            val storedResource = resourceService.getResourceEntity(resourceId, ResourceType.CONCEPT)
-            assertNotNull(storedResource, "Resource should be stored in database")
-            assertNotNull(storedResource!!.resourceGraphData, "Resource graph data should be stored")
-            // The stored resource will be in Turtle format, so we check for the URI
-            assertTrue(storedResource.resourceGraphData!!.contains("https://example.com/test-concept"))
-            assertTrue(storedResource.resourceGraphData.contains("Test Concept"))
-
-            println("✅ Resource successfully stored and retrieved from database")
-        } finally {
-            producer.close()
+            val storedEntity = resourceService.getResourceEntity(resourceId, ResourceType.CONCEPT)
+            assertNotNull(storedEntity, "Resource should be stored in database after Kafka message")
+            assertNotNull(storedEntity!!.resourceGraphData, "Resource graph data should be stored")
+            assertTrue(storedEntity.resourceGraphData!!.contains("https://example.com/test-concept"))
+            assertTrue(storedEntity.resourceGraphData.contains("Test Concept"))
         }
     }
 
     @Test
-    @Disabled("Harvest event handling is disabled")
     fun `should test business logic directly without Kafka`() {
-        // Test the business logic directly without relying on Kafka consumers
         val resourceId = "test-concept-direct"
-        val resourceData = mapOf("uri" to "https://example.com/direct-concept", "title" to "Direct Concept")
-
-        // Create a concept event directly with proper Turtle data
         val turtleData =
             """
             @prefix dc: <http://purl.org/dc/elements/1.1/> .
@@ -152,55 +120,17 @@ class KafkaIntegrationTest : BaseIntegrationTest() {
                 .setUri(null)
                 .build()
 
-        // Call the circuit breaker service directly for REASONED event
         circuitBreakerService.handleConceptEvent(event)
 
-        // Now simulate the REASONED event to set the resourceGraph
-        val reasonedEvent =
-            ConceptEvent
-                .newBuilder()
-                .setFdkId(resourceId)
-                .setType(ConceptEventType.CONCEPT_REASONED)
-                .setTimestamp(System.currentTimeMillis() + 1000) // Slightly later timestamp
-                .setGraph(turtleData)
-                .setHarvestRunId(null)
-                .setUri(null)
-                .build()
-
-        println("🔧 Testing REASONED event...")
-        circuitBreakerService.handleConceptEvent(event)
-
-        // Wait a bit for transaction to commit
-        Thread.sleep(1000)
-
-        // Check if resource was stored
-        val storedResource = resourceService.getResourceJson(resourceId, ResourceType.CONCEPT)
-        if (storedResource == null) {
-            println("❌ Resource $resourceId was NOT found in database")
-            println("🔍 This suggests the business logic is not working")
-        } else {
-            println("✅ Resource $resourceId found in database")
-            println("🔍 Stored resource structure: $storedResource")
-
-            // The stored resource will have a "graph" field containing the Turtle data
-            assert(storedResource.containsKey("graph")) { "Resource should contain 'graph' field" }
-
-            // Check if resourceGraph is present (it should be set by the REASONED event)
-            if (storedResource.containsKey("resourceGraph") && storedResource["resourceGraph"] != null) {
-                println("✅ ResourceGraph field is present: ${storedResource["resourceGraph"]}")
-                assert(storedResource.containsKey("resourceGraph")) { "Resource should contain 'resourceGraph' field after REASONED event" }
-            } else {
-                println("❌ ResourceGraph field is missing after REASONED event")
-                assert(false) { "ResourceGraph should be set by REASONED event" }
-            }
-            println("✅ Business logic test successful!")
-        }
+        val storedEntity = resourceService.getResourceEntity(resourceId, ResourceType.CONCEPT)
+        assertNotNull(storedEntity, "Resource entity should be stored after direct REASONED event")
+        assertNotNull(storedEntity!!.resourceGraphData, "Resource graph data should be stored")
+        assertTrue(storedEntity.resourceGraphData!!.contains("https://example.com/direct-concept"))
+        assertTrue(storedEntity.resourceGraphData.contains("Direct Concept"))
     }
 
     @Test
-    @Disabled("Harvest event handling is disabled")
     fun `should handle single concept resource via Kafka`() {
-        // Simplified test with just one resource type to isolate the issue
         val topic = "concept-events"
         val resourceId = "test-concept-simple"
         val turtleData =
@@ -224,7 +154,6 @@ class KafkaIntegrationTest : BaseIntegrationTest() {
         val producer = KafkaProducer<String, Any>(producerProps)
 
         try {
-            // Create a simple concept event
             val event =
                 ConceptEvent
                     .newBuilder()
@@ -236,106 +165,38 @@ class KafkaIntegrationTest : BaseIntegrationTest() {
                     .setUri(null)
                     .build()
 
-            val record = ProducerRecord<String, Any>(topic, resourceId, event)
-            producer.send(record).get(10, TimeUnit.SECONDS)
-            println("✅ Produced concept event to topic: $topic")
+            producer.send(ProducerRecord(topic, resourceId, event)).get(10, TimeUnit.SECONDS)
 
-            // Wait for processing
-            println("⏳ Waiting for consumer to process message...")
-            println("🔍 Current thread: ${Thread.currentThread().name}")
-            println("🔍 Active threads: ${Thread.activeCount()}")
-
-            // List all active threads to see if Kafka consumer threads are running
-            val threadSet = Thread.getAllStackTraces().keys
-            val kafkaThreads = threadSet.filter { it.name.contains("kafka", ignoreCase = true) }
-            println("🔍 Kafka threads: ${kafkaThreads.map { it.name }}")
-
-            // Check if Spring Kafka listeners are registered
-            println("🔍 Checking if Kafka listeners are registered...")
-
-            // Wait for consumer threads to start and process
-            var attempts = 0
-            val maxAttempts = 30 // 30 seconds total
-            while (attempts < maxAttempts) {
-                Thread.sleep(1000) // Wait 1 second
-                attempts++
-                println("⏳ Waiting... attempt $attempts/$maxAttempts")
-
-                // Check if resource was stored (early exit if found)
-                val storedResource = resourceService.getResourceJson(resourceId, ResourceType.CONCEPT)
-                if (storedResource != null) {
-                    println("✅ Resource found after $attempts seconds!")
-                    break
-                }
+            var storedEntity: ResourceEntity? = null
+            for (attempt in 1..30) {
+                Thread.sleep(1000)
+                storedEntity = resourceService.getResourceEntity(resourceId, ResourceType.CONCEPT)
+                if (storedEntity != null) break
             }
 
-            // Check if resource was stored
-            val storedResource = resourceService.getResourceJson(resourceId, ResourceType.CONCEPT)
-            if (storedResource == null) {
-                println("❌ Resource $resourceId was NOT found in database")
-                println("🔍 This suggests the Kafka consumer is not processing messages")
-            } else {
-                println("✅ Resource $resourceId found in database")
-                assert(storedResource["@id"] == "https://example.com/simple-concept")
-                assert(storedResource["http://purl.org/dc/elements/1.1/title"]?.toString()?.contains("Simple Concept") == true)
-            }
+            assertNotNull(storedEntity, "Resource should be stored in database within 30 seconds")
+            assertNotNull(storedEntity!!.resourceGraphData, "Resource graph data should be stored")
+            assertTrue(storedEntity.resourceGraphData!!.contains("https://example.com/simple-concept"))
+            assertTrue(storedEntity.resourceGraphData.contains("Simple Concept"))
         } finally {
             producer.close()
         }
     }
 
     @Test
-    @Disabled("Harvest event handling is disabled")
     fun `should handle multiple resource types via Kafka`() {
-        // Given
         data class ResourceTestData(
             val topic: String,
             val resourceType: ResourceType,
-            val eventType: String,
-            val turtleData: String,
+            val resourceUri: String,
+            val expectedTitle: String,
         )
 
         val resources =
             listOf(
-                ResourceTestData(
-                    "dataset-events",
-                    ResourceType.DATASET,
-                    "DATASET_REASONED",
-                    """
-                    @prefix dc: <http://purl.org/dc/elements/1.1/> .
-                    @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
-                    
-                    <https://example.com/dataset>
-                        dc:title "Test Dataset" ;
-                        rdf:type <http://example.org/Dataset> .
-                    """.trimIndent(),
-                ),
-                ResourceTestData(
-                    "data-service-events",
-                    ResourceType.DATA_SERVICE,
-                    "DATA_SERVICE_REASONED",
-                    """
-                    @prefix dc: <http://purl.org/dc/elements/1.1/> .
-                    @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
-                    
-                    <https://example.com/data-service>
-                        dc:title "Test Data Service" ;
-                        rdf:type <http://example.org/DataService> .
-                    """.trimIndent(),
-                ),
-                ResourceTestData(
-                    "service-events",
-                    ResourceType.SERVICE,
-                    "SERVICE_REASONED",
-                    """
-                    @prefix dc: <http://purl.org/dc/elements/1.1/> .
-                    @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
-                    
-                    <https://example.com/service>
-                        dc:title "Test Service" ;
-                        rdf:type <http://example.org/Service> .
-                    """.trimIndent(),
-                ),
+                ResourceTestData("dataset-events", ResourceType.DATASET, "https://example.com/dataset", "Test Dataset"),
+                ResourceTestData("data-service-events", ResourceType.DATA_SERVICE, "https://example.com/data-service", "Test Data Service"),
+                ResourceTestData("service-events", ResourceType.SERVICE, "https://example.com/service", "Test Service"),
             )
 
         val producerProps =
@@ -349,100 +210,65 @@ class KafkaIntegrationTest : BaseIntegrationTest() {
         val producer = KafkaProducer<String, Any>(producerProps)
 
         try {
-            // Verify topics exist before producing messages
-            println("🔍 Verifying Kafka topics exist...")
-            resources.forEach { resourceTestData ->
-                println("📋 Topic: ${resourceTestData.topic}")
-            }
+            resources.forEach { testData ->
+                val resourceId = "test-${testData.resourceType.name.lowercase()}-1"
+                val turtleData =
+                    """
+                    @prefix dc: <http://purl.org/dc/elements/1.1/> .
+                    @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+                    
+                    <${testData.resourceUri}>
+                        dc:title "${testData.expectedTitle}" ;
+                        rdf:type <http://example.org/${testData.resourceType.name}> .
+                    """.trimIndent()
 
-            // Check if topics are created by trying to list them
-            try {
-                val adminProps =
-                    Properties().apply {
-                        put("bootstrap.servers", kafkaContainer.bootstrapServers)
-                    }
-                // Note: We can't easily list topics from the test, but we can verify by producing
-                println("📋 Topics should be auto-created by KAFKA_AUTO_CREATE_TOPICS_ENABLE=true")
-            } catch (e: Exception) {
-                println("⚠️ Could not verify topics: ${e.message}")
-            }
-
-            // When: Produce messages for different resource types
-            resources.forEach { resourceTestData ->
-                val resourceId = "test-${resourceTestData.resourceType.name.lowercase()}-1"
-                val timestamp = System.currentTimeMillis()
-                val graph = resourceTestData.turtleData
-
-                val event =
-                    when (resourceTestData.resourceType) {
-                        ResourceType.DATASET -> {
+                val event: Any =
+                    when (testData.resourceType) {
+                        ResourceType.DATASET ->
                             DatasetEvent
                                 .newBuilder()
                                 .setFdkId(resourceId)
                                 .setType(DatasetEventType.DATASET_REASONED)
-                                .setTimestamp(timestamp)
-                                .setGraph(graph)
+                                .setTimestamp(System.currentTimeMillis())
+                                .setGraph(turtleData)
                                 .setHarvestRunId(null)
                                 .setUri(null)
                                 .build()
-                        }
-                        ResourceType.DATA_SERVICE -> {
+                        ResourceType.DATA_SERVICE ->
                             DataServiceEvent
                                 .newBuilder()
                                 .setFdkId(resourceId)
                                 .setType(DataServiceEventType.DATA_SERVICE_REASONED)
-                                .setTimestamp(timestamp)
-                                .setGraph(graph)
+                                .setTimestamp(System.currentTimeMillis())
+                                .setGraph(turtleData)
                                 .setHarvestRunId(null)
                                 .setUri(null)
                                 .build()
-                        }
-                        ResourceType.SERVICE -> {
+                        ResourceType.SERVICE ->
                             ServiceEvent
                                 .newBuilder()
                                 .setFdkId(resourceId)
                                 .setType(ServiceEventType.SERVICE_REASONED)
-                                .setTimestamp(timestamp)
-                                .setGraph(graph)
+                                .setTimestamp(System.currentTimeMillis())
+                                .setGraph(turtleData)
                                 .setHarvestRunId(null)
                                 .setUri(null)
                                 .build()
-                        }
-                        else -> throw IllegalArgumentException("Unsupported resource type: ${resourceTestData.resourceType}")
+                        else -> throw IllegalArgumentException("Unsupported resource type: ${testData.resourceType}")
                     }
 
-                val record = ProducerRecord<String, Any>(resourceTestData.topic, resourceId, event)
-                producer.send(record).get(10, TimeUnit.SECONDS)
-                println("✅ Produced message to topic: ${resourceTestData.topic}")
+                producer.send(ProducerRecord(testData.topic, resourceId, event)).get(10, TimeUnit.SECONDS)
             }
 
-            // Wait for processing with longer timeout
-            println("⏳ Waiting for Kafka consumers to process messages...")
-            println("🔍 Consumer group: test-group")
-            println("🔍 Bootstrap servers: ${kafkaContainer.bootstrapServers}")
-            println("🔍 Schema registry: http://${schemaRegistryContainer.host}:${schemaRegistryContainer.getMappedPort(8081)}")
+            Thread.sleep(10000)
 
-            // Check if we can see any consumer activity in the logs
-            println("🔍 Looking for consumer activity...")
-            Thread.sleep(10000) // Increased to 10 seconds
-
-            // Then: Verify all resources were stored
-            resources.forEach { resourceTestData ->
-                val resourceId = "test-${resourceTestData.resourceType.name.lowercase()}-1"
-                println("🔍 Checking for resource: $resourceId")
-                val storedResource = resourceService.getResourceJson(resourceId, resourceTestData.resourceType)
-                if (storedResource == null) {
-                    println("❌ Resource $resourceId was NOT found in database")
-                    // Let's check what resources are actually in the database
-                    println("🔍 Available resources in database:")
-                    // This is a debug step - we'll add a method to list all resources
-                } else {
-                    println("✅ Resource $resourceId found in database")
-                    // Check that the resource was stored (the exact JSON-LD structure will depend on the Turtle conversion)
-                    assertNotNull(storedResource["@id"])
-                    assert(storedResource["@id"]?.toString()?.contains("example.com") == true)
-                    println("✅ Verified resource $resourceId stored correctly")
-                }
+            resources.forEach { testData ->
+                val resourceId = "test-${testData.resourceType.name.lowercase()}-1"
+                val storedEntity = resourceService.getResourceEntity(resourceId, testData.resourceType)
+                assertNotNull(storedEntity, "Resource $resourceId should be stored in database")
+                assertNotNull(storedEntity!!.resourceGraphData, "Graph data for $resourceId should be stored")
+                assertTrue(storedEntity.resourceGraphData!!.contains(testData.resourceUri))
+                assertTrue(storedEntity.resourceGraphData.contains(testData.expectedTitle))
             }
         } finally {
             producer.close()
@@ -450,9 +276,7 @@ class KafkaIntegrationTest : BaseIntegrationTest() {
     }
 
     @Test
-    @Disabled("Harvest event handling is disabled")
     fun `should handle resource updates via Kafka`() {
-        // Given
         val topic = "concept-events"
         val resourceId = "test-concept-update"
         val initialTurtleData =
@@ -485,8 +309,7 @@ class KafkaIntegrationTest : BaseIntegrationTest() {
 
         val producer = KafkaProducer<String, ConceptEvent>(producerProps)
 
-        try {
-            // When: Send initial CREATE event
+        producer.use { producer ->
             val createEvent =
                 ConceptEvent
                     .newBuilder()
@@ -498,19 +321,15 @@ class KafkaIntegrationTest : BaseIntegrationTest() {
                     .setUri(null)
                     .build()
 
-            producer.send(ProducerRecord<String, ConceptEvent>(topic, resourceId, createEvent)).get(10, TimeUnit.SECONDS)
-            println("✅ Sent CREATE event")
-
+            producer.send(ProducerRecord(topic, resourceId, createEvent)).get(10, TimeUnit.SECONDS)
             Thread.sleep(2000)
 
-            // Verify initial state
-            val initialResource = resourceService.getResourceEntity(resourceId, ResourceType.CONCEPT)
-            assertNotNull(initialResource)
-            assertNotNull(initialResource!!.resourceGraphData)
-            assertTrue(initialResource.resourceGraphData!!.contains("https://example.com/concept"))
-            assertTrue(initialResource.resourceGraphData.contains("Initial Title"))
+            val initialEntity = resourceService.getResourceEntity(resourceId, ResourceType.CONCEPT)
+            assertNotNull(initialEntity, "Initial resource should be stored")
+            assertNotNull(initialEntity!!.resourceGraphData, "Initial graph data should be stored")
+            assertTrue(initialEntity.resourceGraphData!!.contains("https://example.com/concept"))
+            assertTrue(initialEntity.resourceGraphData.contains("Initial Title"))
 
-            // Send UPDATE event
             val updateEvent =
                 ConceptEvent
                     .newBuilder()
@@ -522,20 +341,14 @@ class KafkaIntegrationTest : BaseIntegrationTest() {
                     .setUri(null)
                     .build()
 
-            producer.send(ProducerRecord<String, ConceptEvent>(topic, resourceId, updateEvent)).get(10, TimeUnit.SECONDS)
-            println("✅ Sent UPDATE event")
-
+            producer.send(ProducerRecord(topic, resourceId, updateEvent)).get(10, TimeUnit.SECONDS)
             Thread.sleep(2000)
 
-            // Then: Verify the resource was updated
-            val updatedResource = resourceService.getResourceEntity(resourceId, ResourceType.CONCEPT)
-            assertNotNull(updatedResource)
-            assertNotNull(updatedResource!!.resourceGraphData)
-            assertTrue(updatedResource.resourceGraphData!!.contains("https://example.com/concept"))
-            assertTrue(updatedResource.resourceGraphData.contains("Updated Title"))
-            println("✅ Resource successfully updated via Kafka")
-        } finally {
-            producer.close()
+            val updatedEntity = resourceService.getResourceEntity(resourceId, ResourceType.CONCEPT)
+            assertNotNull(updatedEntity, "Updated resource should be stored")
+            assertNotNull(updatedEntity!!.resourceGraphData, "Updated graph data should be stored")
+            assertTrue(updatedEntity.resourceGraphData!!.contains("https://example.com/concept"))
+            assertTrue(updatedEntity.resourceGraphData.contains("Updated Title"))
         }
     }
 }

@@ -19,11 +19,9 @@ import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Assertions.fail
 import org.junit.jupiter.api.BeforeEach
-import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.kafka.listener.KafkaMessageListenerContainer
-import org.springframework.test.context.TestPropertySource
 
 /**
  * Integration test to verify circuit breaker functionality and listener pausing.
@@ -33,14 +31,6 @@ import org.springframework.test.context.TestPropertySource
  * 2. Kafka listeners are paused when circuit breaker opens
  * 3. Circuit breaker state transitions are properly handled
  */
-@TestPropertySource(
-    properties = [
-        "resilience4j.circuitbreaker.instances.conceptConsumer.slidingWindowSize=10",
-        "resilience4j.circuitbreaker.instances.conceptConsumer.minimumNumberOfCalls=5",
-        "resilience4j.circuitbreaker.instances.conceptConsumer.failureRateThreshold=60",
-        "resilience4j.circuitbreaker.instances.conceptConsumer.waitDurationInOpenState=5s",
-    ],
-)
 class CircuitBreakerIntegrationTest : BaseIntegrationTest() {
     @Autowired
     private lateinit var circuitBreakerService: CircuitBreakerService
@@ -89,7 +79,6 @@ class CircuitBreakerIntegrationTest : BaseIntegrationTest() {
     }
 
     @Test
-    @Disabled("Harvest event handling is disabled")
     fun `circuit breaker should open and pause listener when failure threshold is reached`() {
         // Given: Verify initial state
         assertEquals(

@@ -1,6 +1,7 @@
 package no.fdk.resourceservice.service
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
@@ -22,7 +23,7 @@ class WebhookServiceTest {
     @BeforeEach
     fun setUp() {
         restTemplate = mockk(relaxed = true)
-        objectMapper = ObjectMapper()
+        objectMapper = jacksonObjectMapper()
         webhookService = WebhookService(restTemplate, objectMapper)
     }
 

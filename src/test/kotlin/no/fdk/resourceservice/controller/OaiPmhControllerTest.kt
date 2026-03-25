@@ -7,7 +7,7 @@ import no.fdk.resourceservice.model.UnionGraphResourceSnapshot
 import no.fdk.resourceservice.repository.UnionGraphResourceSnapshotRepository
 import no.fdk.resourceservice.service.UnionGraphService
 import org.junit.jupiter.api.Test
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.content

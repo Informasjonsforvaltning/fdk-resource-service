@@ -19,9 +19,9 @@ import org.springframework.transaction.annotation.Transactional
 @Transactional
 class ResourceService(
     private val resourceRepository: ResourceRepository,
+    private val objectMapper: ObjectMapper,
 ) {
     private val logger = LoggerFactory.getLogger(ResourceService::class.java)
-    private val objectMapper = ObjectMapper()
 
     /**
      * Retrieves all resources of a specific type as JSON representations.
