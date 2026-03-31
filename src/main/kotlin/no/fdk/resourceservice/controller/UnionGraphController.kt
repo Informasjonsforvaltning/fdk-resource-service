@@ -261,6 +261,7 @@ class UnionGraphController(
                 description = order.description,
                 resourceIds = order.resourceIds,
                 resourceUris = order.resourceUris,
+                includeCatalog = order.includeCatalog,
             )
 
         // Return 201 Created for new union graphs, 409 Conflict for existing ones
@@ -450,6 +451,7 @@ class UnionGraphController(
                 description = updatedOrder.description,
                 resourceIds = updatedOrder.resourceIds,
                 resourceUris = updatedOrder.resourceUris,
+                includeCatalog = updatedOrder.includeCatalog,
             )
 
         return ResponseEntity
@@ -507,6 +509,7 @@ class UnionGraphController(
                     description = order.description,
                     resourceIds = order.resourceIds,
                     resourceUris = order.resourceUris,
+                    includeCatalog = order.includeCatalog,
                 )
             }
 
@@ -581,6 +584,7 @@ class UnionGraphController(
                 description = order.description,
                 resourceIds = order.resourceIds,
                 resourceUris = order.resourceUris,
+                includeCatalog = order.includeCatalog,
             )
 
         return ResponseEntity
@@ -641,6 +645,7 @@ class UnionGraphController(
                 description = order.description,
                 resourceIds = order.resourceIds,
                 resourceUris = order.resourceUris,
+                includeCatalog = order.includeCatalog,
             )
 
         return ResponseEntity
@@ -1018,6 +1023,11 @@ class UnionGraphController(
          * Optional list of resource URIs that were used to filter resources.
          */
         val resourceUris: List<String>?,
+        /**
+         * If true (default), Catalog and CatalogRecord resources are included in union graph snapshots.
+         * If false, they are removed from snapshots (as subjects), but references to their URIs are preserved.
+         */
+        val includeCatalog: Boolean,
     )
 
     /**
@@ -1058,6 +1068,11 @@ class UnionGraphController(
          * Optional list of resource URIs that were used to filter resources.
          */
         val resourceUris: List<String>?,
+        /**
+         * If true (default), Catalog and CatalogRecord resources are included in union graph snapshots.
+         * If false, they are removed from snapshots (as subjects), but references to their URIs are preserved.
+         */
+        val includeCatalog: Boolean,
     )
 
     /**
@@ -1099,6 +1114,11 @@ class UnionGraphController(
          * Optional list of resource URIs that were used to filter resources.
          */
         val resourceUris: List<String>?,
+        /**
+         * If true (default), Catalog and CatalogRecord resources are included in union graph snapshots.
+         * If false, they are removed from snapshots (as subjects), but references to their URIs are preserved.
+         */
+        val includeCatalog: Boolean,
     )
 
     /**
