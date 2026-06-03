@@ -18,7 +18,3 @@
     {"name": "timestamp", "type": "long", "logicalType": "timestamp-millis"}
   ]
 }
-
-
-
-
