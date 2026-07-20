@@ -315,6 +315,56 @@ class ResourceService(
     }
 
     /**
+     * Stores catalog graph data (dcat:Catalog, dcat:CatalogRecord, skos:Collection) for a resource.
+     *
+     * @param id The unique identifier for the resource
+     * @param graphData The catalog RDF graph data (typically Turtle text)
+     * @param format The format of the catalog RDF data (default: TURTLE)
+     * @param timestamp The timestamp when the resource was processed
+     */
+    fun storeCatalogGraphData(
+        id: String,
+        graphData: String,
+        format: String = "TURTLE",
+        timestamp: Long,
+    ) {
+        val existingEntity = resourceRepository.findById(id).orElse(null)
+
+        if (existingEntity != null) {
+            if (existingEntity.timestamp > timestamp) {
+                logger.info("Skipped catalog graph (older timestamp): id=$id, existingTs=${existingEntity.timestamp}, newTs=$timestamp")
+                return
+            }
+            val updateCount =
+                resourceRepository.updateCatalogGraphData(
+                    id = id,
+                    graphData = graphData,
+                    format = format,
+                    timestamp = timestamp,
+                )
+            resourceRepository.flush()
+            logger.info("Updated catalog graph data: id=$id, format=$format, rows=$updateCount")
+        } else {
+            logger.warn("Cannot store catalog graph for non-existent resource: id=$id")
+        }
+    }
+
+    /**
+     * Clears catalog graph data for a resource.
+     *
+     * Used when a REASONED event has no catalogGraph payload.
+     */
+    fun clearCatalogGraphData(id: String) {
+        val existingEntity = resourceRepository.findById(id).orElse(null) ?: return
+        if (existingEntity.catalogGraphData.isNullOrBlank()) {
+            return
+        }
+        resourceRepository.clearCatalogGraphData(id)
+        resourceRepository.flush()
+        logger.debug("Cleared catalog graph data: id=$id")
+    }
+
+    /**
      * Retrieves a list of resources by their unique identifiers as JSON representation.
      *
      * @param ids The unique identifiers of the resources

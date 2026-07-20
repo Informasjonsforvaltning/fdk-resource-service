@@ -137,9 +137,9 @@ data class UnionGraphOrder(
     @Column(name = "resource_uris", columnDefinition = "text[]")
     val resourceUris: List<String>? = null,
     /**
-     * If true (default), Catalog and CatalogRecord resources are included in union graph snapshots.
-     * If false, Catalog and CatalogRecord resources are removed from snapshots (as subjects),
-     * but references to their URIs (as objects) are preserved.
+     * If true (default), catalog_graph_data is merged into union graph snapshots.
+     * If false, catalog metadata is excluded; legacy embedded catalog types in resource_graph_data
+     * are filtered out, but references to catalog URIs (as objects) are preserved.
      */
     @Column(name = "include_catalog", nullable = false)
     val includeCatalog: Boolean = true,

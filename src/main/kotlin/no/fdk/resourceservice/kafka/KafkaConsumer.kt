@@ -45,6 +45,7 @@ class KafkaConsumer(
         val type: String,
         val timestamp: Long,
         val graph: String,
+        val catalogGraph: String?,
     )
 
     private fun extractRequiredFields(
@@ -67,8 +68,9 @@ class KafkaConsumer(
         }
 
         val graph = value.get("graph")?.toString() ?: ""
+        val catalogGraph = value.get("catalogGraph")?.toString()
 
-        return RequiredFields(fdkIdStr, typeStr, timestamp, graph)
+        return RequiredFields(fdkIdStr, typeStr, timestamp, graph, catalogGraph)
     }
 
     /**
@@ -118,6 +120,7 @@ class KafkaConsumer(
                         .setType(ConceptEventType.valueOf(fields.type))
                         .setTimestamp(fields.timestamp)
                         .setGraph(fields.graph)
+                        .setCatalogGraph(fields.catalogGraph)
                         .setHarvestRunId(value.get("harvestRunId")?.toString())
                         .setUri(value.get("uri")?.toString())
                         .build()
@@ -154,6 +157,7 @@ class KafkaConsumer(
                         .setType(DatasetEventType.valueOf(fields.type))
                         .setTimestamp(fields.timestamp)
                         .setGraph(fields.graph)
+                        .setCatalogGraph(fields.catalogGraph)
                         .setHarvestRunId(value.get("harvestRunId")?.toString())
                         .setUri(value.get("uri")?.toString())
                         .build()
@@ -190,6 +194,7 @@ class KafkaConsumer(
                         .setType(DataServiceEventType.valueOf(fields.type))
                         .setTimestamp(fields.timestamp)
                         .setGraph(fields.graph)
+                        .setCatalogGraph(fields.catalogGraph)
                         .setHarvestRunId(value.get("harvestRunId")?.toString())
                         .setUri(value.get("uri")?.toString())
                         .build()
@@ -226,6 +231,7 @@ class KafkaConsumer(
                         .setType(EventEventType.valueOf(fields.type))
                         .setTimestamp(fields.timestamp)
                         .setGraph(fields.graph)
+                        .setCatalogGraph(fields.catalogGraph)
                         .setHarvestRunId(value.get("harvestRunId")?.toString())
                         .setUri(value.get("uri")?.toString())
                         .build()
@@ -262,6 +268,7 @@ class KafkaConsumer(
                         .setType(InformationModelEventType.valueOf(fields.type))
                         .setTimestamp(fields.timestamp)
                         .setGraph(fields.graph)
+                        .setCatalogGraph(fields.catalogGraph)
                         .setHarvestRunId(value.get("harvestRunId")?.toString())
                         .setUri(value.get("uri")?.toString())
                         .build()
@@ -298,6 +305,7 @@ class KafkaConsumer(
                         .setType(ServiceEventType.valueOf(fields.type))
                         .setTimestamp(fields.timestamp)
                         .setGraph(fields.graph)
+                        .setCatalogGraph(fields.catalogGraph)
                         .setHarvestRunId(value.get("harvestRunId")?.toString())
                         .setUri(value.get("uri")?.toString())
                         .build()

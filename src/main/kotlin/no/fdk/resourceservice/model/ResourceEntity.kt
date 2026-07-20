@@ -61,6 +61,18 @@ data class ResourceEntity(
     @Column(name = "resource_graph_format", length = 50)
     val resourceGraphFormat: String? = null,
     /**
+     * RDF graph data containing catalog metadata (dcat:Catalog, dcat:CatalogRecord, skos:Collection).
+     *
+     * Populated from the Kafka event catalogGraph field, separate from the resource graph.
+     */
+    @Column(name = "catalog_graph_data", columnDefinition = "text")
+    val catalogGraphData: String? = null,
+    /**
+     * The format of the catalog RDF graph data (typically TURTLE).
+     */
+    @Column(name = "catalog_graph_format", length = 50)
+    val catalogGraphFormat: String? = null,
+    /**
      * The URI of the resource extracted from the RDF graph.
      *
      * This field stores the URI extracted from the RDF representation,

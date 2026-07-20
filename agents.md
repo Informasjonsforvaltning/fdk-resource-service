@@ -30,6 +30,7 @@ The FDK Resource Service is built on a microservices architecture with multiple 
 - Extracts and validates event data from Avro GenericRecords
 - Handles event deserialization and type conversion
 - Routes events to `CircuitBreakerService` for processing
+- Extracts both `graph` (resource RDF) and `catalogGraph` (catalog metadata) from events
 - Manages Kafka acknowledgment (ack/nack) based on processing success
 - Runs with concurrency of 4 threads per topic for parallel processing
 
@@ -58,8 +59,8 @@ The FDK Resource Service is built on a microservices architecture with multiple 
 **Responsibilities**:
 - Processes resource events with circuit breaker protection
 - Handles two types of events:
-  - **REASONED events**: Stores resource graph data (Turtle format)
-  - **REMOVED events**: Marks resources as deleted
+- **REASONED events**: Stores resource graph data (`graph`) and catalog graph data (`catalogGraph`) separately
+- **REMOVED events**: Marks resources as deleted
 - Validates timestamps to prevent processing outdated events
 - Converts and stores RDF data in the database
 - Records metrics for monitoring (timers, counters)
@@ -105,7 +106,9 @@ The FDK Resource Service is built on a microservices architecture with multiple 
 
 **Key Methods**:
 - `storeResourceJson()` - Stores parsed JSON representation of resources
-- `storeResourceGraphData()` - Stores original RDF graph data (Turtle format)
+- `storeResourceGraphData()` - Stores original RDF graph data from Kafka `graph` field (Turtle format)
+- `storeCatalogGraphData()` - Stores catalog RDF from Kafka `catalogGraph` field (dcat:Catalog, dcat:CatalogRecord, skos:Collection)
+- `clearCatalogGraphData()` - Clears catalog graph when event has no catalogGraph
 - `getResourceJson()` - Retrieves resource as JSON
 - `getResourceJsonByUri()` - Retrieves resource by URI
 - `getResourceEntityByUri()` - Retrieves resource entity with URI lookup fallbacks
@@ -118,7 +121,8 @@ The FDK Resource Service is built on a microservices architecture with multiple 
 - Resources stored in PostgreSQL with JSONB for flexible JSON storage
 - Separate columns for:
   - `resource_json` - Parsed JSON representation
-  - `resource_graph_data` - Original RDF graph data (Turtle)
+  - `resource_graph_data` - Original RDF graph data (Turtle) from Kafka `graph`
+  - `catalog_graph_data` - Catalog RDF graph from Kafka `catalogGraph` (dcat:Catalog, dcat:CatalogRecord, skos:Collection)
   - `resource_graph_format` - Format of graph data (TURTLE, JSON_LD, etc.)
   - `uri` - Resource URI for efficient lookup
   - `timestamp` - Processing timestamp
@@ -177,7 +181,8 @@ The FDK Resource Service is built on a microservices architecture with multiple 
 - Supports resource filtering and expansion (e.g., expand distribution access services)
 - Handles TTL-based automatic updates
 - Manages resource snapshots for union graphs
-- Filters Catalog and CatalogRecord resources when `includeCatalog = false`
+- Merges catalog graph into snapshots when `includeCatalog = true`
+- Filters legacy embedded catalog types from resource graph when `includeCatalog = false`
 
 **Key Methods**:
 - `createOrder()` - Creates a new union graph order
@@ -188,14 +193,15 @@ The FDK Resource Service is built on a microservices architecture with multiple 
 - `getUnionGraphStatus()` - Gets union graph processing status
 - `resetToPending()` - Resets union graph to pending state
 - `deleteUnionGraph()` - Deletes union graph
-- `filterCatalogFromRdfXml()` - Filters Catalog/CatalogRecord from RDF/XML snapshots
+- `mergeCatalogGraphIntoModel()` - Merges catalog_graph_data into union graph snapshots
+- `filterCatalogFromModel()` - Legacy fallback: filters dcat:Catalog, dcat:CatalogRecord, skos:Collection from embedded resource graphs
 
 **Union Graph Features**:
 - **Resource Type Filtering**: Include/exclude specific resource types
 - **Resource Filters**: Per-resource-type filters (e.g., `isOpenData`, `isRelatedToTransportportal`, `isDatasetSeries`)
 - **Resource ID/URI Filtering**: Include specific resources by ID or URI
 - **Distribution Expansion**: Automatically include DataService graphs referenced by datasets
-- **Catalog Filtering**: Optionally exclude Catalog and CatalogRecord resources from snapshots
+- **Catalog Merging**: When `includeCatalog=true`, merges `catalog_graph_data` into snapshots; when false, excludes catalog metadata (with legacy filter fallback for old embedded data)
 - **TTL Management**: Automatic updates based on time-to-live
 - **Webhook Support**: Notifications on status changes
 

@@ -286,6 +286,30 @@ class ResourceServiceTest {
     }
 
     @Test
+    fun `storeCatalogGraphData updates existing when timestamp is newer`() {
+        val existing = ResourceEntity(id = "g", resourceType = "CONCEPT", timestamp = 1000L)
+        every { resourceRepository.findById("g") } returns Optional.of(existing)
+        every { resourceRepository.updateCatalogGraphData("g", "<catalog>", "TURTLE", 2000L) } returns 1
+        every { resourceRepository.flush() } just Runs
+
+        resourceService.storeCatalogGraphData("g", "<catalog>", "TURTLE", 2000L)
+
+        verify(exactly = 1) { resourceRepository.updateCatalogGraphData("g", "<catalog>", "TURTLE", 2000L) }
+    }
+
+    @Test
+    fun `clearCatalogGraphData clears when catalog data exists`() {
+        val existing = ResourceEntity(id = "g", resourceType = "CONCEPT", catalogGraphData = "<catalog>")
+        every { resourceRepository.findById("g") } returns Optional.of(existing)
+        every { resourceRepository.clearCatalogGraphData("g") } returns 1
+        every { resourceRepository.flush() } just Runs
+
+        resourceService.clearCatalogGraphData("g")
+
+        verify(exactly = 1) { resourceRepository.clearCatalogGraphData("g") }
+    }
+
+    @Test
     fun `getResourceGraphDataByUri returns graph data when entity found and type matches`() {
         val entity = ResourceEntity(id = "1", resourceType = "CONCEPT", resourceGraphData = "turtle data", uri = "https://example.com/1")
         every { resourceRepository.findByUri("https://example.com/1") } returns entity

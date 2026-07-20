@@ -166,6 +166,7 @@ class CircuitBreakerService(
                         processResourceEvent(
                             fdkId = event.fdkId,
                             graph = event.graph,
+                            catalogGraph = event.catalogGraph?.toString(),
                             timestamp = event.timestamp,
                             resourceType = ResourceType.CONCEPT,
                             eventType = event.type.toString(),
@@ -208,6 +209,7 @@ class CircuitBreakerService(
                         processResourceEvent(
                             fdkId = event.fdkId,
                             graph = event.graph,
+                            catalogGraph = event.catalogGraph?.toString(),
                             timestamp = event.timestamp,
                             resourceType = ResourceType.DATASET,
                             eventType = event.type.toString(),
@@ -250,6 +252,7 @@ class CircuitBreakerService(
                         processResourceEvent(
                             fdkId = event.fdkId,
                             graph = event.graph,
+                            catalogGraph = event.catalogGraph?.toString(),
                             timestamp = event.timestamp,
                             resourceType = ResourceType.DATA_SERVICE,
                             eventType = event.type.toString(),
@@ -292,6 +295,7 @@ class CircuitBreakerService(
                         processResourceEvent(
                             fdkId = event.fdkId,
                             graph = event.graph,
+                            catalogGraph = event.catalogGraph?.toString(),
                             timestamp = event.timestamp,
                             resourceType = ResourceType.INFORMATION_MODEL,
                             eventType = event.type.toString(),
@@ -334,6 +338,7 @@ class CircuitBreakerService(
                         processResourceEvent(
                             fdkId = event.fdkId,
                             graph = event.graph,
+                            catalogGraph = event.catalogGraph?.toString(),
                             timestamp = event.timestamp,
                             resourceType = ResourceType.SERVICE,
                             eventType = event.type.toString(),
@@ -376,6 +381,7 @@ class CircuitBreakerService(
                         processResourceEvent(
                             fdkId = event.fdkId,
                             graph = event.graph,
+                            catalogGraph = event.catalogGraph?.toString(),
                             timestamp = event.timestamp,
                             resourceType = ResourceType.EVENT,
                             eventType = event.type.toString(),
@@ -410,6 +416,7 @@ class CircuitBreakerService(
     private fun processResourceEvent(
         fdkId: String,
         graph: String,
+        catalogGraph: String?,
         timestamp: Long,
         resourceType: ResourceType,
         eventType: String,
@@ -417,7 +424,10 @@ class CircuitBreakerService(
         resourceUri: String?,
         startTime: Long,
     ) {
-        logger.debug("Processing event: id=$fdkId, type=$resourceType, event=$eventType, graphLen=${graph.length}")
+        logger.debug(
+            "Processing event: id=$fdkId, type=$resourceType, event=$eventType, graphLen=${graph.length}, " +
+                "catalogGraphLen=${catalogGraph?.length ?: 0}",
+        )
         val action =
             when {
                 eventType.endsWith("_REASONED") -> "REASONED"
@@ -452,6 +462,18 @@ class CircuitBreakerService(
                     format = "TURTLE",
                     timestamp = timestamp,
                 )
+
+                if (!catalogGraph.isNullOrBlank()) {
+                    resourceService.storeCatalogGraphData(
+                        id = fdkId,
+                        graphData = catalogGraph,
+                        format = "TURTLE",
+                        timestamp = timestamp,
+                    )
+                } else {
+                    resourceService.clearCatalogGraphData(fdkId)
+                }
+
                 logger.debug("Storage called: id=$fdkId, type=$resourceType")
 
                 val endTime = System.currentTimeMillis()
