@@ -45,6 +45,8 @@ class CircuitBreakerServiceTest {
         // Mock ResourceService methods with relaxed mocking
         every { resourceService.shouldUpdateResource(any(), any()) } returns true // Default: allow updates
         every { resourceService.storeResourceGraphData(any(), any(), any(), any(), any()) } just Runs
+        every { resourceService.storeCatalogGraphData(any(), any(), any(), any()) } just Runs
+        every { resourceService.clearCatalogGraphData(any()) } just Runs
         every { resourceService.storeResourceJson(any(), any(), any(), any()) } just Runs
         every { resourceService.markResourceAsDeleted(any(), any(), any()) } just Runs
     }
@@ -122,6 +124,51 @@ class CircuitBreakerServiceTest {
         // Verify that storeResourceJson was not called when JSON parsing fails
         verify { resourceService.shouldUpdateResource("test-id", any()) }
         verify(exactly = 0) { resourceService.storeResourceJson(any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `should store catalog graph when ConceptEvent has catalogGraph`() {
+        // Given
+        val event =
+            ConceptEvent().apply {
+                type = ConceptEventType.CONCEPT_REASONED
+                fdkId = "test-concept-id"
+                graph = "test-graph"
+                catalogGraph = "catalog-graph"
+                timestamp = System.currentTimeMillis()
+            }
+
+        every { resourceService.shouldUpdateResource("test-concept-id", any()) } returns true
+
+        // When
+        circuitBreakerService.handleConceptEvent(event)
+
+        // Then
+        verify { resourceService.storeResourceGraphData("test-concept-id", ResourceType.CONCEPT, any(), any(), any()) }
+        verify { resourceService.storeCatalogGraphData("test-concept-id", "catalog-graph", any(), any()) }
+        verify(exactly = 0) { resourceService.clearCatalogGraphData(any()) }
+    }
+
+    @Test
+    fun `should clear catalog graph when ConceptEvent has no catalogGraph`() {
+        // Given
+        val event =
+            ConceptEvent().apply {
+                type = ConceptEventType.CONCEPT_REASONED
+                fdkId = "test-concept-id"
+                graph = "test-graph"
+                catalogGraph = null
+                timestamp = System.currentTimeMillis()
+            }
+
+        every { resourceService.shouldUpdateResource("test-concept-id", any()) } returns true
+
+        // When
+        circuitBreakerService.handleConceptEvent(event)
+
+        // Then
+        verify { resourceService.clearCatalogGraphData("test-concept-id") }
+        verify(exactly = 0) { resourceService.storeCatalogGraphData(any(), any(), any(), any()) }
     }
 
     @Test

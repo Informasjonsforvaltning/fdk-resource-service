@@ -1551,8 +1551,8 @@ class UnionGraphIntegrationTest : BaseIntegrationTest() {
     }
 
     @Test
-    fun `buildUnionGraph should remove Catalog and CatalogRecord when includeCatalog is false`() {
-        // Given - create a dataset resource that contains Catalog and CatalogRecord
+    fun `buildUnionGraph should exclude catalog graph when includeCatalog is false`() {
+        // Given - resource graph and catalog graph stored separately (new Kafka event format)
         val datasetId = "dataset-with-catalog"
         val datasetUri = "https://example.com/dataset/1"
         val catalogUri = "https://example.com/catalog/1"
@@ -1563,11 +1563,18 @@ class UnionGraphIntegrationTest : BaseIntegrationTest() {
             @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
             @prefix dcat: <http://www.w3.org/ns/dcat#> .
             @prefix dct: <http://purl.org/dc/terms/> .
-            @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
             
             <$datasetUri> a dcat:Dataset ;
                 dcat:title "Test Dataset" ;
                 dct:isPartOf <$catalogUri> .
+            """.trimIndent()
+
+        val catalogGraph =
+            """
+            @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+            @prefix dcat: <http://www.w3.org/ns/dcat#> .
+            @prefix dct: <http://purl.org/dc/terms/> .
+            @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
             
             <$catalogUri> a dcat:Catalog ;
                 dcat:title "Test Catalog" ;
@@ -1594,6 +1601,8 @@ class UnionGraphIntegrationTest : BaseIntegrationTest() {
                     resourceType = ResourceType.DATASET.name,
                     resourceGraphData = datasetGraph,
                     resourceGraphFormat = "TURTLE",
+                    catalogGraphData = catalogGraph,
+                    catalogGraphFormat = "TURTLE",
                     resourceJson = datasetJson,
                     deleted = false,
                     timestamp = System.currentTimeMillis(),
@@ -1626,25 +1635,23 @@ class UnionGraphIntegrationTest : BaseIntegrationTest() {
         assertEquals(datasetId, snapshot.resourceId)
         assertEquals(ResourceType.DATASET.name, snapshot.resourceType)
 
-        // Then - verify Catalog and CatalogRecord are removed from snapshot
+        // Then - verify catalog graph was not merged into snapshot
         val snapshotContent = snapshot.resourceGraphData
         assertTrue(
             snapshotContent.contains("Test Dataset") || snapshotContent.contains(datasetUri),
             "Snapshot should contain dataset data",
         )
 
-        // Verify Catalog resource is removed (as subject)
         assertFalse(
             snapshotContent.contains("Test Catalog") ||
                 (snapshotContent.contains(catalogUri) && snapshotContent.contains("dcat:Catalog")),
-            "Snapshot should not contain Catalog resource with its properties",
+            "Snapshot should not contain Catalog resource when includeCatalog is false",
         )
 
-        // Verify CatalogRecord resource is removed (as subject)
         assertFalse(
             snapshotContent.contains("2024-01-01") ||
                 (snapshotContent.contains(catalogRecordUri) && snapshotContent.contains("dcat:CatalogRecord")),
-            "Snapshot should not contain CatalogRecord resource with its properties",
+            "Snapshot should not contain CatalogRecord when includeCatalog is false",
         )
 
         // Verify reference to Catalog URI is preserved (as object)
@@ -1655,8 +1662,71 @@ class UnionGraphIntegrationTest : BaseIntegrationTest() {
     }
 
     @Test
-    fun `buildUnionGraph should preserve Catalog and CatalogRecord when includeCatalog is true`() {
-        // Given - create a dataset resource that contains Catalog and CatalogRecord
+    fun `buildUnionGraph should filter legacy embedded catalog when includeCatalog is false`() {
+        // Given - legacy data with catalog types embedded in resource_graph_data
+        val datasetId = "dataset-legacy-embedded-catalog"
+        val datasetUri = "https://example.com/dataset/legacy"
+        val catalogUri = "https://example.com/catalog/legacy"
+
+        val datasetGraph =
+            """
+            @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+            @prefix dcat: <http://www.w3.org/ns/dcat#> .
+            @prefix dct: <http://purl.org/dc/terms/> .
+            
+            <$datasetUri> a dcat:Dataset ;
+                dcat:title "Legacy Dataset" ;
+                dct:isPartOf <$catalogUri> .
+            
+            <$catalogUri> a dcat:Catalog ;
+                dcat:title "Legacy Catalog" .
+            """.trimIndent()
+
+        transactionTemplate.execute {
+            resourceRepository.save(
+                no.fdk.resourceservice.model.ResourceEntity(
+                    id = datasetId,
+                    uri = datasetUri,
+                    resourceType = ResourceType.DATASET.name,
+                    resourceGraphData = datasetGraph,
+                    resourceGraphFormat = "TURTLE",
+                    resourceJson = mapOf("@id" to datasetUri, "title" to "Legacy Dataset"),
+                    deleted = false,
+                    timestamp = System.currentTimeMillis(),
+                ),
+            )
+            resourceRepository.flush()
+        }
+
+        transactionTemplate.execute {
+            resourceRepository.flush()
+        }
+
+        val orderId = "test-order-legacy-no-catalog"
+        val result =
+            unionGraphService.buildUnionGraph(
+                listOf(ResourceType.DATASET),
+                includeCatalog = false,
+                orderId = orderId,
+            )
+
+        assertTrue(result)
+        val snapshotContent =
+            unionGraphResourceSnapshotRepository
+                .findAll()
+                .first { it.unionGraphId == orderId }
+                .resourceGraphData
+
+        assertFalse(
+            snapshotContent.contains("Legacy Catalog") ||
+                (snapshotContent.contains(catalogUri) && snapshotContent.contains("dcat:Catalog")),
+            "Legacy embedded Catalog should be filtered when includeCatalog is false",
+        )
+    }
+
+    @Test
+    fun `buildUnionGraph should merge catalog graph when includeCatalog is true`() {
+        // Given - resource graph and catalog graph stored separately
         val datasetId = "dataset-with-catalog-preserved"
         val datasetUri = "https://example.com/dataset/2"
         val catalogUri = "https://example.com/catalog/2"
@@ -1667,12 +1737,19 @@ class UnionGraphIntegrationTest : BaseIntegrationTest() {
             @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
             @prefix dcat: <http://www.w3.org/ns/dcat#> .
             @prefix dct: <http://purl.org/dc/terms/> .
-            @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
-            @prefix foaf: <http://xmlns.com/foaf/0.1/> .
             
             <$datasetUri> a dcat:Dataset ;
                 dcat:title "Test Dataset" ;
                 dct:isPartOf <$catalogUri> .
+            """.trimIndent()
+
+        val catalogGraph =
+            """
+            @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+            @prefix dcat: <http://www.w3.org/ns/dcat#> .
+            @prefix dct: <http://purl.org/dc/terms/> .
+            @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+            @prefix foaf: <http://xmlns.com/foaf/0.1/> .
             
             <$catalogUri> a dcat:Catalog ;
                 dcat:title "Test Catalog" ;
@@ -1699,6 +1776,8 @@ class UnionGraphIntegrationTest : BaseIntegrationTest() {
                     resourceType = ResourceType.DATASET.name,
                     resourceGraphData = datasetGraph,
                     resourceGraphFormat = "TURTLE",
+                    catalogGraphData = catalogGraph,
+                    catalogGraphFormat = "TURTLE",
                     resourceJson = datasetJson,
                     deleted = false,
                     timestamp = System.currentTimeMillis(),

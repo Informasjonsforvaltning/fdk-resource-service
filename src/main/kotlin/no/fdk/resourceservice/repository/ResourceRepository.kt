@@ -100,6 +100,43 @@ interface ResourceRepository : JpaRepository<ResourceEntity, String> {
         @Param("timestamp") timestamp: Long,
     ): Int
 
+    @Modifying
+    @Transactional
+    @Query(
+        value = """
+        UPDATE resources
+        SET catalog_graph_data = :graphData,
+            catalog_graph_format = :format,
+            deleted = false,
+            timestamp = :timestamp,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = :id
+    """,
+        nativeQuery = true,
+    )
+    fun updateCatalogGraphData(
+        @Param("id") id: String,
+        @Param("graphData") graphData: String,
+        @Param("format") format: String,
+        @Param("timestamp") timestamp: Long,
+    ): Int
+
+    @Modifying
+    @Transactional
+    @Query(
+        value = """
+        UPDATE resources
+        SET catalog_graph_data = NULL,
+            catalog_graph_format = NULL,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = :id
+    """,
+        nativeQuery = true,
+    )
+    fun clearCatalogGraphData(
+        @Param("id") id: String,
+    ): Int
+
     @Query(
         value = """
         SELECT * FROM resources 

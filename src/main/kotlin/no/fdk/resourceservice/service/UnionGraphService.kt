@@ -953,55 +953,55 @@ class UnionGraphService(
     }
 
     /**
-     * Filters out Catalog and CatalogRecord resources from a Jena Model.
-     * Removes all statements where Catalog or CatalogRecord is the subject,
+     * Filters out catalog-type resources from a Jena Model.
+     * Removes all statements where dcat:Catalog, dcat:CatalogRecord, or skos:Collection is the subject,
      * but preserves statements where their URIs appear as objects (references).
+     *
+     * Used as a legacy fallback for resources where catalog metadata was embedded in resource_graph_data
+     * before the catalogGraph split in Kafka events.
      *
      * @param model The Jena Model to filter (modified in place)
      */
     private fun filterCatalogFromModel(model: org.apache.jena.rdf.model.Model) {
         try {
-            // Find all resources with type dcat:Catalog or dcat:CatalogRecord
             val catalogType = model.createResource("http://www.w3.org/ns/dcat#Catalog")
             val catalogRecordType = model.createResource("http://www.w3.org/ns/dcat#CatalogRecord")
+            val collectionType = model.createResource("http://www.w3.org/2004/02/skos/core#Collection")
             val rdfType = model.createProperty("http://www.w3.org/1999/02/22-rdf-syntax-ns#type")
 
-            // Find all resources that are of type Catalog or CatalogRecord
-            val catalogResources = mutableSetOf<org.apache.jena.rdf.model.Resource>()
-            val catalogRecordResources = mutableSetOf<org.apache.jena.rdf.model.Resource>()
+            val resourcesToRemove = mutableSetOf<org.apache.jena.rdf.model.Resource>()
 
-            // Query for resources with rdf:type = dcat:Catalog
-            val catalogStmts = model.listStatements(null, rdfType, catalogType)
-            while (catalogStmts.hasNext()) {
-                val stmt = catalogStmts.nextStatement()
-                val resource = stmt.subject
-                if (resource.isURIResource) {
-                    catalogResources.add(resource)
+            for (type in listOf(catalogType, catalogRecordType, collectionType)) {
+                val stmts = model.listStatements(null, rdfType, type)
+                while (stmts.hasNext()) {
+                    val resource = stmts.nextStatement().subject
+                    if (resource.isURIResource) {
+                        resourcesToRemove.add(resource)
+                    }
                 }
             }
 
-            // Query for resources with rdf:type = dcat:CatalogRecord
-            val catalogRecordStmts = model.listStatements(null, rdfType, catalogRecordType)
-            while (catalogRecordStmts.hasNext()) {
-                val stmt = catalogRecordStmts.nextStatement()
-                val resource = stmt.subject
-                if (resource.isURIResource) {
-                    catalogRecordResources.add(resource)
-                }
-            }
-
-            // Remove all statements where Catalog or CatalogRecord resources are the subject
-            // This removes the entire resource with all its properties, but preserves
-            // statements where the Catalog/CatalogRecord URI appears as an object
-            for (resource in catalogResources) {
-                model.removeAll(resource, null, null)
-            }
-            for (resource in catalogRecordResources) {
+            for (resource in resourcesToRemove) {
                 model.removeAll(resource, null, null)
             }
         } catch (e: Exception) {
-            logger.warn("Failed to filter Catalog/CatalogRecord from model: {}", e.message)
-            // Model remains unchanged on error
+            logger.warn("Failed to filter catalog types from model: {}", e.message)
+        }
+    }
+
+    /**
+     * Merges catalog graph data into a resource model for union graph snapshots.
+     */
+    private fun mergeCatalogGraphIntoModel(
+        model: org.apache.jena.rdf.model.Model,
+        catalogGraphData: String,
+        catalogGraphFormat: String?,
+    ) {
+        val catalogModel = parseGraphToModel(catalogGraphData, catalogGraphFormat) ?: return
+        try {
+            model.add(catalogModel)
+        } finally {
+            catalogModel.close()
         }
     }
 
@@ -1058,13 +1058,13 @@ class UnionGraphService(
     }
 
     /**
-     * Processes a resource model: merges DataService graphs (if needed), filters Catalog (if needed),
-     * and converts to RDF/XML for snapshot storage.
+     * Processes a resource model: merges DataService graphs (if needed), merges or filters catalog
+     * metadata (if needed), and converts to RDF/XML for snapshot storage.
      *
      * @param model The Jena Model to process (will be modified in place)
      * @param resource The resource entity
      * @param expandDistributionAccessServices Whether to expand DataService graphs
-     * @param includeCatalog Whether to include Catalog resources
+     * @param includeCatalog Whether to merge catalog_graph_data into the snapshot
      * @return The RDF/XML string for snapshot storage, or null on error
      */
     private fun processResourceModelToRdfXml(
@@ -1086,8 +1086,13 @@ class UnionGraphService(
                 }
             }
 
-            // Filter Catalog if needed
-            if (!includeCatalog) {
+            if (includeCatalog) {
+                val catalogGraphData = resource.catalogGraphData
+                if (!catalogGraphData.isNullOrBlank()) {
+                    mergeCatalogGraphIntoModel(model, catalogGraphData, resource.catalogGraphFormat)
+                }
+            } else {
+                // Legacy fallback: filter catalog types embedded in resource_graph_data
                 filterCatalogFromModel(model)
             }
 
