@@ -291,48 +291,6 @@ class UnionGraphSnapshotBuilder(
     }
 
     /**
-     * Extracts nodes from a JSON-LD Map and adds them to the provided list.
-     *
-     * Handles both @graph format (array of nodes) and single node format (@id present).
-     * This method is thread-safe when used with a synchronized list.
-     *
-     * @param jsonLd The JSON-LD Map to extract nodes from
-     * @param nodeList Thread-safe list to add nodes to
-     */
-    private fun extractJsonLdNodes(
-        jsonLd: Map<String, Any>,
-        nodeList: MutableList<Map<String, Any>>,
-    ) {
-        when {
-            jsonLd.containsKey("@graph") -> {
-                // @graph format: extract nodes from the array
-                (jsonLd["@graph"] as? List<*>)?.forEach { node ->
-                    if (node is Map<*, *>) {
-                        synchronized(nodeList) {
-                            nodeList.add(node as Map<String, Any>)
-                        }
-                    }
-                }
-            }
-            jsonLd.containsKey("@id") -> {
-                // Single node format: add the node directly
-                synchronized(nodeList) {
-                    nodeList.add(jsonLd)
-                }
-            }
-            else -> {
-                // Fallback: if it looks like a node (has keys), add it
-                // This handles edge cases where @id might be missing
-                if (jsonLd.isNotEmpty()) {
-                    synchronized(nodeList) {
-                        nodeList.add(jsonLd)
-                    }
-                }
-            }
-        }
-    }
-
-    /**
      * Extracts resource modified date from FDK resource JSON (harvest.modified, ISO-8601).
      * Used for OAI-PMH from/until and datestamp.
      */
@@ -394,46 +352,6 @@ class UnionGraphSnapshotBuilder(
         if (mergedCount > 0) {
             logger.debug("Merged {} DataService graph(s) into dataset graph", mergedCount)
         }
-    }
-
-    /**
-     * Merges DataService graphs into a dataset graph.
-     *
-     * @param datasetGraphData The dataset graph data
-     * @param datasetGraphFormat The format of the dataset graph
-     * @param dataServiceUris Set of DataService URIs to fetch and merge
-     * @return The merged graph data in the same format as the input
-     */
-    private fun mergeDataServiceGraphs(
-        datasetGraphData: String,
-        datasetGraphFormat: String,
-        dataServiceUris: Set<String>,
-    ): String {
-        if (dataServiceUris.isEmpty()) {
-            return datasetGraphData
-        }
-
-        try {
-            // Create a model and load the dataset graph
-            val model = ModelFactory.createDefaultModel()
-            val datasetLang = parseLang(datasetGraphFormat)
-            ByteArrayInputStream(datasetGraphData.toByteArray()).use { inputStream ->
-                RDFDataMgr.read(model, inputStream, datasetLang)
-            }
-
-            // Merge DataService graphs into the model
-            mergeDataServiceGraphsIntoModel(model, dataServiceUris)
-
-            // Convert back to the original format
-            val writer = StringWriter()
-            RDFDataMgr.write(writer, model, datasetLang)
-            model.close()
-            return writer.toString()
-        } catch (e: Exception) {
-            logger.warn("Failed to merge DataService graphs, using original dataset graph: {}", e.message)
-        }
-
-        return datasetGraphData
     }
 
     /**
