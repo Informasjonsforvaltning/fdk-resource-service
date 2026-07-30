@@ -49,16 +49,41 @@ class UnionGraphServiceTest {
                 resourceBatchSize = 50,
                 batchDelayMs = 50L,
             )
-        unionGraphService =
-            UnionGraphService(
+        val orderService =
+            UnionGraphOrderService(
                 unionGraphOrderRepository,
+                unionGraphResourceSnapshotRepository,
+                objectMapper,
+                webhookService,
+                metricsService,
+            )
+        val snapshotBuilder =
+            UnionGraphSnapshotBuilder(
                 resourceRepository,
                 resourceService,
+                unionGraphConfig,
+                metricsService,
+                unionGraphResourceSnapshotRepository,
+            )
+        val batchProcessor =
+            UnionGraphBatchProcessor(
+                unionGraphOrderRepository,
+                resourceRepository,
                 objectMapper,
                 webhookService,
                 metricsService,
                 unionGraphConfig,
                 unionGraphResourceSnapshotRepository,
+                snapshotBuilder,
+                orderService,
+            )
+        unionGraphService =
+            UnionGraphService(
+                orderService,
+                snapshotBuilder,
+                batchProcessor,
+                metricsService,
+                unionGraphOrderRepository,
             )
     }
 

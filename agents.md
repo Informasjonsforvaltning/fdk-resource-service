@@ -171,9 +171,34 @@ The FDK Resource Service is built on a microservices architecture with multiple 
 
 **Location**: `src/main/kotlin/no/fdk/resourceservice/service/UnionGraphService.kt`
 
-**Purpose**: Manages union graph creation, processing, and lifecycle.
+**Purpose**: Thin facade for union graph creation, processing, and lifecycle. Preserves a single
+stable API for callers (controllers, `UnionGraphProcessor`, tests) while delegating all actual work
+to three collaborator services. Holds no business logic of its own beyond delegation and the
+`init` block that wires `UnionGraphMetricsService` to the order repository for gauge callbacks.
 
-**Responsibilities**:
+**Collaborators it delegates to**:
+- **`UnionGraphOrderService`** (`UnionGraphOrderService.kt`) - CRUD/lifecycle for union graph orders:
+  `createOrder`, `resetOrderToPending`, `getOrder`, `getAllOrders`, `getAvailableOrders`,
+  `getResourceCount`, `updateOrder` (both overloads), `deleteOrder`, plus `lockOrderInNewTransaction`
+  and `getOrderInNewTransaction` (used by `UnionGraphBatchProcessor` to lock/fetch orders through the
+  Spring proxy so `REQUIRES_NEW` applies). Also owns `validateResourceFilters`.
+- **`UnionGraphSnapshotBuilder`** (`UnionGraphSnapshotBuilder.kt`) - Builds union graph snapshots from
+  resource graphs: `buildUnionGraph()` and the internal `createSnapshotFromResource()`, plus all RDF
+  helpers (parsing, dataset-series detection, DataService graph expansion, catalog graph
+  merging/filtering, RDF/XML conversion).
+- **`UnionGraphBatchProcessor`** (`UnionGraphBatchProcessor.kt`) - Drives processing: `processOrder()`,
+  `processNextBatch()`, `initializeProcessingState()`, and processing-state persistence. Delegates
+  snapshot creation to `UnionGraphSnapshotBuilder` and order locking to `UnionGraphOrderService`.
+
+`UnionGraphService.CreateOrderResult` and `UnionGraphService.UpdateFields` remain nested on the
+facade (this is what controllers and tests reference); `UnionGraphOrderService` accepts/returns
+these same facade-nested types rather than duplicating them, and does not depend on
+`UnionGraphService` itself (no circular bean dependency).
+
+A small shared helper, `Boolean?.toSqlBooleanText()`, lives in `UnionGraphSupport.kt` in the same
+package and is used by both `UnionGraphSnapshotBuilder` and `UnionGraphBatchProcessor`.
+
+**Responsibilities** (as a whole, across the facade + collaborators):
 - Creates union graph orders from multiple resource graphs
 - Builds union graphs by combining resource graphs
 - Handles incremental batch processing to prevent memory issues
@@ -184,17 +209,19 @@ The FDK Resource Service is built on a microservices architecture with multiple 
 - Merges catalog graph into snapshots when `includeCatalog = true`
 - Filters legacy embedded catalog types from resource graph when `includeCatalog = false`
 
-**Key Methods**:
-- `createOrder()` - Creates a new union graph order
-- `processOrder()` - Processes a union graph order (full processing)
-- `processNextBatch()` - Processes next batch incrementally
-- `buildUnionGraph()` - Builds union graph snapshots from resources
-- `getUnionGraph()` - Retrieves union graph data
-- `getUnionGraphStatus()` - Gets union graph processing status
-- `resetToPending()` - Resets union graph to pending state
-- `deleteUnionGraph()` - Deletes union graph
-- `mergeCatalogGraphIntoModel()` - Merges catalog_graph_data into union graph snapshots
-- `filterCatalogFromModel()` - Legacy fallback: filters dcat:Catalog, dcat:CatalogRecord, skos:Collection from embedded resource graphs
+**Key Methods** (public facade methods on `UnionGraphService`, all thin delegates):
+- `createOrder()` - Creates a new union graph order (→ `UnionGraphOrderService`)
+- `processOrder()` - Processes a union graph order (full processing) (→ `UnionGraphBatchProcessor`)
+- `processNextBatch()` - Processes next batch incrementally (→ `UnionGraphBatchProcessor`)
+- `buildUnionGraph()` - Builds union graph snapshots from resources (→ `UnionGraphSnapshotBuilder`)
+- `getOrder()` / `getAllOrders()` / `getAvailableOrders()` - Retrieves union graph order(s) (→ `UnionGraphOrderService`)
+- `getResourceCount()` - Gets resource count for a union graph (→ `UnionGraphOrderService`)
+- `resetOrderToPending()` - Resets union graph to pending state (→ `UnionGraphOrderService`)
+- `updateOrder()` - Updates an existing union graph order (→ `UnionGraphOrderService`)
+- `deleteOrder()` - Deletes union graph (→ `UnionGraphOrderService`)
+- `lockOrderInNewTransaction()` / `getOrderInNewTransaction()` - Order locking helpers (→ `UnionGraphOrderService`)
+- `mergeCatalogGraphIntoModel()` - Merges catalog_graph_data into union graph snapshots (private, in `UnionGraphSnapshotBuilder`)
+- `filterCatalogFromModel()` - Legacy fallback: filters dcat:Catalog, dcat:CatalogRecord, skos:Collection from embedded resource graphs (private, in `UnionGraphSnapshotBuilder`)
 
 **Union Graph Features**:
 - **Resource Type Filtering**: Include/exclude specific resource types
@@ -212,7 +239,9 @@ The FDK Resource Service is built on a microservices architecture with multiple 
 - `FAILED` - Processing failed
 
 **Transaction Management**:
-- `buildUnionGraph()` uses `REQUIRES_NEW` transaction propagation
+- The facade (`UnionGraphService`) itself carries no transaction annotations - all transaction
+  boundaries live on the collaborators that actually do the work.
+- `UnionGraphSnapshotBuilder.buildUnionGraph()` uses `REQUIRES_NEW` transaction propagation
 - This ensures the method runs in a separate transaction from the caller
 - **Important**: When testing methods that call `buildUnionGraph()`, ensure test data is committed before calling it
 - Test methods should NOT use `@Transactional` annotation when calling `buildUnionGraph()` directly
@@ -449,8 +478,14 @@ fun `buildUnionGraph should process resources correctly`() {
 ```
 
 **Methods Using REQUIRES_NEW**:
-- `UnionGraphService.buildUnionGraph()` - Uses `REQUIRES_NEW` to ensure data consistency
-- `UnionGraphService.processNextBatch()` - Uses `NOT_SUPPORTED` to run outside transactions
+- These transaction annotations now live on the collaborators behind the `UnionGraphService` facade,
+  not on the facade itself (the facade has no transaction annotations at all).
+- `UnionGraphSnapshotBuilder.buildUnionGraph()` - Uses `REQUIRES_NEW` to ensure data consistency
+- `UnionGraphBatchProcessor.processNextBatch()` - Uses `NOT_SUPPORTED` to run outside transactions
+- `UnionGraphBatchProcessor.processOrder()` - Uses `NOT_SUPPORTED` to run outside transactions
+- `UnionGraphBatchProcessor.initializeProcessingState()` - Uses `REQUIRES_NEW`
+- `UnionGraphOrderService.lockOrderInNewTransaction()` / `getOrderInNewTransaction()` - Use `REQUIRES_NEW`
+  so the PROCESSING status commits and is visible before/while `UnionGraphBatchProcessor` builds the graph
 
 **Why REQUIRES_NEW is Used**:
 - Ensures that union graph building happens in a separate transaction
