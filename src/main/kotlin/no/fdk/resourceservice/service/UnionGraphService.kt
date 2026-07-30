@@ -2,6 +2,7 @@ package no.fdk.resourceservice.service
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import no.fdk.resourceservice.config.UnionGraphConfig
+import no.fdk.resourceservice.model.ResourceEntity
 import no.fdk.resourceservice.model.ResourceType
 import no.fdk.resourceservice.model.UnionGraphOrder
 import no.fdk.resourceservice.model.UnionGraphProcessingState
@@ -606,6 +607,89 @@ class UnionGraphService(
      * @return true if successful, false if no resources found or orderId is null.
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = false)
+    /**
+     * Outcome of attempting to create a snapshot from a single resource.
+     */
+    private sealed class SnapshotResult {
+        data class Included(
+            val snapshot: UnionGraphResourceSnapshot,
+        ) : SnapshotResult()
+
+        data object Skipped : SnapshotResult()
+
+        data object Error : SnapshotResult()
+    }
+
+    /**
+     * Parses a resource graph, applies dataset-series filtering, converts to RDF/XML,
+     * and builds a union-graph snapshot when the resource should be included.
+     */
+    private fun createSnapshotFromResource(
+        orderId: String,
+        resource: ResourceEntity,
+        resourceType: ResourceType,
+        datasetFilters: UnionGraphResourceFilters.DatasetFilters?,
+        expandDistributionAccessServices: Boolean,
+        includeCatalog: Boolean,
+    ): SnapshotResult {
+        val graphData = resource.resourceGraphData
+        if (graphData.isNullOrBlank()) {
+            return SnapshotResult.Skipped
+        }
+
+        val model = parseGraphToModel(graphData, resource.resourceGraphFormat)
+        if (model == null) {
+            logger.warn("Failed to parse graph for resource {}, skipping", resource.id)
+            return SnapshotResult.Error
+        }
+
+        try {
+            val isDatasetSeriesFilter = datasetFilters?.isDatasetSeries
+            val shouldInclude =
+                if (resourceType == ResourceType.DATASET && isDatasetSeriesFilter != null) {
+                    val isDatasetSeries = isDatasetSeriesInModel(model, resource.uri)
+                    // Filter logic: null = both, true = only series, false = no series
+                    when (isDatasetSeriesFilter) {
+                        true -> isDatasetSeries
+                        false -> !isDatasetSeries
+                    }
+                } else {
+                    true
+                }
+
+            if (!shouldInclude) {
+                return SnapshotResult.Skipped
+            }
+
+            val rdfXmlData =
+                processResourceModelToRdfXml(
+                    model,
+                    resource,
+                    expandDistributionAccessServices,
+                    includeCatalog,
+                )
+
+            if (rdfXmlData == null) {
+                logger.warn("Failed to process resource {} to RDF/XML, skipping snapshot", resource.id)
+                return SnapshotResult.Error
+            }
+
+            return SnapshotResult.Included(
+                UnionGraphResourceSnapshot(
+                    unionGraphId = orderId,
+                    resourceId = resource.id,
+                    resourceType = resource.resourceType,
+                    resourceGraphData = rdfXmlData,
+                    resourceGraphFormat = "RDF_XML",
+                    resourceModifiedAt = parseResourceModifiedAt(resource.resourceJson),
+                    publisherOrgnr = parsePublisherOrgnr(resource.resourceJson),
+                ),
+            )
+        } finally {
+            model.close()
+        }
+    }
+
     fun buildUnionGraph(
         resourceTypes: List<ResourceType>? = null,
         resourceFilters: UnionGraphResourceFilters? = null,
@@ -690,66 +774,20 @@ class UnionGraphService(
                         // Collect snapshots for batch insert
                         val snapshotsToSave = mutableListOf<UnionGraphResourceSnapshot>()
 
-                        // Process each resource and prepare snapshots
                         for (resource in batch) {
-                            val graphData = resource.resourceGraphData
-                            if (graphData != null && graphData.isNotBlank()) {
-                                // Parse graph once into a model
-                                val model = parseGraphToModel(graphData, resource.resourceGraphFormat)
-                                if (model == null) {
-                                    logger.warn("Failed to parse graph for resource {}, skipping", resource.id)
-                                    continue
-                                }
-
-                                try {
-                                    // Apply isDatasetSeries filter if specified
-                                    val shouldInclude =
-                                        if (type == ResourceType.DATASET && datasetFilters?.isDatasetSeries != null) {
-                                            val isDatasetSeries = isDatasetSeriesInModel(model, resource.uri)
-                                            // Filter logic: null = both, true = only series, false = no series
-                                            when (datasetFilters.isDatasetSeries!!) {
-                                                true -> isDatasetSeries // Include only if IS DatasetSeries
-                                                false -> !isDatasetSeries // Include only if NOT DatasetSeries
-                                            }
-                                        } else {
-                                            true // No filter, include all
-                                        }
-
-                                    if (!shouldInclude) {
-                                        model.close()
-                                        continue
-                                    }
-
-                                    // Process model: merge DataService graphs, filter Catalog, convert to RDF/XML
-                                    val rdfXmlData =
-                                        processResourceModelToRdfXml(
-                                            model,
-                                            resource,
-                                            expandDistributionAccessServices,
-                                            includeCatalog,
-                                        )
-
-                                    if (rdfXmlData != null) {
-                                        // Create snapshot of resource graph data in RDF-XML format
-                                        val resourceModifiedAt = parseResourceModifiedAt(resource.resourceJson)
-                                        val publisherOrgnr = parsePublisherOrgnr(resource.resourceJson)
-                                        val snapshot =
-                                            UnionGraphResourceSnapshot(
-                                                unionGraphId = orderId,
-                                                resourceId = resource.id,
-                                                resourceType = resource.resourceType,
-                                                resourceGraphData = rdfXmlData,
-                                                resourceGraphFormat = "RDF_XML",
-                                                resourceModifiedAt = resourceModifiedAt,
-                                                publisherOrgnr = publisherOrgnr,
-                                            )
-                                        snapshotsToSave.add(snapshot)
-                                    } else {
-                                        logger.warn("Failed to process resource {} to RDF/XML, skipping snapshot", resource.id)
-                                    }
-                                } finally {
-                                    model.close()
-                                }
+                            when (
+                                val result =
+                                    createSnapshotFromResource(
+                                        orderId = orderId,
+                                        resource = resource,
+                                        resourceType = type,
+                                        datasetFilters = datasetFilters,
+                                        expandDistributionAccessServices = expandDistributionAccessServices,
+                                        includeCatalog = includeCatalog,
+                                    )
+                            ) {
+                                is SnapshotResult.Included -> snapshotsToSave.add(result.snapshot)
+                                is SnapshotResult.Skipped, is SnapshotResult.Error -> Unit
                             }
                         }
 
@@ -1069,7 +1107,7 @@ class UnionGraphService(
      */
     private fun processResourceModelToRdfXml(
         model: org.apache.jena.rdf.model.Model,
-        resource: no.fdk.resourceservice.model.ResourceEntity,
+        resource: ResourceEntity,
         expandDistributionAccessServices: Boolean,
         includeCatalog: Boolean,
     ): String? {
@@ -1452,69 +1490,20 @@ class UnionGraphService(
                 if (processedCount % 10 == 0) {
                     logger.debug("Processing resource {}/{} in batch for order {}", processedCount, batch.size, orderId)
                 }
-                val graphData = resource.resourceGraphData
-                if (graphData != null && graphData.isNotBlank()) {
-                    // Parse graph once into a model
-                    val model = parseGraphToModel(graphData, resource.resourceGraphFormat)
-                    if (model == null) {
-                        logger.warn("Failed to parse graph for resource {}, skipping", resource.id)
-                        errorCount++
-                        continue
-                    }
-
-                    try {
-                        // Apply isDatasetSeries filter if specified
-                        val shouldInclude =
-                            if (currentResourceType == ResourceType.DATASET && datasetFilters?.isDatasetSeries != null) {
-                                val isDatasetSeries = isDatasetSeriesInModel(model, resource.uri)
-                                // Filter logic: null = both, true = only series, false = no series
-                                when (datasetFilters.isDatasetSeries!!) {
-                                    true -> isDatasetSeries // Include only if IS DatasetSeries
-                                    false -> !isDatasetSeries // Include only if NOT DatasetSeries
-                                }
-                            } else {
-                                true // No filter, include all
-                            }
-
-                        if (!shouldInclude) {
-                            model.close()
-                            skippedCount++
-                            continue
-                        }
-
-                        // Process model: merge DataService graphs, filter Catalog, convert to RDF/XML
-                        val rdfXmlData =
-                            processResourceModelToRdfXml(
-                                model,
-                                resource,
-                                order.expandDistributionAccessServices,
-                                order.includeCatalog,
-                            )
-
-                        if (rdfXmlData != null) {
-                            // Create snapshot of resource graph data in RDF-XML format
-                            val resourceModifiedAt = parseResourceModifiedAt(resource.resourceJson)
-                            val publisherOrgnr = parsePublisherOrgnr(resource.resourceJson)
-                            val snapshot =
-                                UnionGraphResourceSnapshot(
-                                    unionGraphId = orderId,
-                                    resourceId = resource.id,
-                                    resourceType = resource.resourceType,
-                                    resourceGraphData = rdfXmlData,
-                                    resourceGraphFormat = "RDF_XML",
-                                    resourceModifiedAt = resourceModifiedAt,
-                                    publisherOrgnr = publisherOrgnr,
-                                )
-                            snapshotsToSave.add(snapshot)
-                        } else {
-                            logger.warn("Failed to process resource {} to RDF/XML, skipping snapshot", resource.id)
-                            errorCount++
-                        }
-                    } finally {
-                        model.close()
-                    }
-                } else {
-                    skippedCount++
+                when (
+                    val result =
+                        createSnapshotFromResource(
+                            orderId = orderId,
+                            resource = resource,
+                            resourceType = currentResourceType,
+                            datasetFilters = datasetFilters,
+                            expandDistributionAccessServices = order.expandDistributionAccessServices,
+                            includeCatalog = order.includeCatalog,
+                        )
+                ) {
+                    is SnapshotResult.Included -> snapshotsToSave.add(result.snapshot)
+                    is SnapshotResult.Skipped -> skippedCount++
+                    is SnapshotResult.Error -> errorCount++
                 }
             }
 
