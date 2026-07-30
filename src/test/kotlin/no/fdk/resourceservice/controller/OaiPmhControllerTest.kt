@@ -8,6 +8,7 @@ import no.fdk.resourceservice.repository.UnionGraphResourceSnapshotRepository
 import no.fdk.resourceservice.service.UnionGraphService
 import org.junit.jupiter.api.Test
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest
+import org.springframework.context.annotation.Import
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.content
@@ -16,6 +17,7 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.xpath
 import java.time.Instant
 
 @WebMvcTest(OaiPmhController::class)
+@Import(OaiPmhResponseBuilder::class)
 class OaiPmhControllerTest : BaseControllerTest() {
     @MockkBean
     private lateinit var unionGraphService: UnionGraphService
