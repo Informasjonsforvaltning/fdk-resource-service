@@ -157,252 +157,164 @@ class CircuitBreakerService(
 
     @Transactional
     fun handleConceptEvent(event: ConceptEvent) {
-        circuitBreakerRegistry.circuitBreaker("conceptConsumer").executeRunnable {
-            logger.debug("Concept event: id=${event.fdkId}, type=${event.type}, graphLen=${event.graph.length}")
-            val startTime = System.currentTimeMillis()
-            try {
-                val timeElapsed =
-                    measureTimedValue {
-                        processResourceEvent(
-                            fdkId = event.fdkId,
-                            graph = event.graph,
-                            catalogGraph = event.catalogGraph?.toString(),
-                            timestamp = event.timestamp,
-                            resourceType = ResourceType.CONCEPT,
-                            eventType = event.type.toString(),
-                            harvestRunId = event.harvestRunId?.toString(),
-                            resourceUri = event.uri?.toString(),
-                            startTime = startTime,
-                        )
-                    }
-                Metrics
-                    .timer("store_resource_jsonld", "type", "concept")
-                    .record(timeElapsed.duration.toJavaDuration())
-            } catch (e: Exception) {
-                logger.error("Error processing concept event: id=${event.fdkId}", e)
-                Metrics.counter("store_resource_jsonld_error", "type", "concept", "error", e.javaClass.simpleName).increment()
-
-                val endTime = System.currentTimeMillis()
-                harvestEventProducer.produceResourceFailedEvent(
-                    harvestRunId = event.harvestRunId?.toString(),
-                    resourceType = ResourceType.CONCEPT,
-                    fdkId = event.fdkId,
-                    resourceUri = event.uri?.toString(),
-                    startTime = startTime,
-                    endTime = endTime,
-                    errorMessage = e.message ?: e.javaClass.simpleName,
-                )
-
-                throw e
-            }
-        }
+        executeResourceEvent(
+            circuitBreakerName = "conceptConsumer",
+            metricType = "concept",
+            resourceType = ResourceType.CONCEPT,
+            debugLabel = "Concept event",
+            errorLabel = "concept event",
+            fdkId = event.fdkId,
+            eventType = event.type,
+            graph = event.graph,
+            catalogGraph = event.catalogGraph?.toString(),
+            timestamp = event.timestamp,
+            harvestRunId = event.harvestRunId?.toString(),
+            resourceUri = event.uri?.toString(),
+        )
     }
 
     @Transactional
     fun handleDatasetEvent(event: DatasetEvent) {
-        circuitBreakerRegistry.circuitBreaker("datasetConsumer").executeRunnable {
-            logger.debug("Dataset event: id=${event.fdkId}, type=${event.type}, graphLen=${event.graph.length}")
-            val startTime = System.currentTimeMillis()
-            try {
-                val timeElapsed =
-                    measureTimedValue {
-                        processResourceEvent(
-                            fdkId = event.fdkId,
-                            graph = event.graph,
-                            catalogGraph = event.catalogGraph?.toString(),
-                            timestamp = event.timestamp,
-                            resourceType = ResourceType.DATASET,
-                            eventType = event.type.toString(),
-                            harvestRunId = event.harvestRunId?.toString(),
-                            resourceUri = event.uri?.toString(),
-                            startTime = startTime,
-                        )
-                    }
-                Metrics
-                    .timer("store_resource_jsonld", "type", "dataset")
-                    .record(timeElapsed.duration.toJavaDuration())
-            } catch (e: Exception) {
-                logger.error("Error processing dataset event: id=${event.fdkId}", e)
-                Metrics.counter("store_resource_jsonld_error", "type", "dataset", "error", e.javaClass.simpleName).increment()
-
-                val endTime = System.currentTimeMillis()
-                harvestEventProducer.produceResourceFailedEvent(
-                    harvestRunId = event.harvestRunId?.toString(),
-                    resourceType = ResourceType.DATASET,
-                    fdkId = event.fdkId,
-                    resourceUri = event.uri?.toString(),
-                    startTime = startTime,
-                    endTime = endTime,
-                    errorMessage = e.message ?: e.javaClass.simpleName,
-                )
-
-                throw e
-            }
-        }
+        executeResourceEvent(
+            circuitBreakerName = "datasetConsumer",
+            metricType = "dataset",
+            resourceType = ResourceType.DATASET,
+            debugLabel = "Dataset event",
+            errorLabel = "dataset event",
+            fdkId = event.fdkId,
+            eventType = event.type,
+            graph = event.graph,
+            catalogGraph = event.catalogGraph?.toString(),
+            timestamp = event.timestamp,
+            harvestRunId = event.harvestRunId?.toString(),
+            resourceUri = event.uri?.toString(),
+        )
     }
 
     @Transactional
     fun handleDataServiceEvent(event: DataServiceEvent) {
-        circuitBreakerRegistry.circuitBreaker("dataServiceConsumer").executeRunnable {
-            logger.debug("DataService event: id=${event.fdkId}, type=${event.type}, graphLen=${event.graph.length}")
-            val startTime = System.currentTimeMillis()
-            try {
-                val timeElapsed =
-                    measureTimedValue {
-                        processResourceEvent(
-                            fdkId = event.fdkId,
-                            graph = event.graph,
-                            catalogGraph = event.catalogGraph?.toString(),
-                            timestamp = event.timestamp,
-                            resourceType = ResourceType.DATA_SERVICE,
-                            eventType = event.type.toString(),
-                            harvestRunId = event.harvestRunId?.toString(),
-                            resourceUri = event.uri?.toString(),
-                            startTime = startTime,
-                        )
-                    }
-                Metrics
-                    .timer("store_resource_jsonld", "type", "data_service")
-                    .record(timeElapsed.duration.toJavaDuration())
-            } catch (e: Exception) {
-                logger.error("Error processing data service event: id=${event.fdkId}", e)
-                Metrics.counter("store_resource_jsonld_error", "type", "data_service", "error", e.javaClass.simpleName).increment()
-
-                val endTime = System.currentTimeMillis()
-                harvestEventProducer.produceResourceFailedEvent(
-                    harvestRunId = event.harvestRunId?.toString(),
-                    resourceType = ResourceType.DATA_SERVICE,
-                    fdkId = event.fdkId,
-                    resourceUri = event.uri?.toString(),
-                    startTime = startTime,
-                    endTime = endTime,
-                    errorMessage = e.message ?: e.javaClass.simpleName,
-                )
-
-                throw e
-            }
-        }
+        executeResourceEvent(
+            circuitBreakerName = "dataServiceConsumer",
+            metricType = "data_service",
+            resourceType = ResourceType.DATA_SERVICE,
+            debugLabel = "DataService event",
+            errorLabel = "data service event",
+            fdkId = event.fdkId,
+            eventType = event.type,
+            graph = event.graph,
+            catalogGraph = event.catalogGraph?.toString(),
+            timestamp = event.timestamp,
+            harvestRunId = event.harvestRunId?.toString(),
+            resourceUri = event.uri?.toString(),
+        )
     }
 
     @Transactional
     fun handleInformationModelEvent(event: InformationModelEvent) {
-        circuitBreakerRegistry.circuitBreaker("informationModelConsumer").executeRunnable {
-            logger.debug("InformationModel event: id=${event.fdkId}, type=${event.type}, graphLen=${event.graph.length}")
-            val startTime = System.currentTimeMillis()
-            try {
-                val timeElapsed =
-                    measureTimedValue {
-                        processResourceEvent(
-                            fdkId = event.fdkId,
-                            graph = event.graph,
-                            catalogGraph = event.catalogGraph?.toString(),
-                            timestamp = event.timestamp,
-                            resourceType = ResourceType.INFORMATION_MODEL,
-                            eventType = event.type.toString(),
-                            harvestRunId = event.harvestRunId?.toString(),
-                            resourceUri = event.uri?.toString(),
-                            startTime = startTime,
-                        )
-                    }
-                Metrics
-                    .timer("store_resource_jsonld", "type", "information_model")
-                    .record(timeElapsed.duration.toJavaDuration())
-            } catch (e: Exception) {
-                logger.error("Error processing information model event: id=${event.fdkId}", e)
-                Metrics.counter("store_resource_jsonld_error", "type", "information_model", "error", e.javaClass.simpleName).increment()
-
-                val endTime = System.currentTimeMillis()
-                harvestEventProducer.produceResourceFailedEvent(
-                    harvestRunId = event.harvestRunId?.toString(),
-                    resourceType = ResourceType.INFORMATION_MODEL,
-                    fdkId = event.fdkId,
-                    resourceUri = event.uri?.toString(),
-                    startTime = startTime,
-                    endTime = endTime,
-                    errorMessage = e.message ?: e.javaClass.simpleName,
-                )
-
-                throw e
-            }
-        }
+        executeResourceEvent(
+            circuitBreakerName = "informationModelConsumer",
+            metricType = "information_model",
+            resourceType = ResourceType.INFORMATION_MODEL,
+            debugLabel = "InformationModel event",
+            errorLabel = "information model event",
+            fdkId = event.fdkId,
+            eventType = event.type,
+            graph = event.graph,
+            catalogGraph = event.catalogGraph?.toString(),
+            timestamp = event.timestamp,
+            harvestRunId = event.harvestRunId?.toString(),
+            resourceUri = event.uri?.toString(),
+        )
     }
 
     @Transactional
     fun handleServiceEvent(event: ServiceEvent) {
-        circuitBreakerRegistry.circuitBreaker("serviceConsumer").executeRunnable {
-            logger.debug("Service event: id=${event.fdkId}, type=${event.type}, graphLen=${event.graph.length}")
-            val startTime = System.currentTimeMillis()
-            try {
-                val timeElapsed =
-                    measureTimedValue {
-                        processResourceEvent(
-                            fdkId = event.fdkId,
-                            graph = event.graph,
-                            catalogGraph = event.catalogGraph?.toString(),
-                            timestamp = event.timestamp,
-                            resourceType = ResourceType.SERVICE,
-                            eventType = event.type.toString(),
-                            harvestRunId = event.harvestRunId?.toString(),
-                            resourceUri = event.uri?.toString(),
-                            startTime = startTime,
-                        )
-                    }
-                Metrics
-                    .timer("store_resource_jsonld", "type", "service")
-                    .record(timeElapsed.duration.toJavaDuration())
-            } catch (e: Exception) {
-                logger.error("Error processing service event: id=${event.fdkId}", e)
-                Metrics.counter("store_resource_jsonld_error", "type", "service", "error", e.javaClass.simpleName).increment()
-
-                val endTime = System.currentTimeMillis()
-                harvestEventProducer.produceResourceFailedEvent(
-                    harvestRunId = event.harvestRunId?.toString(),
-                    resourceType = ResourceType.SERVICE,
-                    fdkId = event.fdkId,
-                    resourceUri = event.uri?.toString(),
-                    startTime = startTime,
-                    endTime = endTime,
-                    errorMessage = e.message ?: e.javaClass.simpleName,
-                )
-
-                throw e
-            }
-        }
+        executeResourceEvent(
+            circuitBreakerName = "serviceConsumer",
+            metricType = "service",
+            resourceType = ResourceType.SERVICE,
+            debugLabel = "Service event",
+            errorLabel = "service event",
+            fdkId = event.fdkId,
+            eventType = event.type,
+            graph = event.graph,
+            catalogGraph = event.catalogGraph?.toString(),
+            timestamp = event.timestamp,
+            harvestRunId = event.harvestRunId?.toString(),
+            resourceUri = event.uri?.toString(),
+        )
     }
 
     @Transactional
     fun handleEventEvent(event: EventEvent) {
-        circuitBreakerRegistry.circuitBreaker("eventConsumer").executeRunnable {
-            logger.debug("Event event: id=${event.fdkId}, type=${event.type}, graphLen=${event.graph.length}")
+        executeResourceEvent(
+            circuitBreakerName = "eventConsumer",
+            metricType = "event",
+            resourceType = ResourceType.EVENT,
+            debugLabel = "Event event",
+            errorLabel = "event event",
+            fdkId = event.fdkId,
+            eventType = event.type,
+            graph = event.graph,
+            catalogGraph = event.catalogGraph?.toString(),
+            timestamp = event.timestamp,
+            harvestRunId = event.harvestRunId?.toString(),
+            resourceUri = event.uri?.toString(),
+        )
+    }
+
+    private fun executeResourceEvent(
+        circuitBreakerName: String,
+        metricType: String,
+        resourceType: ResourceType,
+        debugLabel: String,
+        errorLabel: String,
+        fdkId: String,
+        eventType: Any,
+        graph: String,
+        catalogGraph: String?,
+        timestamp: Long,
+        harvestRunId: String?,
+        resourceUri: String?,
+    ) {
+        circuitBreakerRegistry.circuitBreaker(circuitBreakerName).executeRunnable {
+            logger.debug("$debugLabel: id=$fdkId, type=$eventType, graphLen=${graph.length}")
             val startTime = System.currentTimeMillis()
             try {
                 val timeElapsed =
                     measureTimedValue {
                         processResourceEvent(
-                            fdkId = event.fdkId,
-                            graph = event.graph,
-                            catalogGraph = event.catalogGraph?.toString(),
-                            timestamp = event.timestamp,
-                            resourceType = ResourceType.EVENT,
-                            eventType = event.type.toString(),
-                            harvestRunId = event.harvestRunId?.toString(),
-                            resourceUri = event.uri?.toString(),
+                            fdkId = fdkId,
+                            graph = graph,
+                            catalogGraph = catalogGraph,
+                            timestamp = timestamp,
+                            resourceType = resourceType,
+                            eventType = eventType.toString(),
+                            harvestRunId = harvestRunId,
+                            resourceUri = resourceUri,
                             startTime = startTime,
                         )
                     }
                 Metrics
-                    .timer("store_resource_jsonld", "type", "event")
+                    .timer("store_resource_jsonld", "type", metricType)
                     .record(timeElapsed.duration.toJavaDuration())
             } catch (e: Exception) {
-                logger.error("Error processing event event: id=${event.fdkId}", e)
-                Metrics.counter("store_resource_jsonld_error", "type", "event", "error", e.javaClass.simpleName).increment()
+                logger.error("Error processing $errorLabel: id=$fdkId", e)
+                Metrics
+                    .counter(
+                        "store_resource_jsonld_error",
+                        "type",
+                        metricType,
+                        "error",
+                        e.javaClass.simpleName,
+                    ).increment()
 
                 val endTime = System.currentTimeMillis()
                 harvestEventProducer.produceResourceFailedEvent(
-                    harvestRunId = event.harvestRunId?.toString(),
-                    resourceType = ResourceType.EVENT,
-                    fdkId = event.fdkId,
-                    resourceUri = event.uri?.toString(),
+                    harvestRunId = harvestRunId,
+                    resourceType = resourceType,
+                    fdkId = fdkId,
+                    resourceUri = resourceUri,
                     startTime = startTime,
                     endTime = endTime,
                     errorMessage = e.message ?: e.javaClass.simpleName,
