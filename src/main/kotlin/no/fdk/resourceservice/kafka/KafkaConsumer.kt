@@ -30,16 +30,6 @@ class KafkaConsumer(
 ) {
     private val logger = LoggerFactory.getLogger(KafkaConsumer::class.java)
 
-    /**
-     * Validates and extracts required fields from a GenericRecord.
-     * Throws IllegalArgumentException if any required field is missing or empty.
-     * Graph can be empty, so it's not validated.
-     *
-     * @param value The GenericRecord to extract fields from
-     * @param eventTypeName The name of the event type (for logging)
-     * @return A data class containing fdkId, type, timestamp, and graph
-     * @throws IllegalArgumentException if fdkId, type, or timestamp is missing or invalid
-     */
     private data class RequiredFields(
         val fdkId: String,
         val type: String,
@@ -48,59 +38,66 @@ class KafkaConsumer(
         val catalogGraph: String?,
     )
 
+    private data class RdfParseRequiredFields(
+        val fdkId: String,
+        val timestamp: Long,
+        val data: String,
+    )
+
+    private fun requireNonBlankString(
+        value: org.apache.avro.generic.GenericRecord,
+        fieldName: String,
+        eventTypeName: String,
+    ): String {
+        val fieldValue = value.get(fieldName)?.toString()
+        if (fieldValue.isNullOrBlank()) {
+            throw IllegalArgumentException("Missing or empty $fieldName in $eventTypeName")
+        }
+        return fieldValue
+    }
+
+    private fun requireLong(
+        value: org.apache.avro.generic.GenericRecord,
+        fieldName: String,
+        eventTypeName: String,
+    ): Long {
+        val fieldValue =
+            value.get(fieldName) as? Long
+                ?: throw IllegalArgumentException("Missing or invalid $fieldName in $eventTypeName")
+        return fieldValue
+    }
+
+    /**
+     * Validates and extracts required fields from a GenericRecord.
+     * Throws IllegalArgumentException if any required field is missing or empty.
+     * Graph can be empty, so it's not validated.
+     */
     private fun extractRequiredFields(
         value: org.apache.avro.generic.GenericRecord,
         eventTypeName: String,
-    ): RequiredFields {
-        val fdkIdStr = value.get("fdkId")?.toString()
-        if (fdkIdStr.isNullOrBlank()) {
-            throw IllegalArgumentException("Missing or empty fdkId in $eventTypeName")
-        }
-
-        val typeStr = value.get("type")?.toString()
-        if (typeStr.isNullOrBlank()) {
-            throw IllegalArgumentException("Missing or empty type in $eventTypeName")
-        }
-
-        val timestamp = value.get("timestamp") as? Long
-        if (timestamp == null) {
-            throw IllegalArgumentException("Missing or invalid timestamp in $eventTypeName")
-        }
-
-        val graph = value.get("graph")?.toString() ?: ""
-        val catalogGraph = value.get("catalogGraph")?.toString()
-
-        return RequiredFields(fdkIdStr, typeStr, timestamp, graph, catalogGraph)
-    }
+    ): RequiredFields =
+        RequiredFields(
+            fdkId = requireNonBlankString(value, "fdkId", eventTypeName),
+            type = requireNonBlankString(value, "type", eventTypeName),
+            timestamp = requireLong(value, "timestamp", eventTypeName),
+            graph = value.get("graph")?.toString() ?: "",
+            catalogGraph = value.get("catalogGraph")?.toString(),
+        )
 
     /**
      * Validates and extracts required fields from a GenericRecord for RdfParseEvent.
      * Throws IllegalArgumentException if any required field is missing or empty.
      * Data can be empty, so it's not validated.
-     *
-     * @param value The GenericRecord to extract fields from
-     * @param eventTypeName The name of the event type (for logging)
-     * @return A Triple of (fdkId, timestamp, data)
-     * @throws IllegalArgumentException if fdkId or timestamp is missing or invalid
      */
     private fun extractRdfParseRequiredFields(
         value: org.apache.avro.generic.GenericRecord,
         eventTypeName: String,
-    ): Triple<String, Long, String> {
-        val fdkIdStr = value.get("fdkId")?.toString()
-        if (fdkIdStr.isNullOrBlank()) {
-            throw IllegalArgumentException("Missing or empty fdkId in $eventTypeName")
-        }
-
-        val timestamp = value.get("timestamp") as? Long
-        if (timestamp == null) {
-            throw IllegalArgumentException("Missing or invalid timestamp in $eventTypeName")
-        }
-
-        val data = value.get("data")?.toString() ?: ""
-
-        return Triple(fdkIdStr, timestamp, data)
-    }
+    ): RdfParseRequiredFields =
+        RdfParseRequiredFields(
+            fdkId = requireNonBlankString(value, "fdkId", eventTypeName),
+            timestamp = requireLong(value, "timestamp", eventTypeName),
+            data = value.get("data")?.toString() ?: "",
+        )
 
     private fun extractConceptEvent(record: ConsumerRecord<String, Any>): ConceptEvent? {
         val value = record.value()
@@ -334,21 +331,17 @@ class KafkaConsumer(
             is org.apache.avro.generic.GenericRecord -> {
                 logger.debug("Converting GenericRecord to RdfParseEvent")
                 try {
-                    val (fdkIdStr, timestamp, data) = extractRdfParseRequiredFields(value, "RdfParseEvent")
-
-                    val resourceTypeStr = value.get("resourceType")?.toString()
-                    if (resourceTypeStr.isNullOrBlank()) {
-                        throw IllegalArgumentException("Missing or empty resourceType in RdfParseEvent")
-                    }
+                    val fields = extractRdfParseRequiredFields(value, "RdfParseEvent")
+                    val resourceTypeStr = requireNonBlankString(value, "resourceType", "RdfParseEvent")
 
                     RdfParseEvent
                         .newBuilder()
-                        .setFdkId(fdkIdStr)
+                        .setFdkId(fields.fdkId)
                         .setHarvestRunId(value.get("harvestRunId")?.toString())
                         .setUri(value.get("uri")?.toString())
                         .setResourceType(RdfParseResourceType.valueOf(resourceTypeStr))
-                        .setTimestamp(timestamp)
-                        .setData(data)
+                        .setTimestamp(fields.timestamp)
+                        .setData(fields.data)
                         .build()
                 } catch (e: Exception) {
                     logger.warn("Failed to convert GenericRecord to RdfParseEvent: ${e.message}")
