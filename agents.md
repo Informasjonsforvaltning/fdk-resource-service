@@ -220,8 +220,9 @@ package and is used by both `UnionGraphSnapshotBuilder` and `UnionGraphBatchProc
 - `updateOrder()` - Updates an existing union graph order (→ `UnionGraphOrderService`)
 - `deleteOrder()` - Deletes union graph (→ `UnionGraphOrderService`)
 - `lockOrderInNewTransaction()` / `getOrderInNewTransaction()` - Order locking helpers (→ `UnionGraphOrderService`)
-- `mergeCatalogGraphIntoModel()` - Merges catalog_graph_data into union graph snapshots (private, in `UnionGraphSnapshotBuilder`)
-- `filterCatalogFromModel()` - Legacy fallback: filters dcat:Catalog, dcat:CatalogRecord, skos:Collection from embedded resource graphs (private, in `UnionGraphSnapshotBuilder`)
+
+Catalog merge/filter helpers (`mergeCatalogGraphIntoModel`, `filterCatalogFromModel`) live as private
+methods on `UnionGraphSnapshotBuilder`, not on the facade.
 
 **Union Graph Features**:
 - **Resource Type Filtering**: Include/exclude specific resource types

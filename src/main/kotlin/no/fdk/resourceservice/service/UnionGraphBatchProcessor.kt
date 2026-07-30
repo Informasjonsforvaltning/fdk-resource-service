@@ -76,22 +76,7 @@ class UnionGraphBatchProcessor(
                 return
             }
 
-            // Build the union graph using the locked order's configuration
-            val resourceTypes =
-                lockedOrder.resourceTypes?.mapNotNull { typeName ->
-                    try {
-                        ResourceType.valueOf(typeName)
-                    } catch (e: IllegalArgumentException) {
-                        logger.warn("Unknown resource type: {}", typeName)
-                        null
-                    }
-                }
-
-            // Store build start time to identify old snapshots for cleanup after completion
-            // Old snapshots remain accessible during the build to ensure OAI-PMH continuity
-            val buildStartTime = lockedOrder.processingStartedAt ?: java.time.Instant.now()
-
-            // Initialize processing state
+            // Initialize processing state; scheduler will process batches incrementally
             val initialized = initializeProcessingState(lockedOrder.id)
             if (!initialized) {
                 logger.warn("Failed to initialize processing state for order {}", lockedOrder.id)
