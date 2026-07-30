@@ -15,6 +15,7 @@ import no.fdk.rdf.parse.RdfParseResourceType
 import no.fdk.resourceservice.service.CircuitBreakerService
 import no.fdk.service.ServiceEvent
 import no.fdk.service.ServiceEventType
+import org.apache.avro.generic.GenericRecord
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.slf4j.LoggerFactory
 import org.springframework.kafka.annotation.KafkaListener
@@ -45,7 +46,7 @@ class KafkaConsumer(
     )
 
     private fun requireNonBlankString(
-        value: org.apache.avro.generic.GenericRecord,
+        value: GenericRecord,
         fieldName: String,
         eventTypeName: String,
     ): String {
@@ -57,7 +58,7 @@ class KafkaConsumer(
     }
 
     private fun requireLong(
-        value: org.apache.avro.generic.GenericRecord,
+        value: GenericRecord,
         fieldName: String,
         eventTypeName: String,
     ): Long {
@@ -73,7 +74,7 @@ class KafkaConsumer(
      * Graph can be empty, so it's not validated.
      */
     private fun extractRequiredFields(
-        value: org.apache.avro.generic.GenericRecord,
+        value: GenericRecord,
         eventTypeName: String,
     ): RequiredFields =
         RequiredFields(
@@ -90,7 +91,7 @@ class KafkaConsumer(
      * Data can be empty, so it's not validated.
      */
     private fun extractRdfParseRequiredFields(
-        value: org.apache.avro.generic.GenericRecord,
+        value: GenericRecord,
         eventTypeName: String,
     ): RdfParseRequiredFields =
         RdfParseRequiredFields(
@@ -99,36 +100,59 @@ class KafkaConsumer(
             data = value.get("data")?.toString() ?: "",
         )
 
-    private fun extractConceptEvent(record: ConsumerRecord<String, Any>): ConceptEvent? {
+    private fun <T> processRecord(
+        record: ConsumerRecord<String, Any>,
+        acknowledgment: Acknowledgment,
+        topic: String,
+        partition: Int,
+        offset: Long,
+        receivedLabel: String,
+        eventTypeName: String,
+        extract: (ConsumerRecord<String, Any>) -> T?,
+        process: (T) -> Unit,
+    ) {
+        logger.debug("Received $receivedLabel from topic: $topic, partition: $partition, offset: $offset")
+
+        try {
+            val event = extract(record)
+
+            if (event != null) {
+                process(event)
+                acknowledgment.acknowledge()
+                logger.debug("Successfully processed $receivedLabel, acknowledged")
+            } else {
+                logger.warn("Could not extract $eventTypeName from message, acknowledging to skip")
+                acknowledgment.acknowledge()
+            }
+        } catch (e: Exception) {
+            logger.error("Failed to process $receivedLabel", e)
+            acknowledgment.nack(Duration.ZERO)
+        }
+    }
+
+    private inline fun <reified T> extractEvent(
+        record: ConsumerRecord<String, Any>,
+        eventTypeName: String,
+        buildFromGeneric: (GenericRecord) -> T,
+    ): T? {
         val value = record.value()
         return when (value) {
-            is ConceptEvent -> {
-                logger.debug("ConsumerRecord contains ConceptEvent")
+            is T -> {
+                logger.debug("ConsumerRecord contains $eventTypeName")
                 value
             }
-            is org.apache.avro.generic.GenericRecord -> {
-                logger.debug("Converting GenericRecord to ConceptEvent")
+            is GenericRecord -> {
+                logger.debug("Converting GenericRecord to $eventTypeName")
                 try {
-                    val fields = extractRequiredFields(value, "ConceptEvent")
-
-                    ConceptEvent
-                        .newBuilder()
-                        .setFdkId(fields.fdkId)
-                        .setType(ConceptEventType.valueOf(fields.type))
-                        .setTimestamp(fields.timestamp)
-                        .setGraph(fields.graph)
-                        .setCatalogGraph(fields.catalogGraph)
-                        .setHarvestRunId(value.get("harvestRunId")?.toString())
-                        .setUri(value.get("uri")?.toString())
-                        .build()
+                    buildFromGeneric(value)
                 } catch (e: Exception) {
-                    logger.warn("Failed to convert GenericRecord to ConceptEvent: ${e.message}")
+                    logger.warn("Failed to convert GenericRecord to $eventTypeName: ${e.message}")
                     null
                 }
             }
             else -> {
                 logger.warn(
-                    "ConsumerRecord contains unsupported value type for ConceptEvent: " +
+                    "ConsumerRecord contains unsupported value type for $eventTypeName: " +
                         "${value?.javaClass?.simpleName ?: "null"}, ignoring message",
                 )
                 null
@@ -136,227 +160,110 @@ class KafkaConsumer(
         }
     }
 
-    private fun extractDatasetEvent(record: ConsumerRecord<String, Any>): DatasetEvent? {
-        val value = record.value()
-        return when (value) {
-            is DatasetEvent -> {
-                logger.debug("ConsumerRecord contains DatasetEvent")
-                value
-            }
-            is org.apache.avro.generic.GenericRecord -> {
-                logger.debug("Converting GenericRecord to DatasetEvent")
-                try {
-                    val fields = extractRequiredFields(value, "DatasetEvent")
-
-                    DatasetEvent
-                        .newBuilder()
-                        .setFdkId(fields.fdkId)
-                        .setType(DatasetEventType.valueOf(fields.type))
-                        .setTimestamp(fields.timestamp)
-                        .setGraph(fields.graph)
-                        .setCatalogGraph(fields.catalogGraph)
-                        .setHarvestRunId(value.get("harvestRunId")?.toString())
-                        .setUri(value.get("uri")?.toString())
-                        .build()
-                } catch (e: Exception) {
-                    logger.warn("Failed to convert GenericRecord to DatasetEvent: ${e.message}")
-                    null
-                }
-            }
-            else -> {
-                logger.warn(
-                    "ConsumerRecord contains unsupported value type for DatasetEvent: " +
-                        "${value?.javaClass?.simpleName ?: "null"}, ignoring message",
-                )
-                null
-            }
+    private fun extractConceptEvent(record: ConsumerRecord<String, Any>): ConceptEvent? =
+        extractEvent(record, "ConceptEvent") { value ->
+            val fields = extractRequiredFields(value, "ConceptEvent")
+            ConceptEvent
+                .newBuilder()
+                .setFdkId(fields.fdkId)
+                .setType(ConceptEventType.valueOf(fields.type))
+                .setTimestamp(fields.timestamp)
+                .setGraph(fields.graph)
+                .setCatalogGraph(fields.catalogGraph)
+                .setHarvestRunId(value.get("harvestRunId")?.toString())
+                .setUri(value.get("uri")?.toString())
+                .build()
         }
-    }
 
-    private fun extractDataServiceEvent(record: ConsumerRecord<String, Any>): DataServiceEvent? {
-        val value = record.value()
-        return when (value) {
-            is DataServiceEvent -> {
-                logger.debug("ConsumerRecord contains DataServiceEvent")
-                value
-            }
-            is org.apache.avro.generic.GenericRecord -> {
-                logger.debug("Converting GenericRecord to DataServiceEvent")
-                try {
-                    val fields = extractRequiredFields(value, "DataServiceEvent")
-
-                    DataServiceEvent
-                        .newBuilder()
-                        .setFdkId(fields.fdkId)
-                        .setType(DataServiceEventType.valueOf(fields.type))
-                        .setTimestamp(fields.timestamp)
-                        .setGraph(fields.graph)
-                        .setCatalogGraph(fields.catalogGraph)
-                        .setHarvestRunId(value.get("harvestRunId")?.toString())
-                        .setUri(value.get("uri")?.toString())
-                        .build()
-                } catch (e: Exception) {
-                    logger.warn("Failed to convert GenericRecord to DataServiceEvent: ${e.message}")
-                    null
-                }
-            }
-            else -> {
-                logger.warn(
-                    "ConsumerRecord contains unsupported value type for DataServiceEvent: " +
-                        "${value?.javaClass?.simpleName ?: "null"}, ignoring message",
-                )
-                null
-            }
+    private fun extractDatasetEvent(record: ConsumerRecord<String, Any>): DatasetEvent? =
+        extractEvent(record, "DatasetEvent") { value ->
+            val fields = extractRequiredFields(value, "DatasetEvent")
+            DatasetEvent
+                .newBuilder()
+                .setFdkId(fields.fdkId)
+                .setType(DatasetEventType.valueOf(fields.type))
+                .setTimestamp(fields.timestamp)
+                .setGraph(fields.graph)
+                .setCatalogGraph(fields.catalogGraph)
+                .setHarvestRunId(value.get("harvestRunId")?.toString())
+                .setUri(value.get("uri")?.toString())
+                .build()
         }
-    }
 
-    private fun extractEventEvent(record: ConsumerRecord<String, Any>): EventEvent? {
-        val value = record.value()
-        return when (value) {
-            is EventEvent -> {
-                logger.debug("ConsumerRecord contains EventEvent")
-                value
-            }
-            is org.apache.avro.generic.GenericRecord -> {
-                logger.debug("Converting GenericRecord to EventEvent")
-                try {
-                    val fields = extractRequiredFields(value, "EventEvent")
-
-                    EventEvent
-                        .newBuilder()
-                        .setFdkId(fields.fdkId)
-                        .setType(EventEventType.valueOf(fields.type))
-                        .setTimestamp(fields.timestamp)
-                        .setGraph(fields.graph)
-                        .setCatalogGraph(fields.catalogGraph)
-                        .setHarvestRunId(value.get("harvestRunId")?.toString())
-                        .setUri(value.get("uri")?.toString())
-                        .build()
-                } catch (e: Exception) {
-                    logger.warn("Failed to convert GenericRecord to EventEvent: ${e.message}")
-                    null
-                }
-            }
-            else -> {
-                logger.warn(
-                    "ConsumerRecord contains unsupported value type for EventEvent: " +
-                        "${value?.javaClass?.simpleName ?: "null"}, ignoring message",
-                )
-                null
-            }
+    private fun extractDataServiceEvent(record: ConsumerRecord<String, Any>): DataServiceEvent? =
+        extractEvent(record, "DataServiceEvent") { value ->
+            val fields = extractRequiredFields(value, "DataServiceEvent")
+            DataServiceEvent
+                .newBuilder()
+                .setFdkId(fields.fdkId)
+                .setType(DataServiceEventType.valueOf(fields.type))
+                .setTimestamp(fields.timestamp)
+                .setGraph(fields.graph)
+                .setCatalogGraph(fields.catalogGraph)
+                .setHarvestRunId(value.get("harvestRunId")?.toString())
+                .setUri(value.get("uri")?.toString())
+                .build()
         }
-    }
 
-    private fun extractInformationModelEvent(record: ConsumerRecord<String, Any>): InformationModelEvent? {
-        val value = record.value()
-        return when (value) {
-            is InformationModelEvent -> {
-                logger.debug("ConsumerRecord contains InformationModelEvent")
-                value
-            }
-            is org.apache.avro.generic.GenericRecord -> {
-                logger.debug("Converting GenericRecord to InformationModelEvent")
-                try {
-                    val fields = extractRequiredFields(value, "InformationModelEvent")
-
-                    InformationModelEvent
-                        .newBuilder()
-                        .setFdkId(fields.fdkId)
-                        .setType(InformationModelEventType.valueOf(fields.type))
-                        .setTimestamp(fields.timestamp)
-                        .setGraph(fields.graph)
-                        .setCatalogGraph(fields.catalogGraph)
-                        .setHarvestRunId(value.get("harvestRunId")?.toString())
-                        .setUri(value.get("uri")?.toString())
-                        .build()
-                } catch (e: Exception) {
-                    logger.warn("Failed to convert GenericRecord to InformationModelEvent: ${e.message}")
-                    null
-                }
-            }
-            else -> {
-                logger.warn(
-                    "ConsumerRecord contains unsupported value type for InformationModelEvent: " +
-                        "${value?.javaClass?.simpleName ?: "null"}, ignoring message",
-                )
-                null
-            }
+    private fun extractEventEvent(record: ConsumerRecord<String, Any>): EventEvent? =
+        extractEvent(record, "EventEvent") { value ->
+            val fields = extractRequiredFields(value, "EventEvent")
+            EventEvent
+                .newBuilder()
+                .setFdkId(fields.fdkId)
+                .setType(EventEventType.valueOf(fields.type))
+                .setTimestamp(fields.timestamp)
+                .setGraph(fields.graph)
+                .setCatalogGraph(fields.catalogGraph)
+                .setHarvestRunId(value.get("harvestRunId")?.toString())
+                .setUri(value.get("uri")?.toString())
+                .build()
         }
-    }
 
-    private fun extractServiceEvent(record: ConsumerRecord<String, Any>): ServiceEvent? {
-        val value = record.value()
-        return when (value) {
-            is ServiceEvent -> {
-                logger.debug("ConsumerRecord contains ServiceEvent")
-                value
-            }
-            is org.apache.avro.generic.GenericRecord -> {
-                logger.debug("Converting GenericRecord to ServiceEvent")
-                try {
-                    val fields = extractRequiredFields(value, "ServiceEvent")
-
-                    ServiceEvent
-                        .newBuilder()
-                        .setFdkId(fields.fdkId)
-                        .setType(ServiceEventType.valueOf(fields.type))
-                        .setTimestamp(fields.timestamp)
-                        .setGraph(fields.graph)
-                        .setCatalogGraph(fields.catalogGraph)
-                        .setHarvestRunId(value.get("harvestRunId")?.toString())
-                        .setUri(value.get("uri")?.toString())
-                        .build()
-                } catch (e: Exception) {
-                    logger.warn("Failed to convert GenericRecord to ServiceEvent: ${e.message}")
-                    null
-                }
-            }
-            else -> {
-                logger.warn(
-                    "ConsumerRecord contains unsupported value type for ServiceEvent: " +
-                        "${value?.javaClass?.simpleName ?: "null"}, ignoring message",
-                )
-                null
-            }
+    private fun extractInformationModelEvent(record: ConsumerRecord<String, Any>): InformationModelEvent? =
+        extractEvent(record, "InformationModelEvent") { value ->
+            val fields = extractRequiredFields(value, "InformationModelEvent")
+            InformationModelEvent
+                .newBuilder()
+                .setFdkId(fields.fdkId)
+                .setType(InformationModelEventType.valueOf(fields.type))
+                .setTimestamp(fields.timestamp)
+                .setGraph(fields.graph)
+                .setCatalogGraph(fields.catalogGraph)
+                .setHarvestRunId(value.get("harvestRunId")?.toString())
+                .setUri(value.get("uri")?.toString())
+                .build()
         }
-    }
 
-    private fun extractRdfParseEvent(record: ConsumerRecord<String, Any>): RdfParseEvent? {
-        val value = record.value()
-        return when (value) {
-            is RdfParseEvent -> {
-                logger.debug("ConsumerRecord contains RdfParseEvent")
-                value
-            }
-            is org.apache.avro.generic.GenericRecord -> {
-                logger.debug("Converting GenericRecord to RdfParseEvent")
-                try {
-                    val fields = extractRdfParseRequiredFields(value, "RdfParseEvent")
-                    val resourceTypeStr = requireNonBlankString(value, "resourceType", "RdfParseEvent")
-
-                    RdfParseEvent
-                        .newBuilder()
-                        .setFdkId(fields.fdkId)
-                        .setHarvestRunId(value.get("harvestRunId")?.toString())
-                        .setUri(value.get("uri")?.toString())
-                        .setResourceType(RdfParseResourceType.valueOf(resourceTypeStr))
-                        .setTimestamp(fields.timestamp)
-                        .setData(fields.data)
-                        .build()
-                } catch (e: Exception) {
-                    logger.warn("Failed to convert GenericRecord to RdfParseEvent: ${e.message}")
-                    null
-                }
-            }
-            else -> {
-                logger.warn(
-                    "ConsumerRecord contains unsupported value type for RdfParseEvent: " +
-                        "${value?.javaClass?.simpleName ?: "null"}, ignoring message",
-                )
-                null
-            }
+    private fun extractServiceEvent(record: ConsumerRecord<String, Any>): ServiceEvent? =
+        extractEvent(record, "ServiceEvent") { value ->
+            val fields = extractRequiredFields(value, "ServiceEvent")
+            ServiceEvent
+                .newBuilder()
+                .setFdkId(fields.fdkId)
+                .setType(ServiceEventType.valueOf(fields.type))
+                .setTimestamp(fields.timestamp)
+                .setGraph(fields.graph)
+                .setCatalogGraph(fields.catalogGraph)
+                .setHarvestRunId(value.get("harvestRunId")?.toString())
+                .setUri(value.get("uri")?.toString())
+                .build()
         }
-    }
+
+    private fun extractRdfParseEvent(record: ConsumerRecord<String, Any>): RdfParseEvent? =
+        extractEvent(record, "RdfParseEvent") { value ->
+            val fields = extractRdfParseRequiredFields(value, "RdfParseEvent")
+            val resourceTypeStr = requireNonBlankString(value, "resourceType", "RdfParseEvent")
+            RdfParseEvent
+                .newBuilder()
+                .setFdkId(fields.fdkId)
+                .setHarvestRunId(value.get("harvestRunId")?.toString())
+                .setUri(value.get("uri")?.toString())
+                .setResourceType(RdfParseResourceType.valueOf(resourceTypeStr))
+                .setTimestamp(fields.timestamp)
+                .setData(fields.data)
+                .build()
+        }
 
     @KafkaListener(topics = ["\${app.kafka.topics.rdf-parse}"], concurrency = "4")
     fun handleRdfParseEvent(
@@ -366,23 +273,17 @@ class KafkaConsumer(
         @Header(KafkaHeaders.RECEIVED_PARTITION) partition: Int,
         @Header(KafkaHeaders.OFFSET) offset: Long,
     ) {
-        logger.debug("Received RDF parse event from topic: $topic, partition: $partition, offset: $offset")
-
-        try {
-            val rdfParseEvent = extractRdfParseEvent(record)
-
-            if (rdfParseEvent != null) {
-                circuitBreakerService.handleRdfParseEvent(rdfParseEvent)
-                acknowledgment.acknowledge()
-                logger.debug("Successfully processed RDF parse event, acknowledged")
-            } else {
-                logger.warn("Could not extract RdfParseEvent from message, acknowledging to skip")
-                acknowledgment.acknowledge()
-            }
-        } catch (e: Exception) {
-            logger.error("Failed to process RDF parse event", e)
-            acknowledgment.nack(Duration.ZERO)
-        }
+        processRecord(
+            record = record,
+            acknowledgment = acknowledgment,
+            topic = topic,
+            partition = partition,
+            offset = offset,
+            receivedLabel = "RDF parse event",
+            eventTypeName = "RdfParseEvent",
+            extract = ::extractRdfParseEvent,
+            process = circuitBreakerService::handleRdfParseEvent,
+        )
     }
 
     @KafkaListener(topics = ["\${app.kafka.topics.concept}"], concurrency = "4")
@@ -393,23 +294,17 @@ class KafkaConsumer(
         @Header(KafkaHeaders.RECEIVED_PARTITION) partition: Int,
         @Header(KafkaHeaders.OFFSET) offset: Long,
     ) {
-        logger.debug("Received concept event from topic: $topic, partition: $partition, offset: $offset")
-
-        try {
-            val conceptEvent = extractConceptEvent(record)
-
-            if (conceptEvent != null) {
-                circuitBreakerService.handleConceptEvent(conceptEvent)
-                acknowledgment.acknowledge()
-                logger.debug("Successfully processed concept event, acknowledged")
-            } else {
-                logger.warn("Could not extract ConceptEvent from message, acknowledging to skip")
-                acknowledgment.acknowledge()
-            }
-        } catch (e: Exception) {
-            logger.error("Failed to process concept event", e)
-            acknowledgment.nack(Duration.ZERO)
-        }
+        processRecord(
+            record = record,
+            acknowledgment = acknowledgment,
+            topic = topic,
+            partition = partition,
+            offset = offset,
+            receivedLabel = "concept event",
+            eventTypeName = "ConceptEvent",
+            extract = ::extractConceptEvent,
+            process = circuitBreakerService::handleConceptEvent,
+        )
     }
 
     @KafkaListener(topics = ["\${app.kafka.topics.dataset}"], concurrency = "4")
@@ -420,23 +315,17 @@ class KafkaConsumer(
         @Header(KafkaHeaders.RECEIVED_PARTITION) partition: Int,
         @Header(KafkaHeaders.OFFSET) offset: Long,
     ) {
-        logger.debug("Received dataset event from topic: $topic, partition: $partition, offset: $offset")
-
-        try {
-            val datasetEvent = extractDatasetEvent(record)
-
-            if (datasetEvent != null) {
-                circuitBreakerService.handleDatasetEvent(datasetEvent)
-                acknowledgment.acknowledge()
-                logger.debug("Successfully processed dataset event, acknowledged")
-            } else {
-                logger.warn("Could not extract DatasetEvent from message, acknowledging to skip")
-                acknowledgment.acknowledge()
-            }
-        } catch (e: Exception) {
-            logger.error("Failed to process dataset event", e)
-            acknowledgment.nack(Duration.ZERO)
-        }
+        processRecord(
+            record = record,
+            acknowledgment = acknowledgment,
+            topic = topic,
+            partition = partition,
+            offset = offset,
+            receivedLabel = "dataset event",
+            eventTypeName = "DatasetEvent",
+            extract = ::extractDatasetEvent,
+            process = circuitBreakerService::handleDatasetEvent,
+        )
     }
 
     @KafkaListener(topics = ["\${app.kafka.topics.data-service}"], concurrency = "4")
@@ -447,23 +336,17 @@ class KafkaConsumer(
         @Header(KafkaHeaders.RECEIVED_PARTITION) partition: Int,
         @Header(KafkaHeaders.OFFSET) offset: Long,
     ) {
-        logger.debug("Received data service event from topic: $topic, partition: $partition, offset: $offset")
-
-        try {
-            val dataServiceEvent = extractDataServiceEvent(record)
-
-            if (dataServiceEvent != null) {
-                circuitBreakerService.handleDataServiceEvent(dataServiceEvent)
-                acknowledgment.acknowledge()
-                logger.debug("Successfully processed data service event, acknowledged")
-            } else {
-                logger.warn("Could not extract DataServiceEvent from message, acknowledging to skip")
-                acknowledgment.acknowledge()
-            }
-        } catch (e: Exception) {
-            logger.error("Failed to process data service event", e)
-            acknowledgment.nack(Duration.ZERO)
-        }
+        processRecord(
+            record = record,
+            acknowledgment = acknowledgment,
+            topic = topic,
+            partition = partition,
+            offset = offset,
+            receivedLabel = "data service event",
+            eventTypeName = "DataServiceEvent",
+            extract = ::extractDataServiceEvent,
+            process = circuitBreakerService::handleDataServiceEvent,
+        )
     }
 
     @KafkaListener(topics = ["\${app.kafka.topics.information-model}"], concurrency = "4")
@@ -474,23 +357,17 @@ class KafkaConsumer(
         @Header(KafkaHeaders.RECEIVED_PARTITION) partition: Int,
         @Header(KafkaHeaders.OFFSET) offset: Long,
     ) {
-        logger.debug("Received information model event from topic: $topic, partition: $partition, offset: $offset")
-
-        try {
-            val informationModelEvent = extractInformationModelEvent(record)
-
-            if (informationModelEvent != null) {
-                circuitBreakerService.handleInformationModelEvent(informationModelEvent)
-                acknowledgment.acknowledge()
-                logger.debug("Successfully processed information model event, acknowledged")
-            } else {
-                logger.warn("Could not extract InformationModelEvent from message, acknowledging to skip")
-                acknowledgment.acknowledge()
-            }
-        } catch (e: Exception) {
-            logger.error("Failed to process information model event", e)
-            acknowledgment.nack(Duration.ZERO)
-        }
+        processRecord(
+            record = record,
+            acknowledgment = acknowledgment,
+            topic = topic,
+            partition = partition,
+            offset = offset,
+            receivedLabel = "information model event",
+            eventTypeName = "InformationModelEvent",
+            extract = ::extractInformationModelEvent,
+            process = circuitBreakerService::handleInformationModelEvent,
+        )
     }
 
     @KafkaListener(topics = ["\${app.kafka.topics.service}"], concurrency = "4")
@@ -501,23 +378,17 @@ class KafkaConsumer(
         @Header(KafkaHeaders.RECEIVED_PARTITION) partition: Int,
         @Header(KafkaHeaders.OFFSET) offset: Long,
     ) {
-        logger.debug("Received service event from topic: $topic, partition: $partition, offset: $offset")
-
-        try {
-            val serviceEvent = extractServiceEvent(record)
-
-            if (serviceEvent != null) {
-                circuitBreakerService.handleServiceEvent(serviceEvent)
-                acknowledgment.acknowledge()
-                logger.debug("Successfully processed service event, acknowledged")
-            } else {
-                logger.warn("Could not extract ServiceEvent from message, acknowledging to skip")
-                acknowledgment.acknowledge()
-            }
-        } catch (e: Exception) {
-            logger.error("Failed to process service event", e)
-            acknowledgment.nack(Duration.ZERO)
-        }
+        processRecord(
+            record = record,
+            acknowledgment = acknowledgment,
+            topic = topic,
+            partition = partition,
+            offset = offset,
+            receivedLabel = "service event",
+            eventTypeName = "ServiceEvent",
+            extract = ::extractServiceEvent,
+            process = circuitBreakerService::handleServiceEvent,
+        )
     }
 
     @KafkaListener(topics = ["\${app.kafka.topics.event}"], concurrency = "4")
@@ -528,22 +399,16 @@ class KafkaConsumer(
         @Header(KafkaHeaders.RECEIVED_PARTITION) partition: Int,
         @Header(KafkaHeaders.OFFSET) offset: Long,
     ) {
-        logger.debug("Received event event from topic: $topic, partition: $partition, offset: $offset")
-
-        try {
-            val eventEvent = extractEventEvent(record)
-
-            if (eventEvent != null) {
-                circuitBreakerService.handleEventEvent(eventEvent)
-                acknowledgment.acknowledge()
-                logger.debug("Successfully processed event event, acknowledged")
-            } else {
-                logger.warn("Could not extract EventEvent from message, acknowledging to skip")
-                acknowledgment.acknowledge()
-            }
-        } catch (e: Exception) {
-            logger.error("Failed to process event event", e)
-            acknowledgment.nack(Duration.ZERO)
-        }
+        processRecord(
+            record = record,
+            acknowledgment = acknowledgment,
+            topic = topic,
+            partition = partition,
+            offset = offset,
+            receivedLabel = "event event",
+            eventTypeName = "EventEvent",
+            extract = ::extractEventEvent,
+            process = circuitBreakerService::handleEventEvent,
+        )
     }
 }
