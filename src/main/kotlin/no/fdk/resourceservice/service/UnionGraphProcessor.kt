@@ -271,7 +271,7 @@ class UnionGraphProcessor(
             val staleOrders =
                 unionGraphOrderRepository
                     .findByStatus(UnionGraphOrder.GraphStatus.PROCESSING.name)
-                    .filter { it.lockedAt != null && it.lockedAt.isBefore(lockTimeout) }
+                    .filter { it.lockedAt?.isBefore(lockTimeout) == true }
 
             for (order in staleOrders) {
                 logger.warn(

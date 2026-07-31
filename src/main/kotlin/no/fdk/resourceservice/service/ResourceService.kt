@@ -109,8 +109,12 @@ class ResourceService(
     ): Boolean {
         val existingTimestamp = resourceRepository.findTimestampById(id)
         return when {
-            existingTimestamp == null -> true // Resource doesn't exist, should create
-            timestamp >= existingTimestamp -> true // New timestamp is equal or newer, should update
+            existingTimestamp == null -> true
+
+            // Resource doesn't exist, should create
+            timestamp >= existingTimestamp -> true
+
+            // New timestamp is equal or newer, should update
             else -> false // Existing timestamp is newer, skip update
         }
     }
@@ -379,7 +383,7 @@ class ResourceService(
 
         return resourceRepository
             .findAllById(ids)
-            .filter { entity -> entity?.resourceType == resourceType.name }
+            .filter { entity -> entity.resourceType == resourceType.name }
             .mapNotNull { entity -> entity.resourceJson }
     }
 

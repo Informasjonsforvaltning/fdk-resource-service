@@ -91,8 +91,9 @@ class KafkaIntegrationTest : BaseIntegrationTest() {
             val storedEntity = resourceService.getResourceEntity(resourceId, ResourceType.CONCEPT)
             assertNotNull(storedEntity, "Resource should be stored in database after Kafka message")
             assertNotNull(storedEntity!!.resourceGraphData, "Resource graph data should be stored")
-            assertTrue(storedEntity.resourceGraphData!!.contains("https://example.com/test-concept"))
-            assertTrue(storedEntity.resourceGraphData.contains("Test Concept"))
+            val resourceGraphData = storedEntity.resourceGraphData!!
+            assertTrue(resourceGraphData.contains("https://example.com/test-concept"))
+            assertTrue(resourceGraphData.contains("Test Concept"))
         }
     }
 
@@ -125,8 +126,9 @@ class KafkaIntegrationTest : BaseIntegrationTest() {
         val storedEntity = resourceService.getResourceEntity(resourceId, ResourceType.CONCEPT)
         assertNotNull(storedEntity, "Resource entity should be stored after direct REASONED event")
         assertNotNull(storedEntity!!.resourceGraphData, "Resource graph data should be stored")
-        assertTrue(storedEntity.resourceGraphData!!.contains("https://example.com/direct-concept"))
-        assertTrue(storedEntity.resourceGraphData.contains("Direct Concept"))
+        val resourceGraphData = storedEntity.resourceGraphData!!
+        assertTrue(resourceGraphData.contains("https://example.com/direct-concept"))
+        assertTrue(resourceGraphData.contains("Direct Concept"))
     }
 
     @Test
@@ -176,8 +178,9 @@ class KafkaIntegrationTest : BaseIntegrationTest() {
 
             assertNotNull(storedEntity, "Resource should be stored in database within 30 seconds")
             assertNotNull(storedEntity!!.resourceGraphData, "Resource graph data should be stored")
-            assertTrue(storedEntity.resourceGraphData!!.contains("https://example.com/simple-concept"))
-            assertTrue(storedEntity.resourceGraphData.contains("Simple Concept"))
+            val resourceGraphData = storedEntity.resourceGraphData!!
+            assertTrue(resourceGraphData.contains("https://example.com/simple-concept"))
+            assertTrue(resourceGraphData.contains("Simple Concept"))
         } finally {
             producer.close()
         }
@@ -224,7 +227,7 @@ class KafkaIntegrationTest : BaseIntegrationTest() {
 
                 val event: Any =
                     when (testData.resourceType) {
-                        ResourceType.DATASET ->
+                        ResourceType.DATASET -> {
                             DatasetEvent
                                 .newBuilder()
                                 .setFdkId(resourceId)
@@ -234,7 +237,9 @@ class KafkaIntegrationTest : BaseIntegrationTest() {
                                 .setHarvestRunId(null)
                                 .setUri(null)
                                 .build()
-                        ResourceType.DATA_SERVICE ->
+                        }
+
+                        ResourceType.DATA_SERVICE -> {
                             DataServiceEvent
                                 .newBuilder()
                                 .setFdkId(resourceId)
@@ -244,7 +249,9 @@ class KafkaIntegrationTest : BaseIntegrationTest() {
                                 .setHarvestRunId(null)
                                 .setUri(null)
                                 .build()
-                        ResourceType.SERVICE ->
+                        }
+
+                        ResourceType.SERVICE -> {
                             ServiceEvent
                                 .newBuilder()
                                 .setFdkId(resourceId)
@@ -254,7 +261,11 @@ class KafkaIntegrationTest : BaseIntegrationTest() {
                                 .setHarvestRunId(null)
                                 .setUri(null)
                                 .build()
-                        else -> throw IllegalArgumentException("Unsupported resource type: ${testData.resourceType}")
+                        }
+
+                        else -> {
+                            throw IllegalArgumentException("Unsupported resource type: ${testData.resourceType}")
+                        }
                     }
 
                 producer.send(ProducerRecord(testData.topic, resourceId, event)).get(10, TimeUnit.SECONDS)
@@ -267,8 +278,9 @@ class KafkaIntegrationTest : BaseIntegrationTest() {
                 val storedEntity = resourceService.getResourceEntity(resourceId, testData.resourceType)
                 assertNotNull(storedEntity, "Resource $resourceId should be stored in database")
                 assertNotNull(storedEntity!!.resourceGraphData, "Graph data for $resourceId should be stored")
-                assertTrue(storedEntity.resourceGraphData!!.contains(testData.resourceUri))
-                assertTrue(storedEntity.resourceGraphData.contains(testData.expectedTitle))
+                val resourceGraphData = storedEntity.resourceGraphData!!
+                assertTrue(resourceGraphData.contains(testData.resourceUri))
+                assertTrue(resourceGraphData.contains(testData.expectedTitle))
             }
         } finally {
             producer.close()
@@ -327,8 +339,9 @@ class KafkaIntegrationTest : BaseIntegrationTest() {
             val initialEntity = resourceService.getResourceEntity(resourceId, ResourceType.CONCEPT)
             assertNotNull(initialEntity, "Initial resource should be stored")
             assertNotNull(initialEntity!!.resourceGraphData, "Initial graph data should be stored")
-            assertTrue(initialEntity.resourceGraphData!!.contains("https://example.com/concept"))
-            assertTrue(initialEntity.resourceGraphData.contains("Initial Title"))
+            val initialGraphData = initialEntity.resourceGraphData!!
+            assertTrue(initialGraphData.contains("https://example.com/concept"))
+            assertTrue(initialGraphData.contains("Initial Title"))
 
             val updateEvent =
                 ConceptEvent
@@ -347,8 +360,9 @@ class KafkaIntegrationTest : BaseIntegrationTest() {
             val updatedEntity = resourceService.getResourceEntity(resourceId, ResourceType.CONCEPT)
             assertNotNull(updatedEntity, "Updated resource should be stored")
             assertNotNull(updatedEntity!!.resourceGraphData, "Updated graph data should be stored")
-            assertTrue(updatedEntity.resourceGraphData!!.contains("https://example.com/concept"))
-            assertTrue(updatedEntity.resourceGraphData.contains("Updated Title"))
+            val updatedGraphData = updatedEntity.resourceGraphData!!
+            assertTrue(updatedGraphData.contains("https://example.com/concept"))
+            assertTrue(updatedGraphData.contains("Updated Title"))
         }
     }
 }

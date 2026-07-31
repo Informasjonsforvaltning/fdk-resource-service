@@ -120,44 +120,41 @@ class ResourceController(
     ): ResponseEntity<Any> {
         logger.debug("Getting resource graph with uri: {}, Accept: {}", uri, acceptHeader)
 
-        val entity = resourceService.getResourceEntityByUri(uri)
-        return if (entity != null && entity.resourceGraphData != null) {
-            val format = rdfService.getBestFormat(acceptHeader)
+        val entity = resourceService.getResourceEntityByUri(uri) ?: return ResponseEntity.notFound().build()
+        val resourceGraphData = entity.resourceGraphData ?: return ResponseEntity.notFound().build()
+        val format = rdfService.getBestFormat(acceptHeader)
 
-            // Convert string resource type to enum
-            val resourceType =
-                try {
-                    ResourceType.valueOf(entity.resourceType)
-                } catch (e: IllegalArgumentException) {
-                    logger.warn("Unknown resource type: {}, using common prefixes", entity.resourceType)
-                    null
-                }
-
-            // Get the stored format, defaulting to TURTLE if not specified
-            val storedFormat = entity.resourceGraphFormat ?: "TURTLE"
-
-            val convertedData =
-                rdfService.convertFromFormat(
-                    entity.resourceGraphData,
-                    storedFormat,
-                    format,
-                    RdfFormatStyle.PRETTY,
-                    expandUris = true,
-                    resourceType, // Use resource-specific prefixes based on the resource type
-                )
-
-            if (convertedData != null) {
-                ResponseEntity
-                    .ok()
-                    .contentType(rdfService.getContentType(format))
-                    .body(convertedData)
-            } else {
-                ResponseEntity
-                    .internalServerError()
-                    .body("Failed to convert graph to requested format")
+        // Convert string resource type to enum
+        val resourceType =
+            try {
+                ResourceType.valueOf(entity.resourceType)
+            } catch (e: IllegalArgumentException) {
+                logger.warn("Unknown resource type: {}, using common prefixes", entity.resourceType)
+                null
             }
+
+        // Get the stored format, defaulting to TURTLE if not specified
+        val storedFormat = entity.resourceGraphFormat ?: "TURTLE"
+
+        val convertedData =
+            rdfService.convertFromFormat(
+                resourceGraphData,
+                storedFormat,
+                format,
+                RdfFormatStyle.PRETTY,
+                expandUris = true,
+                resourceType, // Use resource-specific prefixes based on the resource type
+            )
+
+        return if (convertedData != null) {
+            ResponseEntity
+                .ok()
+                .contentType(rdfService.getContentType(format))
+                .body(convertedData)
         } else {
-            ResponseEntity.notFound().build()
+            ResponseEntity
+                .internalServerError()
+                .body("Failed to convert graph to requested format")
         }
     }
 }

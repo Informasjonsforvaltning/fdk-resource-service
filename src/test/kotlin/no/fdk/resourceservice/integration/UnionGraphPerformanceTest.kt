@@ -97,13 +97,13 @@ class UnionGraphPerformanceTest : BaseIntegrationTest() {
                 resourceRepository.flush()
                 unionGraphOrderRepository.flush()
                 order.id
-            }!!
+            }
 
         // Verify resources are committed and visible in a new transaction
         val resourceCountCheck =
             transactionTemplate.execute {
                 resourceRepository.countByResourceTypeAndDeletedFalse("CONCEPT")
-            }!!
+            }
         assertTrue(
             resourceCountCheck >= resourceCount,
             "Resources should be committed before processing. Found: $resourceCountCheck, expected: at least $resourceCount",
@@ -112,7 +112,7 @@ class UnionGraphPerformanceTest : BaseIntegrationTest() {
         val order =
             transactionTemplate.execute {
                 unionGraphOrderRepository.findById(orderId).get()
-            }!!
+            }
 
         // Measure total processing time
         val startTime = System.nanoTime()
@@ -142,7 +142,7 @@ class UnionGraphPerformanceTest : BaseIntegrationTest() {
         val completedOrder =
             transactionTemplate.execute {
                 unionGraphOrderRepository.findById(orderId).get()
-            }!!
+            }
         if (completedOrder.status == UnionGraphOrder.GraphStatus.FAILED) {
             logger.error("Order failed with error: {}", completedOrder.errorMessage)
         }
@@ -200,13 +200,13 @@ class UnionGraphPerformanceTest : BaseIntegrationTest() {
                 resourceRepository.flush()
                 unionGraphOrderRepository.flush()
                 order.id
-            }!!
+            }
 
         // Verify resources are committed and visible in a new transaction
         val resourceCountCheck =
             transactionTemplate.execute {
                 resourceRepository.countByResourceTypeAndDeletedFalse("CONCEPT")
-            }!!
+            }
         assertTrue(
             resourceCountCheck >= resourceCount,
             "Resources should be committed before processing. Found: $resourceCountCheck, expected: at least $resourceCount",
@@ -215,7 +215,7 @@ class UnionGraphPerformanceTest : BaseIntegrationTest() {
         val order =
             transactionTemplate.execute {
                 unionGraphOrderRepository.findById(orderId).get()
-            }!!
+            }
 
         // Measure total processing time
         val startTime = System.nanoTime()
@@ -245,7 +245,7 @@ class UnionGraphPerformanceTest : BaseIntegrationTest() {
         val completedOrder =
             transactionTemplate.execute {
                 unionGraphOrderRepository.findById(orderId).get()
-            }!!
+            }
         if (completedOrder.status == UnionGraphOrder.GraphStatus.FAILED) {
             logger.error("Order failed with error: {}", completedOrder.errorMessage)
         }

@@ -350,8 +350,15 @@ class UnionGraphOrderService(
         // Validate webhook URL if provided
         val newWebhookUrl =
             when {
-                !fields.has("webhookUrl") -> existingOrder.webhookUrl
-                fields.webhookUrl.isNullOrBlank() -> null // Empty string or null means remove webhook
+                !fields.has("webhookUrl") -> {
+                    existingOrder.webhookUrl
+                }
+
+                fields.webhookUrl.isNullOrBlank() -> {
+                    null
+                }
+
+                // Empty string or null means remove webhook
                 else -> {
                     if (!fields.webhookUrl.startsWith("https://")) {
                         throw IllegalArgumentException("Webhook URL must use HTTPS protocol")

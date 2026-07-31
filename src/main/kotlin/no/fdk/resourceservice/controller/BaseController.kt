@@ -111,32 +111,29 @@ abstract class BaseController(
             acceptHeader,
         )
 
-        val entity = resourceService.getResourceEntity(id, resourceType)
-        return if (entity != null && entity.resourceGraphData != null) {
-            val format = rdfService.getBestFormat(acceptHeader)
-            val storedFormat = entity.resourceGraphFormat ?: "TURTLE"
-            val convertedData =
-                rdfService.convertFromFormat(
-                    entity.resourceGraphData,
-                    storedFormat,
-                    format,
-                    RdfFormatStyle.PRETTY,
-                    expandUris = true,
-                    resourceType,
-                )
+        val entity = resourceService.getResourceEntity(id, resourceType) ?: return ResponseEntity.notFound().build()
+        val resourceGraphData = entity.resourceGraphData ?: return ResponseEntity.notFound().build()
+        val format = rdfService.getBestFormat(acceptHeader)
+        val storedFormat = entity.resourceGraphFormat ?: "TURTLE"
+        val convertedData =
+            rdfService.convertFromFormat(
+                resourceGraphData,
+                storedFormat,
+                format,
+                RdfFormatStyle.PRETTY,
+                expandUris = true,
+                resourceType,
+            )
 
-            if (convertedData != null) {
-                ResponseEntity
-                    .ok()
-                    .contentType(rdfService.getContentType(format))
-                    .body(convertedData)
-            } else {
-                ResponseEntity
-                    .internalServerError()
-                    .body("Failed to convert graph to requested format")
-            }
+        return if (convertedData != null) {
+            ResponseEntity
+                .ok()
+                .contentType(rdfService.getContentType(format))
+                .body(convertedData)
         } else {
-            ResponseEntity.notFound().build()
+            ResponseEntity
+                .internalServerError()
+                .body("Failed to convert graph to requested format")
         }
     }
 
@@ -158,12 +155,13 @@ abstract class BaseController(
         )
 
         val entity = resourceService.getResourceEntityByUri(uri)
-        return if (entity != null && entity.resourceType == resourceType.name && entity.resourceGraphData != null) {
+        val resourceGraphData = entity?.resourceGraphData
+        return if (entity != null && entity.resourceType == resourceType.name && resourceGraphData != null) {
             val format = rdfService.getBestFormat(acceptHeader)
             val storedFormat = entity.resourceGraphFormat ?: "TURTLE"
             val convertedData =
                 rdfService.convertFromFormat(
-                    entity.resourceGraphData,
+                    resourceGraphData,
                     storedFormat,
                     format,
                     RdfFormatStyle.PRETTY,

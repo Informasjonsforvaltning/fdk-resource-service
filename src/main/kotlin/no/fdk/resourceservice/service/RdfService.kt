@@ -600,6 +600,9 @@ class RdfService {
                     result
                 }
             }
-            else -> result
+
+            else -> {
+                result
+            }
         }
 }

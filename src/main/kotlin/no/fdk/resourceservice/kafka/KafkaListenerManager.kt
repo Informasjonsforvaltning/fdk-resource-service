@@ -69,9 +69,11 @@ class KafkaListenerManager(
             CircuitBreaker.State.OPEN -> {
                 pauseListenersForCircuitBreaker(circuitBreakerName)
             }
+
             CircuitBreaker.State.CLOSED -> {
                 resumeListenersForCircuitBreaker(circuitBreakerName)
             }
+
             CircuitBreaker.State.HALF_OPEN -> {
                 // Keep listeners paused in half-open state to test with limited traffic
                 logger.info("🔶 Circuit breaker $circuitBreakerName is HALF_OPEN - listeners remain paused for testing")
@@ -85,7 +87,7 @@ class KafkaListenerManager(
         val topics = circuitBreakerToContainers[circuitBreakerName] ?: return
 
         kafkaListenerContainers.forEach { container ->
-            if (topics.any { topic -> container.listenerId?.contains(topic) == true }) {
+            if (topics.any { topic -> container.listenerId.contains(topic) }) {
                 if (!container.isRunning) {
                     logger.debug("📴 Listener container ${container.listenerId} is already stopped")
                     return@forEach
@@ -107,7 +109,7 @@ class KafkaListenerManager(
         val topics = circuitBreakerToContainers[circuitBreakerName] ?: return
 
         kafkaListenerContainers.forEach { container ->
-            if (topics.any { topic -> container.listenerId?.contains(topic) == true }) {
+            if (topics.any { topic -> container.listenerId.contains(topic) }) {
                 if (container.isRunning) {
                     logger.debug("▶️ Listener container ${container.listenerId} is already running")
                     return@forEach
@@ -133,7 +135,7 @@ class KafkaListenerManager(
 
             val listenerStatus =
                 kafkaListenerContainers
-                    .filter { container -> topics.any { topic -> container.listenerId?.contains(topic) == true } }
+                    .filter { container -> topics.any { topic -> container.listenerId.contains(topic) } }
                     .associate { container ->
                         container.listenerId to
                             ListenerStatus(
@@ -145,11 +147,11 @@ class KafkaListenerManager(
 
             CircuitBreakerStatus(
                 name = circuitBreakerName,
-                state = circuitBreaker?.state?.name ?: "UNKNOWN",
-                failureRate = (circuitBreaker?.metrics?.failureRate ?: 0.0).toDouble(),
-                numberOfBufferedCalls = circuitBreaker?.metrics?.numberOfBufferedCalls ?: 0,
-                numberOfFailedCalls = circuitBreaker?.metrics?.numberOfFailedCalls ?: 0,
-                numberOfSuccessfulCalls = circuitBreaker?.metrics?.numberOfSuccessfulCalls ?: 0,
+                state = circuitBreaker.state.name,
+                failureRate = circuitBreaker.metrics.failureRate.toDouble(),
+                numberOfBufferedCalls = circuitBreaker.metrics.numberOfBufferedCalls,
+                numberOfFailedCalls = circuitBreaker.metrics.numberOfFailedCalls,
+                numberOfSuccessfulCalls = circuitBreaker.metrics.numberOfSuccessfulCalls,
                 listeners = listenerStatus,
             )
         }

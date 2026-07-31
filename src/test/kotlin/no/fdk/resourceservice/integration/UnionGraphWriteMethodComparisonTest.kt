@@ -73,7 +73,7 @@ class UnionGraphWriteMethodComparisonTest : BaseIntegrationTest() {
         val resources =
             transactionTemplate.execute {
                 resourceRepository.findByResourceTypeAndDeletedFalseWithGraphDataPaginated(ResourceType.CONCEPT.name, 0, resourceCount)
-            }!!
+            }
 
         logger.info("=== Comparing Write Methods for {} resources ===", resourceCount)
 

@@ -1,10 +1,10 @@
 package no.fdk.resourceservice.integration
 
 import org.testcontainers.containers.GenericContainer
-import org.testcontainers.containers.KafkaContainer
 import org.testcontainers.containers.Network
-import org.testcontainers.containers.PostgreSQLContainer
 import org.testcontainers.containers.wait.strategy.Wait
+import org.testcontainers.kafka.ConfluentKafkaContainer
+import org.testcontainers.postgresql.PostgreSQLContainer
 import org.testcontainers.utility.DockerImageName
 
 /**
@@ -16,7 +16,9 @@ import org.testcontainers.utility.DockerImageName
 object SharedTestContainers {
     private val network = Network.newNetwork()
 
-    val postgresContainer: PostgreSQLContainer<*> by lazy {
+    private const val KAFKA_INTERNAL_LISTENER = "kafka:19092"
+
+    val postgresContainer: PostgreSQLContainer by lazy {
         try {
             PostgreSQLContainer("postgres:15")
                 .withDatabaseName("fdk_resource")
@@ -31,11 +33,11 @@ object SharedTestContainers {
         }
     }
 
-    val kafkaContainer: KafkaContainer by lazy {
+    val kafkaContainer: ConfluentKafkaContainer by lazy {
         try {
-            KafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:7.4.0"))
+            ConfluentKafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:7.4.0"))
                 .withNetwork(network)
-                .withNetworkAliases("kafka")
+                .withListener(KAFKA_INTERNAL_LISTENER)
                 .withEnv("KAFKA_AUTO_CREATE_TOPICS_ENABLE", "true")
                 .withReuse(true)
                 .apply { start() }
@@ -50,7 +52,7 @@ object SharedTestContainers {
                 .withNetwork(network)
                 .withNetworkAliases("schema-registry")
                 .withEnv("SCHEMA_REGISTRY_HOST_NAME", "schema-registry")
-                .withEnv("SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS", "kafka:9092")
+                .withEnv("SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS", KAFKA_INTERNAL_LISTENER)
                 .withEnv("SCHEMA_REGISTRY_LISTENERS", "http://0.0.0.0:8081")
                 .withExposedPorts(8081)
                 .waitingFor(Wait.forHttp("/subjects").forStatusCode(200))

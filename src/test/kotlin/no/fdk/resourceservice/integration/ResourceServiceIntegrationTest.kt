@@ -233,8 +233,9 @@ class ResourceServiceIntegrationTest : BaseIntegrationTest() {
         // Then
         assertNotNull(retrieved)
         assertNotNull(retrieved!!.resourceGraphData)
-        assertTrue(retrieved.resourceGraphData!!.contains(datasetUri), "Retrieved graph data should contain the dataset URI")
-        assertTrue(retrieved.resourceGraphData.contains("Test Dataset 3"), "Retrieved graph data should contain the title")
+        val resourceGraphData = retrieved.resourceGraphData!!
+        assertTrue(resourceGraphData.contains(datasetUri), "Retrieved graph data should contain the dataset URI")
+        assertTrue(resourceGraphData.contains("Test Dataset 3"), "Retrieved graph data should contain the title")
         assertEquals("TURTLE", retrieved.resourceGraphFormat, "Graph format should be TURTLE")
     }
 

@@ -67,7 +67,7 @@ class CustomJacksonJsonFormatMapper : FormatMapper {
                 val typeName =
                     hibernateJavaType?.let {
                         (it.javaType as? Class<*>)?.simpleName ?: it.javaType.typeName
-                    } ?: value?.javaClass?.simpleName ?: "unknown"
+                    } ?: value.javaClass.simpleName ?: "unknown"
                 logger.warn(
                     "Serialized object is very large ({} bytes), which may cause memory issues. " +
                         "Type: {}, max allowed: {} bytes",
@@ -82,7 +82,7 @@ class CustomJacksonJsonFormatMapper : FormatMapper {
             val typeName =
                 hibernateJavaType?.let {
                     (it.javaType as? Class<*>)?.simpleName ?: it.javaType.typeName
-                } ?: value?.javaClass?.simpleName ?: "unknown"
+                } ?: value.javaClass.simpleName ?: "unknown"
             logger.error(
                 "OutOfMemoryError while serializing object of type $typeName. " +
                     "This may indicate the object is too large to serialize in memory.",
@@ -93,7 +93,7 @@ class CustomJacksonJsonFormatMapper : FormatMapper {
             val typeName =
                 hibernateJavaType?.let {
                     (it.javaType as? Class<*>)?.simpleName ?: it.javaType.typeName
-                } ?: value?.javaClass?.simpleName ?: "unknown"
+                } ?: value.javaClass.simpleName ?: "unknown"
             logger.error("Failed to serialize object of type $typeName", e)
             throw e
         }
