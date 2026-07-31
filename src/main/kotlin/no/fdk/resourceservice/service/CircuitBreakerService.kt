@@ -49,12 +49,30 @@ class CircuitBreakerService(
 
             val resourceType =
                 when (event.resourceType) {
-                    RdfParseResourceType.CONCEPT -> ResourceType.CONCEPT
-                    RdfParseResourceType.DATASET -> ResourceType.DATASET
-                    RdfParseResourceType.DATA_SERVICE -> ResourceType.DATA_SERVICE
-                    RdfParseResourceType.INFORMATION_MODEL -> ResourceType.INFORMATION_MODEL
-                    RdfParseResourceType.SERVICE -> ResourceType.SERVICE
-                    RdfParseResourceType.EVENT -> ResourceType.EVENT
+                    RdfParseResourceType.CONCEPT -> {
+                        ResourceType.CONCEPT
+                    }
+
+                    RdfParseResourceType.DATASET -> {
+                        ResourceType.DATASET
+                    }
+
+                    RdfParseResourceType.DATA_SERVICE -> {
+                        ResourceType.DATA_SERVICE
+                    }
+
+                    RdfParseResourceType.INFORMATION_MODEL -> {
+                        ResourceType.INFORMATION_MODEL
+                    }
+
+                    RdfParseResourceType.SERVICE -> {
+                        ResourceType.SERVICE
+                    }
+
+                    RdfParseResourceType.EVENT -> {
+                        ResourceType.EVENT
+                    }
+
                     else -> {
                         logger.error("Unknown resource type in RDF parse event: ${event.resourceType}")
                         Metrics
@@ -108,7 +126,7 @@ class CircuitBreakerService(
 
                         val endTime = System.currentTimeMillis()
                         harvestEventProducer.produceResourceFinishedEvent(
-                            harvestRunId = event.harvestRunId?.toString(),
+                            harvestRunId = event.harvestRunId,
                             resourceType = resourceType,
                             fdkId = event.fdkId,
                             resourceUri = resourceUri,
@@ -141,7 +159,7 @@ class CircuitBreakerService(
 
                 val endTime = System.currentTimeMillis()
                 harvestEventProducer.produceResourceFailedEvent(
-                    harvestRunId = event.harvestRunId?.toString(),
+                    harvestRunId = event.harvestRunId,
                     resourceType = resourceType,
                     fdkId = event.fdkId,
                     resourceUri = resourceUri,
@@ -166,10 +184,10 @@ class CircuitBreakerService(
             fdkId = event.fdkId,
             eventType = event.type,
             graph = event.graph,
-            catalogGraph = event.catalogGraph?.toString(),
+            catalogGraph = event.catalogGraph,
             timestamp = event.timestamp,
-            harvestRunId = event.harvestRunId?.toString(),
-            resourceUri = event.uri?.toString(),
+            harvestRunId = event.harvestRunId,
+            resourceUri = event.uri,
         )
     }
 
@@ -184,10 +202,10 @@ class CircuitBreakerService(
             fdkId = event.fdkId,
             eventType = event.type,
             graph = event.graph,
-            catalogGraph = event.catalogGraph?.toString(),
+            catalogGraph = event.catalogGraph,
             timestamp = event.timestamp,
-            harvestRunId = event.harvestRunId?.toString(),
-            resourceUri = event.uri?.toString(),
+            harvestRunId = event.harvestRunId,
+            resourceUri = event.uri,
         )
     }
 
@@ -202,10 +220,10 @@ class CircuitBreakerService(
             fdkId = event.fdkId,
             eventType = event.type,
             graph = event.graph,
-            catalogGraph = event.catalogGraph?.toString(),
+            catalogGraph = event.catalogGraph,
             timestamp = event.timestamp,
-            harvestRunId = event.harvestRunId?.toString(),
-            resourceUri = event.uri?.toString(),
+            harvestRunId = event.harvestRunId,
+            resourceUri = event.uri,
         )
     }
 
@@ -220,10 +238,10 @@ class CircuitBreakerService(
             fdkId = event.fdkId,
             eventType = event.type,
             graph = event.graph,
-            catalogGraph = event.catalogGraph?.toString(),
+            catalogGraph = event.catalogGraph,
             timestamp = event.timestamp,
-            harvestRunId = event.harvestRunId?.toString(),
-            resourceUri = event.uri?.toString(),
+            harvestRunId = event.harvestRunId,
+            resourceUri = event.uri,
         )
     }
 
@@ -238,10 +256,10 @@ class CircuitBreakerService(
             fdkId = event.fdkId,
             eventType = event.type,
             graph = event.graph,
-            catalogGraph = event.catalogGraph?.toString(),
+            catalogGraph = event.catalogGraph,
             timestamp = event.timestamp,
-            harvestRunId = event.harvestRunId?.toString(),
-            resourceUri = event.uri?.toString(),
+            harvestRunId = event.harvestRunId,
+            resourceUri = event.uri,
         )
     }
 
@@ -256,10 +274,10 @@ class CircuitBreakerService(
             fdkId = event.fdkId,
             eventType = event.type,
             graph = event.graph,
-            catalogGraph = event.catalogGraph?.toString(),
+            catalogGraph = event.catalogGraph,
             timestamp = event.timestamp,
-            harvestRunId = event.harvestRunId?.toString(),
-            resourceUri = event.uri?.toString(),
+            harvestRunId = event.harvestRunId,
+            resourceUri = event.uri,
         )
     }
 
@@ -398,6 +416,7 @@ class CircuitBreakerService(
                     endTime = endTime,
                 )
             }
+
             "REMOVED" -> {
                 resourceService.markResourceAsDeleted(
                     id = fdkId,
@@ -416,6 +435,7 @@ class CircuitBreakerService(
                     endTime = endTime,
                 )
             }
+
             else -> {
                 logger.warn("Unknown action: id=$fdkId, event=$eventType")
             }

@@ -33,6 +33,7 @@ class ApiKeyAuthenticationFilter(
                 // No API key header or blank - let it through (rejected by security config if required)
                 filterChain.doFilter(request, response)
             }
+
             trimmedKey == apiKey -> {
                 // Valid API key (with optional surrounding whitespace) - set authentication
                 val authorities = listOf(SimpleGrantedAuthority("ROLE_API_USER"))
@@ -47,6 +48,7 @@ class ApiKeyAuthenticationFilter(
                 SecurityContextHolder.getContext().authentication = authentication
                 filterChain.doFilter(request, response)
             }
+
             else -> {
                 // Invalid API key
                 response.status = HttpServletResponse.SC_UNAUTHORIZED

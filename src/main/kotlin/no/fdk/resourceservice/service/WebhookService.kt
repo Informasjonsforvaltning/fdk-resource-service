@@ -34,7 +34,8 @@ class WebhookService(
         order: UnionGraphOrder,
         previousStatus: UnionGraphOrder.GraphStatus?,
     ): CompletableFuture<Void> {
-        if (order.webhookUrl.isNullOrBlank()) {
+        val webhookUrl = order.webhookUrl
+        if (webhookUrl.isNullOrBlank()) {
             return CompletableFuture.completedFuture(null)
         }
 
@@ -68,7 +69,7 @@ class WebhookService(
                     headers,
                 )
 
-            val response = restTemplate.postForEntity(order.webhookUrl, request, String::class.java)
+            val response = restTemplate.postForEntity(webhookUrl, request, String::class.java)
             logger.info(
                 "Successfully called webhook for order {}: HTTP {}",
                 order.id,

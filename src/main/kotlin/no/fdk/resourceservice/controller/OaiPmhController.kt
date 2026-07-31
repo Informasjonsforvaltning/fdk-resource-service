@@ -112,17 +112,36 @@ class OaiPmhController(
 
         // Route to appropriate handler
         return when (actualVerb) {
-            "IDENTIFY" -> handleIdentify(id, request)
-            "LISTMETADATAFORMATS" -> handleListMetadataFormats(id, identifier, request)
-            "GETRECORD" -> handleGetRecord(id, identifier, metadataPrefix, request)
-            "LISTIDENTIFIERS" -> handleListIdentifiers(id, metadataPrefix, resumptionToken, from, until, set, request)
-            "LISTRECORDS" -> handleListRecords(id, metadataPrefix, resumptionToken, from, until, set, request)
-            "LISTSETS" -> handleListSets(id, request)
-            else ->
+            "IDENTIFY" -> {
+                handleIdentify(id, request)
+            }
+
+            "LISTMETADATAFORMATS" -> {
+                handleListMetadataFormats(id, identifier, request)
+            }
+
+            "GETRECORD" -> {
+                handleGetRecord(id, identifier, metadataPrefix, request)
+            }
+
+            "LISTIDENTIFIERS" -> {
+                handleListIdentifiers(id, metadataPrefix, resumptionToken, from, until, set, request)
+            }
+
+            "LISTRECORDS" -> {
+                handleListRecords(id, metadataPrefix, resumptionToken, from, until, set, request)
+            }
+
+            "LISTSETS" -> {
+                handleListSets(id, request)
+            }
+
+            else -> {
                 responseBuilder.errorResponse(
                     "badVerb",
                     "Illegal verb: $actualVerb. Supported verbs: Identify, ListMetadataFormats, GetRecord, ListIdentifiers, ListRecords, ListSets",
                 )
+            }
         }
     }
 
@@ -140,7 +159,7 @@ class OaiPmhController(
         val identify = doc.createElement("Identify")
 
         // Repository name
-        identify.appendChild(responseBuilder.createTextElement(doc, "repositoryName", "FDK Union Graph: ${order.name ?: id}"))
+        identify.appendChild(responseBuilder.createTextElement(doc, "repositoryName", "FDK Union Graph: ${order.name}"))
 
         // Base URL - full URL with scheme
         identify.appendChild(responseBuilder.createTextElement(doc, "baseURL", responseBuilder.getBaseUrl(id, httpRequest)))
@@ -152,7 +171,7 @@ class OaiPmhController(
         identify.appendChild(responseBuilder.createTextElement(doc, "adminEmail", "fellesdatakatalog@digdir.no"))
 
         // Earliest datestamp (use order creation date)
-        val earliestDate = order.createdAt ?: order.updatedAt
+        val earliestDate = order.createdAt
         identify.appendChild(responseBuilder.createTextElement(doc, "earliestDatestamp", responseBuilder.formatDate(earliestDate)))
 
         // Deleted record support: no (we don't support deletions)
@@ -429,7 +448,7 @@ class OaiPmhController(
         val pageSize = 50
         val snapshots =
             if (fromTs != null || untilTs != null || !publisherOrgnr.isNullOrBlank()) {
-                if (order.resourceTypes != null && order.resourceTypes.size == 1) {
+                if (order.resourceTypes?.size == 1) {
                     unionGraphResourceSnapshotRepository.findByUnionGraphIdAndResourceTypePaginated(
                         id,
                         currentResourceType.name,
@@ -452,7 +471,7 @@ class OaiPmhController(
                     )
                 }
             } else {
-                if (order.resourceTypes != null && order.resourceTypes.size == 1) {
+                if (order.resourceTypes?.size == 1) {
                     unionGraphResourceSnapshotRepository.findByUnionGraphIdAndResourceTypePaginated(
                         id,
                         currentResourceType.name,
@@ -497,7 +516,7 @@ class OaiPmhController(
 
         val totalCount =
             if (fromTs != null || untilTs != null || !publisherOrgnr.isNullOrBlank()) {
-                if (order.resourceTypes != null && order.resourceTypes.size == 1) {
+                if (order.resourceTypes?.size == 1) {
                     unionGraphResourceSnapshotRepository.countByUnionGraphIdAndResourceType(
                         id,
                         currentResourceType.name,
@@ -510,7 +529,7 @@ class OaiPmhController(
                     unionGraphResourceSnapshotRepository.countByUnionGraphId(id, beforeTimestamp, fromTs, untilTs, publisherOrgnr)
                 }
             } else {
-                if (order.resourceTypes != null && order.resourceTypes.size == 1) {
+                if (order.resourceTypes?.size == 1) {
                     unionGraphResourceSnapshotRepository.countByUnionGraphIdAndResourceType(id, currentResourceType.name, beforeTimestamp)
                 } else {
                     unionGraphResourceSnapshotRepository.countByUnionGraphId(id, beforeTimestamp)
@@ -628,7 +647,7 @@ class OaiPmhController(
         val pageSize = 50
         val snapshots =
             if (fromTs != null || untilTs != null || !publisherOrgnr.isNullOrBlank()) {
-                if (order.resourceTypes != null && order.resourceTypes.size == 1) {
+                if (order.resourceTypes?.size == 1) {
                     unionGraphResourceSnapshotRepository.findByUnionGraphIdAndResourceTypePaginated(
                         id,
                         currentResourceType.name,
@@ -651,7 +670,7 @@ class OaiPmhController(
                     )
                 }
             } else {
-                if (order.resourceTypes != null && order.resourceTypes.size == 1) {
+                if (order.resourceTypes?.size == 1) {
                     unionGraphResourceSnapshotRepository.findByUnionGraphIdAndResourceTypePaginated(
                         id,
                         currentResourceType.name,
@@ -689,7 +708,7 @@ class OaiPmhController(
 
         val totalCount =
             if (fromTs != null || untilTs != null || !publisherOrgnr.isNullOrBlank()) {
-                if (order.resourceTypes != null && order.resourceTypes.size == 1) {
+                if (order.resourceTypes?.size == 1) {
                     unionGraphResourceSnapshotRepository.countByUnionGraphIdAndResourceType(
                         id,
                         currentResourceType.name,
@@ -702,7 +721,7 @@ class OaiPmhController(
                     unionGraphResourceSnapshotRepository.countByUnionGraphId(id, beforeTimestamp, fromTs, untilTs, publisherOrgnr)
                 }
             } else {
-                if (order.resourceTypes != null && order.resourceTypes.size == 1) {
+                if (order.resourceTypes?.size == 1) {
                     unionGraphResourceSnapshotRepository.countByUnionGraphIdAndResourceType(id, currentResourceType.name, beforeTimestamp)
                 } else {
                     unionGraphResourceSnapshotRepository.countByUnionGraphId(id, beforeTimestamp)

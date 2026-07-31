@@ -191,17 +191,19 @@ class UnionGraphBatchProcessor(
             val datasetFilters = order.resourceFilters?.dataset
 
             // Prepare resource IDs and URIs strings for query (sorted for consistency, formatted as PostgreSQL array)
+            val resourceIds = order.resourceIds
             val resourceIdsString =
-                if (order.resourceIds.isNullOrEmpty()) {
+                if (resourceIds.isNullOrEmpty()) {
                     null
                 } else {
-                    "{" + order.resourceIds.sorted().joinToString(",") + "}"
+                    "{" + resourceIds.sorted().joinToString(",") + "}"
                 }
+            val resourceUris = order.resourceUris
             val resourceUrisString =
-                if (order.resourceUris.isNullOrEmpty()) {
+                if (resourceUris.isNullOrEmpty()) {
                     null
                 } else {
-                    "{" + order.resourceUris.sorted().joinToString(",") + "}"
+                    "{" + resourceUris.sorted().joinToString(",") + "}"
                 }
 
             // Fetch one batch of resources
@@ -214,7 +216,7 @@ class UnionGraphBatchProcessor(
             )
             val batch =
                 when {
-                    currentResourceType == ResourceType.DATASET && datasetFilters != null ->
+                    currentResourceType == ResourceType.DATASET && datasetFilters != null -> {
                         resourceRepository.findDatasetsByFiltersWithGraphDataPaginatedWithFilters(
                             state.currentOffset,
                             unionGraphConfig.resourceBatchSize,
@@ -223,7 +225,9 @@ class UnionGraphBatchProcessor(
                             resourceIdsString,
                             resourceUrisString,
                         )
-                    else ->
+                    }
+
+                    else -> {
                         resourceRepository.findByResourceTypeAndDeletedFalseWithGraphDataPaginatedWithFilters(
                             currentResourceType.name,
                             state.currentOffset,
@@ -231,6 +235,7 @@ class UnionGraphBatchProcessor(
                             resourceIdsString,
                             resourceUrisString,
                         )
+                    }
                 }
 
             logger.info("Fetched batch of {} resources for order {}", batch.size, orderId)
@@ -404,19 +409,22 @@ class UnionGraphBatchProcessor(
         for (type in typesToProcess) {
             total +=
                 when {
-                    type == ResourceType.DATASET && datasetFilters != null ->
+                    type == ResourceType.DATASET && datasetFilters != null -> {
                         resourceRepository.countDatasetsByFiltersWithFilters(
                             datasetFilters.isOpenData.toSqlBooleanText(),
                             datasetFilters.isRelatedToTransportportal.toSqlBooleanText(),
                             resourceIdsString,
                             resourceUrisString,
                         )
-                    else ->
+                    }
+
+                    else -> {
                         resourceRepository.countByResourceTypeAndDeletedFalseWithFilters(
                             type.name,
                             resourceIdsString,
                             resourceUrisString,
                         )
+                    }
                 }
         }
         return total

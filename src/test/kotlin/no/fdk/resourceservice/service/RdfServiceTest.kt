@@ -237,18 +237,22 @@ class RdfServiceTest {
                     )
                 }
             }
+
             RdfService.RdfFormat.TURTLE -> {
                 // Should contain RDF-like structure
                 assertTrue(result.contains("https://example.com/resource") || result.contains("@prefix"))
             }
+
             RdfService.RdfFormat.RDF_XML -> {
                 // Should start with XML declaration or contain RDF element
                 assertTrue(result.contains("<?xml") || result.contains("<rdf:RDF") || result.contains("<rdf:Description"))
             }
+
             RdfService.RdfFormat.N_TRIPLES -> {
                 // Should contain URIs and periods
                 assertTrue(result.contains("https://") && result.contains(" ."))
             }
+
             RdfService.RdfFormat.N_QUADS -> {
                 // Should contain URIs and periods
                 assertTrue(result.contains("https://") && result.contains(" ."))

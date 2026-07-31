@@ -27,7 +27,7 @@ import org.springframework.web.context.request.ServletRequestAttributes
 @Tag(name = "Legacy Redirects", description = "Temporary redirects from legacy endpoints to v1 API")
 @Deprecated("Legacy redirects - use v1 endpoints directly")
 class LegacyRedirectController {
-    private val logger = LoggerFactory.getLogger(LegacyRedirectController::class.java)
+    private val logger = LoggerFactory.getLogger("no.fdk.resourceservice.controller.LegacyRedirectController")
 
     // ===== CONCEPTS =====
 

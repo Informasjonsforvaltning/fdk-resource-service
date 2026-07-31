@@ -75,7 +75,7 @@ class OaiPmhIntegrationTest : BaseIntegrationTest() {
         val expectedCount =
             transactionTemplate.execute {
                 unionGraphResourceSnapshotRepository.countByUnionGraphId(orderId, beforeTimestamp)
-            }!!
+            }
 
         // When - Paginate through all pages using resumption tokens until none returned
         var resumptionToken: String? = null
@@ -161,7 +161,7 @@ class OaiPmhIntegrationTest : BaseIntegrationTest() {
                         status = UnionGraphOrder.GraphStatus.FAILED,
                     ),
                 )
-            }!!
+            }
 
         mockMvc
             .perform(
@@ -274,7 +274,7 @@ class OaiPmhIntegrationTest : BaseIntegrationTest() {
                         ),
                     )
                 order.id
-            }!!
+            }
 
         // Ensure transaction is committed and order is visible
         transactionTemplate.execute {
@@ -284,7 +284,7 @@ class OaiPmhIntegrationTest : BaseIntegrationTest() {
         val order =
             transactionTemplate.execute {
                 unionGraphOrderRepository.findById(orderId).get()
-            }!!
+            }
 
         // Process the order (runs outside transaction context)
         unionGraphService.processOrder(order, "test-instance")
@@ -311,7 +311,7 @@ class OaiPmhIntegrationTest : BaseIntegrationTest() {
         val completedOrder =
             transactionTemplate.execute {
                 unionGraphOrderRepository.findById(orderId).get()
-            }!!
+            }
         assertEquals(UnionGraphOrder.GraphStatus.COMPLETED, completedOrder.status)
 
         return orderId

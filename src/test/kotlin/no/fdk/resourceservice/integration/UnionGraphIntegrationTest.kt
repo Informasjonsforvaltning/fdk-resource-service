@@ -260,13 +260,13 @@ class UnionGraphIntegrationTest : BaseIntegrationTest() {
                         ),
                     )
                 order.id
-            }!!
+            }
 
         // Fetch the order to pass to processOrder
         val order =
             transactionTemplate.execute {
                 unionGraphOrderRepository.findById(orderId).get()
-            }!!
+            }
 
         // When - processOrder uses NOT_SUPPORTED, so it runs outside any transaction
         unionGraphService.processOrder(order, "test-instance")
@@ -289,7 +289,7 @@ class UnionGraphIntegrationTest : BaseIntegrationTest() {
         val updatedOrder =
             transactionTemplate.execute {
                 unionGraphOrderRepository.findById(orderId).get()
-            }!!
+            }
         assertEquals(UnionGraphOrder.GraphStatus.FAILED, updatedOrder.status)
         assertNotNull(updatedOrder.errorMessage)
     }
@@ -350,18 +350,18 @@ class UnionGraphIntegrationTest : BaseIntegrationTest() {
                 // Flush to ensure order is committed
                 unionGraphOrderRepository.flush()
                 order.id
-            }!!
+            }
 
         // Verify resources are committed and visible using the same query method that buildUnionGraph uses
         // This ensures they're queryable in the same way when processOrder runs with NOT_SUPPORTED
         val resource1Exists =
             transactionTemplate.execute {
                 resourceRepository.findById("test-concept-1-$testId").isPresent
-            }!!
+            }
         val resource2Exists =
             transactionTemplate.execute {
                 resourceRepository.findById("test-concept-2-$testId").isPresent
-            }!!
+            }
         assertTrue(resource1Exists, "Resource 1 should be committed before processing")
         assertTrue(resource2Exists, "Resource 2 should be committed before processing")
 
@@ -369,7 +369,7 @@ class UnionGraphIntegrationTest : BaseIntegrationTest() {
         val resourceCountCheck =
             transactionTemplate.execute {
                 resourceRepository.countByResourceTypeAndDeletedFalse("CONCEPT")
-            }!!
+            }
         assertTrue(
             resourceCountCheck >= 2,
             "Resources should be queryable using countByResourceTypeAndDeletedFalse. Found: $resourceCountCheck, expected: at least 2",
@@ -379,7 +379,7 @@ class UnionGraphIntegrationTest : BaseIntegrationTest() {
         val resourcesQueryable =
             transactionTemplate.execute {
                 resourceRepository.findByResourceTypeAndDeletedFalseWithGraphDataPaginated("CONCEPT", 0, 10)
-            }!!
+            }
         assertTrue(
             resourcesQueryable.size >= 2,
             "Resources should be queryable using findByResourceTypeAndDeletedFalseWithGraphDataPaginated. Found: ${resourcesQueryable.size}, expected: at least 2",
@@ -389,7 +389,7 @@ class UnionGraphIntegrationTest : BaseIntegrationTest() {
         val initialOrder =
             transactionTemplate.execute {
                 unionGraphOrderRepository.findById(orderId).get()
-            }!!
+            }
         assertEquals(UnionGraphOrder.GraphStatus.PENDING, initialOrder.status)
         assertNull(initialOrder.lockedBy)
         assertNull(initialOrder.lockedAt)
@@ -399,14 +399,14 @@ class UnionGraphIntegrationTest : BaseIntegrationTest() {
         val order =
             transactionTemplate.execute {
                 unionGraphOrderRepository.findById(orderId).get()
-            }!!
+            }
 
         // Double-check resources are still queryable right before processing
         // This simulates what buildUnionGraph will do when it runs with NOT_SUPPORTED
         val finalResourceCount =
             transactionTemplate.execute {
                 resourceRepository.countByResourceTypeAndDeletedFalse("CONCEPT")
-            }!!
+            }
         assertTrue(
             finalResourceCount >= 2,
             "Resources must be queryable right before processOrder. Found: $finalResourceCount, expected: at least 2",
@@ -440,7 +440,7 @@ class UnionGraphIntegrationTest : BaseIntegrationTest() {
         val completedOrder =
             transactionTemplate.execute {
                 unionGraphOrderRepository.findById(orderId).get()
-            }!!
+            }
         if (completedOrder.status == UnionGraphOrder.GraphStatus.FAILED) {
             logger.error("Order failed with error: {}", completedOrder.errorMessage)
         }
@@ -469,13 +469,13 @@ class UnionGraphIntegrationTest : BaseIntegrationTest() {
                         ),
                     )
                 order.id
-            }!!
+            }
 
         // Fetch the order to pass to processOrder
         val order =
             transactionTemplate.execute {
                 unionGraphOrderRepository.findById(orderId).get()
-            }!!
+            }
 
         // When - process the order (no datasets exist, uses NOT_SUPPORTED)
         unionGraphService.processOrder(order, "test-instance")
@@ -498,7 +498,7 @@ class UnionGraphIntegrationTest : BaseIntegrationTest() {
         val failedOrder =
             transactionTemplate.execute {
                 unionGraphOrderRepository.findById(orderId).get()
-            }!!
+            }
         assertEquals(UnionGraphOrder.GraphStatus.FAILED, failedOrder.status)
         assertNotNull(failedOrder.errorMessage, "errorMessage should be set when failed")
         assertNull(failedOrder.processedAt, "processedAt should be null when failed")
@@ -583,13 +583,13 @@ class UnionGraphIntegrationTest : BaseIntegrationTest() {
                         ),
                     )
                 order.id
-            }!!
+            }
 
         // Verify order was committed and is visible (query in new transaction)
         val initialOrder =
             transactionTemplate.execute {
                 unionGraphOrderRepository.findById(orderId).get()
-            }!!
+            }
         assertEquals(UnionGraphOrder.GraphStatus.PENDING, initialOrder.status)
         assertNull(initialOrder.lockedBy)
         assertNull(initialOrder.lockedAt)
@@ -604,7 +604,7 @@ class UnionGraphIntegrationTest : BaseIntegrationTest() {
         val lockedOrder =
             transactionTemplate.execute {
                 unionGraphOrderRepository.findById(orderId).get()
-            }!!
+            }
         assertEquals(UnionGraphOrder.GraphStatus.PROCESSING, lockedOrder.status)
         assertEquals("test-instance", lockedOrder.lockedBy, "lockedBy should be set")
         assertNotNull(lockedOrder.lockedAt, "lockedAt should be set")
@@ -627,7 +627,7 @@ class UnionGraphIntegrationTest : BaseIntegrationTest() {
                         ),
                     )
                 order.id
-            }!!
+            }
 
         // When - lock the order and then fetch it using getOrderInNewTransaction
         // This simulates what processOrder does: lock, then fetch in new transaction
@@ -711,18 +711,18 @@ class UnionGraphIntegrationTest : BaseIntegrationTest() {
                 // Flush to ensure order is committed
                 unionGraphOrderRepository.flush()
                 order.id
-            }!!
+            }
 
         // Verify resources are committed and visible using the same query method that buildUnionGraph uses
         // This ensures they're queryable in the same way when processOrder runs with NOT_SUPPORTED
         val resource1Exists =
             transactionTemplate.execute {
                 resourceRepository.findById("test-concept-visibility-1-$testId").isPresent
-            }!!
+            }
         val resource2Exists =
             transactionTemplate.execute {
                 resourceRepository.findById("test-concept-visibility-2-$testId").isPresent
-            }!!
+            }
         assertTrue(resource1Exists, "Resource 1 should be committed before processing")
         assertTrue(resource2Exists, "Resource 2 should be committed before processing")
 
@@ -730,7 +730,7 @@ class UnionGraphIntegrationTest : BaseIntegrationTest() {
         val resourceCountCheck =
             transactionTemplate.execute {
                 resourceRepository.countByResourceTypeAndDeletedFalse("CONCEPT")
-            }!!
+            }
         assertTrue(
             resourceCountCheck >= 2,
             "Resources should be queryable using countByResourceTypeAndDeletedFalse. Found: $resourceCountCheck, expected: at least 2",
@@ -740,7 +740,7 @@ class UnionGraphIntegrationTest : BaseIntegrationTest() {
         val resourcesQueryable =
             transactionTemplate.execute {
                 resourceRepository.findByResourceTypeAndDeletedFalseWithGraphDataPaginated("CONCEPT", 0, 10)
-            }!!
+            }
         assertTrue(
             resourcesQueryable.size >= 2,
             "Resources should be queryable using findByResourceTypeAndDeletedFalseWithGraphDataPaginated. Found: ${resourcesQueryable.size}, expected: at least 2",
@@ -750,7 +750,7 @@ class UnionGraphIntegrationTest : BaseIntegrationTest() {
         val order =
             transactionTemplate.execute {
                 unionGraphOrderRepository.findById(orderId).get()
-            }!!
+            }
 
         // When - start processing (this will lock and update to PROCESSING)
         // We call processOrder which internally:
@@ -781,7 +781,7 @@ class UnionGraphIntegrationTest : BaseIntegrationTest() {
         val finalOrder =
             transactionTemplate.execute {
                 unionGraphOrderRepository.findById(orderId).get()
-            }!!
+            }
         if (finalOrder.status == UnionGraphOrder.GraphStatus.FAILED) {
             logger.error("Order failed with error: {}", finalOrder.errorMessage)
         }
@@ -809,7 +809,7 @@ class UnionGraphIntegrationTest : BaseIntegrationTest() {
                         ),
                     )
                 order.id
-            }!!
+            }
 
         // When - lock the order (this is what processOrder does first)
         val locked = unionGraphService.lockOrderInNewTransaction(orderId, "test-instance")
@@ -853,7 +853,7 @@ class UnionGraphIntegrationTest : BaseIntegrationTest() {
                         ),
                     )
                 order.id
-            }!!
+            }
 
         // When - simulate scheduled task trying to lock a completed order in a new transaction
         // The WHERE clause requires status = 'PENDING', so this should fail
@@ -864,7 +864,7 @@ class UnionGraphIntegrationTest : BaseIntegrationTest() {
         val unchangedOrder =
             transactionTemplate.execute {
                 unionGraphOrderRepository.findById(orderId).get()
-            }!!
+            }
         assertEquals(UnionGraphOrder.GraphStatus.COMPLETED, unchangedOrder.status)
         assertNull(unchangedOrder.lockedBy)
         assertNull(unchangedOrder.lockedAt)

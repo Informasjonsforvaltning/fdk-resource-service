@@ -141,6 +141,7 @@ class KafkaConsumer(
                 logger.debug("ConsumerRecord contains $eventTypeName")
                 value
             }
+
             is GenericRecord -> {
                 logger.debug("Converting GenericRecord to $eventTypeName")
                 try {
@@ -150,6 +151,7 @@ class KafkaConsumer(
                     null
                 }
             }
+
             else -> {
                 logger.warn(
                     "ConsumerRecord contains unsupported value type for $eventTypeName: " +

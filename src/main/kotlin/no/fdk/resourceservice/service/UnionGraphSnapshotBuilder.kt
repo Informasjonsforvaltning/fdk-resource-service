@@ -164,12 +164,16 @@ class UnionGraphSnapshotBuilder(
         for (type in typesToProcess) {
             totalResources +=
                 when {
-                    type == ResourceType.DATASET && datasetFilters != null ->
+                    type == ResourceType.DATASET && datasetFilters != null -> {
                         resourceRepository.countDatasetsByFilters(
                             datasetFilters.isOpenData.toSqlBooleanText(),
                             datasetFilters.isRelatedToTransportportal.toSqlBooleanText(),
                         )
-                    else -> resourceRepository.countByResourceTypeAndDeletedFalse(type.name)
+                    }
+
+                    else -> {
+                        resourceRepository.countByResourceTypeAndDeletedFalse(type.name)
+                    }
                 }
         }
 
@@ -199,19 +203,22 @@ class UnionGraphSnapshotBuilder(
                 while (hasMore) {
                     val batch =
                         when {
-                            type == ResourceType.DATASET && datasetFilters != null ->
+                            type == ResourceType.DATASET && datasetFilters != null -> {
                                 resourceRepository.findDatasetsByFiltersWithGraphDataPaginated(
                                     offset,
                                     batchSize,
                                     datasetFilters.isOpenData.toSqlBooleanText(),
                                     datasetFilters.isRelatedToTransportportal.toSqlBooleanText(),
                                 )
-                            else ->
+                            }
+
+                            else -> {
                                 resourceRepository.findByResourceTypeAndDeletedFalseWithGraphDataPaginated(
                                     type.name,
                                     offset,
                                     batchSize,
                                 )
+                            }
                         }
 
                     if (batch.isEmpty()) {
@@ -333,13 +340,11 @@ class UnionGraphSnapshotBuilder(
         var mergedCount = 0
         for (uri in dataServiceUris) {
             try {
-                val dataServiceEntity = resourceService.getResourceEntityByUri(uri)
-                if (dataServiceEntity != null &&
-                    dataServiceEntity.resourceGraphData != null &&
-                    dataServiceEntity.resourceGraphData.isNotBlank()
-                ) {
+                val dataServiceEntity = resourceService.getResourceEntityByUri(uri) ?: continue
+                val resourceGraphData = dataServiceEntity.resourceGraphData
+                if (!resourceGraphData.isNullOrBlank()) {
                     val dataServiceLang = parseLang(dataServiceEntity.resourceGraphFormat ?: "TURTLE")
-                    ByteArrayInputStream(dataServiceEntity.resourceGraphData.toByteArray()).use { inputStream ->
+                    ByteArrayInputStream(resourceGraphData.toByteArray()).use { inputStream ->
                         RDFDataMgr.read(model, inputStream, dataServiceLang)
                     }
                     mergedCount++
@@ -544,24 +549,36 @@ class UnionGraphSnapshotBuilder(
             // Extract distributions from the dataset
             val distributions =
                 when (val distValue = datasetJson["distribution"]) {
-                    is List<*> -> distValue.filterIsInstance<Map<String, Any>>()
+                    is List<*> -> {
+                        distValue.filterIsInstance<Map<String, Any>>()
+                    }
+
                     is Map<*, *> -> {
                         @Suppress("UNCHECKED_CAST")
                         listOf(distValue as Map<String, Any>)
                     }
-                    else -> emptyList()
+
+                    else -> {
+                        emptyList()
+                    }
                 }
 
             // Extract DataService URIs from distributions
             for (distribution in distributions) {
                 val accessServices =
                     when (val accessServiceValue = distribution["accessService"]) {
-                        is List<*> -> accessServiceValue.filterIsInstance<Map<String, Any>>()
+                        is List<*> -> {
+                            accessServiceValue.filterIsInstance<Map<String, Any>>()
+                        }
+
                         is Map<*, *> -> {
                             @Suppress("UNCHECKED_CAST")
                             listOf(accessServiceValue as Map<String, Any>)
                         }
-                        else -> emptyList()
+
+                        else -> {
+                            emptyList()
+                        }
                     }
 
                 for (accessService in accessServices) {
@@ -571,6 +588,7 @@ class UnionGraphSnapshotBuilder(
                                 uriSet.add(uriValue)
                             }
                         }
+
                         is List<*> -> {
                             uriValue
                                 .filterIsInstance<String>()
