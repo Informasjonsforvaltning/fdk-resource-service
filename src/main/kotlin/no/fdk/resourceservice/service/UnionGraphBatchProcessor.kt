@@ -252,6 +252,7 @@ class UnionGraphBatchProcessor(
             }
 
             // Process batch and prepare snapshots for batch insert
+            val batchStartNanos = System.nanoTime()
             val snapshotsToSave = mutableListOf<UnionGraphResourceSnapshot>()
 
             logger.info("Starting to process {} resources in batch for order {}", batch.size, orderId)
@@ -295,6 +296,9 @@ class UnionGraphBatchProcessor(
                 logger.info("Saving {} snapshots for order {}", snapshotsToSave.size, orderId)
                 unionGraphResourceSnapshotRepository.saveAll(snapshotsToSave)
                 logger.info("Saved {} snapshots for order {}", snapshotsToSave.size, orderId)
+                metricsService.recordSnapshotBytes(
+                    snapshotsToSave.sumOf { it.resourceGraphData.length.toLong() },
+                )
             }
 
             // Update state
@@ -310,6 +314,7 @@ class UnionGraphBatchProcessor(
             // Update progress
             metricsService.updateProcessingProgress(orderId, newState.processedCount)
             metricsService.recordResourcesProcessed(batch.size.toLong())
+            metricsService.recordBatchDuration((System.nanoTime() - batchStartNanos) / 1_000_000_000.0)
 
             logger.info(
                 "Processed batch for order {}: {} resources, {} snapshots created, total processed: {}",

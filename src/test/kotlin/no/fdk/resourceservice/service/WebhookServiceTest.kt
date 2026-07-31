@@ -24,7 +24,7 @@ class WebhookServiceTest {
     fun setUp() {
         restTemplate = mockk(relaxed = true)
         objectMapper = jacksonObjectMapper()
-        webhookService = WebhookService(restTemplate, objectMapper)
+        webhookService = WebhookService(restTemplate, objectMapper, mockk(relaxed = true))
     }
 
     @Test

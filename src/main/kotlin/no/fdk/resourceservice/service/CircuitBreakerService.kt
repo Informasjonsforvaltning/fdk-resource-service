@@ -39,6 +39,8 @@ class CircuitBreakerService(
     private val harvestEventProducer: HarvestEventProducer,
     private val circuitBreakerRegistry: CircuitBreakerRegistry,
     private val objectMapper: ObjectMapper,
+    private val kafkaConsumerMetricsService: KafkaConsumerMetricsService,
+    private val resourceStoreMetricsService: ResourceStoreMetricsService,
 ) {
     private val logger = LoggerFactory.getLogger(CircuitBreakerService::class.java)
 
@@ -93,6 +95,7 @@ class CircuitBreakerService(
                     measureTimedValue {
                         if (!resourceService.shouldUpdateResource(event.fdkId, event.timestamp)) {
                             logger.info("Skipped (older timestamp): id=${event.fdkId}, type=$resourceType")
+                            kafkaConsumerMetricsService.recordSkippedStaleTimestamp(resourceType.name)
                             return@measureTimedValue
                         }
 
@@ -123,6 +126,7 @@ class CircuitBreakerService(
                             resourceJson = resourceJson,
                             timestamp = event.timestamp,
                         )
+                        resourceStoreMetricsService.recordStored(resourceType)
 
                         val endTime = System.currentTimeMillis()
                         harvestEventProducer.produceResourceFinishedEvent(
@@ -369,6 +373,7 @@ class CircuitBreakerService(
             "REASONED" -> {
                 if (!resourceService.shouldUpdateResource(fdkId, timestamp)) {
                     logger.info("Skipped (older timestamp): id=$fdkId, type=$resourceType")
+                    kafkaConsumerMetricsService.recordSkippedStaleTimestamp(resourceType.name)
                     return
                 }
 
@@ -404,6 +409,7 @@ class CircuitBreakerService(
                     resourceService.clearCatalogGraphData(fdkId)
                 }
 
+                resourceStoreMetricsService.recordStored(resourceType)
                 logger.debug("Storage called: id=$fdkId, type=$resourceType")
 
                 val endTime = System.currentTimeMillis()
@@ -423,6 +429,7 @@ class CircuitBreakerService(
                     resourceType = resourceType,
                     timestamp = timestamp,
                 )
+                resourceStoreMetricsService.recordDeleted(resourceType)
                 logger.debug("Marked deleted: id=$fdkId, type=$resourceType")
 
                 val endTime = System.currentTimeMillis()

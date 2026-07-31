@@ -1,5 +1,7 @@
 package no.fdk.resourceservice.service
 
+import io.micrometer.core.instrument.MeterRegistry
+import io.micrometer.core.instrument.Timer
 import no.fdk.resourceservice.model.ResourceType
 import org.apache.jena.riot.Lang
 import org.apache.jena.riot.RDFDataMgr
@@ -21,7 +23,9 @@ import org.apache.jena.rdf.model.ModelFactory as JenaModelFactory
  * Uses Eclipse RDF4J for better performance and memory efficiency compared to Apache Jena.
  */
 @Service
-class RdfService {
+class RdfService(
+    private val meterRegistry: MeterRegistry,
+) {
     private val logger = LoggerFactory.getLogger(RdfService::class.java)
 
     /**
@@ -109,10 +113,13 @@ class RdfService {
         expandUris: Boolean = false,
         resourceType: ResourceType? = null,
     ): String? {
+        val sample = Timer.start(meterRegistry)
+        val normalizedFrom = fromFormat.lowercase()
         val fromLang =
             mapFormatToLang(fromFormat)
                 ?: run {
                     logger.error("Unsupported source format: $fromFormat")
+                    recordConversion(sample, normalizedFrom, toFormat.name.lowercase(), "failure")
                     return null
                 }
 
@@ -122,10 +129,17 @@ class RdfService {
                 RDFDataMgr.read(model, inputStream, fromLang)
             }
 
-            // Use convertFromModel to handle prefixes and formatting
-            return convertFromModel(model, toFormat, style, expandUris, resourceType)
+            val result = doConvertFromModel(model, toFormat, style, expandUris, resourceType)
+            recordConversion(
+                sample,
+                normalizedFrom,
+                toFormat.name.lowercase(),
+                if (result != null) "success" else "failure",
+            )
+            return result
         } catch (e: Exception) {
             logger.error("Failed to parse graph data from format $fromFormat: ${e.message}", e)
+            recordConversion(sample, normalizedFrom, toFormat.name.lowercase(), "failure")
             return null
         } finally {
             model.close()
@@ -190,6 +204,30 @@ class RdfService {
         expandUris: Boolean = false,
         resourceType: ResourceType? = null,
     ): String? {
+        val sample = Timer.start(meterRegistry)
+        return try {
+            val result = doConvertFromModel(model, toFormat, style, expandUris, resourceType)
+            recordConversion(
+                sample,
+                "model",
+                toFormat.name.lowercase(),
+                if (result != null) "success" else "failure",
+            )
+            result
+        } catch (e: Exception) {
+            logger.error("Failed to convert model to format {}: {}", toFormat, e.message, e)
+            recordConversion(sample, "model", toFormat.name.lowercase(), "failure")
+            null
+        }
+    }
+
+    private fun doConvertFromModel(
+        model: org.apache.jena.rdf.model.Model,
+        toFormat: RdfFormat,
+        style: RdfFormatStyle,
+        expandUris: Boolean,
+        resourceType: ResourceType?,
+    ): String? {
         // For large models (like union graphs), we optimize by avoiding unnecessary copies.
         // We only create a copy if we need to modify namespace prefixes for a specific resource type.
         // For union graphs (resourceType == null), we can work directly on the model since
@@ -222,15 +260,29 @@ class RdfService {
                 }
 
             return handleSpecialCases(result, getRdfFormat(toFormat))
-        } catch (e: Exception) {
-            logger.error("Failed to convert model to format {}: {}", toFormat, e.message, e)
-            return null
         } finally {
             // Only close if we created a copy (the original model is closed by the caller)
             if (needsCopy) {
                 workingModel.close()
             }
         }
+    }
+
+    private fun recordConversion(
+        sample: Timer.Sample,
+        from: String,
+        to: String,
+        outcome: String,
+    ) {
+        sample.stop(
+            Timer
+                .builder("rdf_conversion_duration_seconds")
+                .description("Duration of RDF format conversion")
+                .tag("from", from)
+                .tag("to", to)
+                .tag("outcome", outcome)
+                .register(meterRegistry),
+        )
     }
 
     /**

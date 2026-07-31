@@ -1,5 +1,7 @@
 package no.fdk.resourceservice.config
 
+import io.micrometer.core.instrument.Gauge
+import io.micrometer.core.instrument.MeterRegistry
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -67,7 +69,7 @@ class UnionGraphConfig(
      */
     @Bean(name = ["unionGraphTaskExecutor", "taskExecutor"])
     @Primary
-    fun unionGraphTaskExecutor(): Executor {
+    fun unionGraphTaskExecutor(meterRegistry: MeterRegistry): Executor {
         val executor = ThreadPoolTaskExecutor()
         executor.corePoolSize = UNION_GRAPH_CORE_POOL_SIZE
         executor.maxPoolSize = UNION_GRAPH_MAX_POOL_SIZE
@@ -93,6 +95,29 @@ class UnionGraphConfig(
                 }
             }
         }
+
+        Gauge
+            .builder("union_graph_executor_active_threads", executor) { it.activeCount.toDouble() }
+            .description("Number of active threads in the union graph task executor")
+            .register(meterRegistry)
+        Gauge
+            .builder("union_graph_executor_pool_size", executor) { it.poolSize.toDouble() }
+            .description("Current pool size of the union graph task executor")
+            .register(meterRegistry)
+        Gauge
+            .builder("union_graph_executor_queue_size", executor) {
+                it.threadPoolExecutor.queue.size
+                    .toDouble()
+            }.description("Number of queued tasks in the union graph task executor")
+            .register(meterRegistry)
+        Gauge
+            .builder("union_graph_executor_queue_remaining", executor) {
+                it.threadPoolExecutor.queue
+                    .remainingCapacity()
+                    .toDouble()
+            }.description("Remaining queue capacity in the union graph task executor")
+            .register(meterRegistry)
+
         return executor
     }
 

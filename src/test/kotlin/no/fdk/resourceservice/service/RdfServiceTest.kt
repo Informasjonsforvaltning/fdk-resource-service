@@ -57,7 +57,11 @@ class RdfServiceTest {
     @BeforeEach
     fun setUp() {
         objectMapper = ObjectMapper()
-        rdfService = RdfService()
+        rdfService =
+            RdfService(
+                io.micrometer.core.instrument.simple
+                    .SimpleMeterRegistry(),
+            )
     }
 
     @Test

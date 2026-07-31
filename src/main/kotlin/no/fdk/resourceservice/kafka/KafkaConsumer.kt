@@ -13,6 +13,7 @@ import no.fdk.informationmodel.InformationModelEventType
 import no.fdk.rdf.parse.RdfParseEvent
 import no.fdk.rdf.parse.RdfParseResourceType
 import no.fdk.resourceservice.service.CircuitBreakerService
+import no.fdk.resourceservice.service.KafkaConsumerMetricsService
 import no.fdk.service.ServiceEvent
 import no.fdk.service.ServiceEventType
 import org.apache.avro.generic.GenericRecord
@@ -28,6 +29,7 @@ import java.time.Duration
 @Component
 class KafkaConsumer(
     private val circuitBreakerService: CircuitBreakerService,
+    private val kafkaConsumerMetricsService: KafkaConsumerMetricsService,
 ) {
     private val logger = LoggerFactory.getLogger(KafkaConsumer::class.java)
 
@@ -119,14 +121,17 @@ class KafkaConsumer(
             if (event != null) {
                 process(event)
                 acknowledgment.acknowledge()
+                kafkaConsumerMetricsService.recordOutcome(topic, KafkaConsumerMetricsService.Outcome.ACKED)
                 logger.debug("Successfully processed $receivedLabel, acknowledged")
             } else {
                 logger.warn("Could not extract $eventTypeName from message, acknowledging to skip")
                 acknowledgment.acknowledge()
+                kafkaConsumerMetricsService.recordOutcome(topic, KafkaConsumerMetricsService.Outcome.SKIPPED_INVALID)
             }
         } catch (e: Exception) {
             logger.error("Failed to process $receivedLabel", e)
             acknowledgment.nack(Duration.ZERO)
+            kafkaConsumerMetricsService.recordOutcome(topic, KafkaConsumerMetricsService.Outcome.NACKED)
         }
     }
 
