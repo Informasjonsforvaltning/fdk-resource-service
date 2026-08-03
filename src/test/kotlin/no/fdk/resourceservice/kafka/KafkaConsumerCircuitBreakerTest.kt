@@ -8,6 +8,7 @@ import no.fdk.informationmodel.InformationModelEvent
 import no.fdk.rdf.parse.RdfParseEvent
 import no.fdk.rdf.parse.RdfParseResourceType
 import no.fdk.resourceservice.service.CircuitBreakerService
+import no.fdk.resourceservice.service.KafkaConsumerMetricsService
 import no.fdk.service.ServiceEvent
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.junit.jupiter.api.BeforeEach
@@ -25,13 +26,16 @@ class KafkaConsumerCircuitBreakerTest {
     private lateinit var circuitBreakerService: CircuitBreakerService
 
     @Mock
+    private lateinit var kafkaConsumerMetricsService: KafkaConsumerMetricsService
+
+    @Mock
     private lateinit var acknowledgment: Acknowledgment
 
     private lateinit var kafkaConsumer: KafkaConsumer
 
     @BeforeEach
     fun setUp() {
-        kafkaConsumer = KafkaConsumer(circuitBreakerService)
+        kafkaConsumer = KafkaConsumer(circuitBreakerService, kafkaConsumerMetricsService)
     }
 
     @Test

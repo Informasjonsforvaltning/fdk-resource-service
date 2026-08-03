@@ -1,6 +1,7 @@
 package no.fdk.resourceservice.service
 
 import io.micrometer.core.instrument.Counter
+import io.micrometer.core.instrument.DistributionSummary
 import io.micrometer.core.instrument.Gauge
 import io.micrometer.core.instrument.MeterRegistry
 import io.micrometer.core.instrument.Timer
@@ -9,6 +10,7 @@ import no.fdk.resourceservice.repository.UnionGraphOrderRepository
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicLong
 
 /**
@@ -86,6 +88,18 @@ class UnionGraphMetricsService(
         Timer
             .builder("union_graph_webhook_call_duration_seconds")
             .description("Duration of webhook calls for union graph status updates")
+            .register(meterRegistry)
+
+    private val batchDurationTimer: Timer =
+        Timer
+            .builder("union_graph_batch_duration_seconds")
+            .description("Duration of union graph batch processing in seconds")
+            .register(meterRegistry)
+
+    private val snapshotBatchCharsSummary: DistributionSummary =
+        DistributionSummary
+            .builder("union_graph_snapshot_batch_chars")
+            .description("Total character length of resource graph snapshots saved in a union graph batch")
             .register(meterRegistry)
 
     // Gauges for order status counts (will be updated dynamically)
@@ -190,26 +204,40 @@ class UnionGraphMetricsService(
      * @param durationSeconds The processing duration in seconds
      */
     fun recordProcessingDuration(durationSeconds: Double) {
-        processingDurationTimer.record((durationSeconds * 1000).toLong(), java.util.concurrent.TimeUnit.MILLISECONDS)
+        processingDurationTimer.record((durationSeconds * 1000).toLong(), TimeUnit.MILLISECONDS)
     }
 
     /**
      * Record the duration of a webhook call.
      *
      * @param durationSeconds The webhook call duration in seconds
-     * @param success Whether the webhook call was successful
+     * @param status Status class: 2xx, 4xx, 5xx, timeout, or error
      */
     fun recordWebhookCall(
         durationSeconds: Double,
-        success: Boolean,
+        status: String,
     ) {
-        webhookCallTimer.record((durationSeconds * 1000).toLong(), java.util.concurrent.TimeUnit.MILLISECONDS)
+        webhookCallTimer.record((durationSeconds * 1000).toLong(), TimeUnit.MILLISECONDS)
         Counter
             .builder("union_graph_webhook_calls_total")
             .description("Total number of webhook calls for union graph status updates")
-            .tag("success", success.toString())
+            .tag("status", status)
             .register(meterRegistry)
             .increment()
+    }
+
+    /**
+     * Record the duration of a single union graph batch.
+     */
+    fun recordBatchDuration(durationSeconds: Double) {
+        batchDurationTimer.record((durationSeconds * 1000).toLong(), TimeUnit.MILLISECONDS)
+    }
+
+    /**
+     * Record the total character length of snapshots produced in a batch.
+     */
+    fun recordSnapshotBatchChars(totalChars: Long) {
+        snapshotBatchCharsSummary.record(totalChars.toDouble())
     }
 
     /**

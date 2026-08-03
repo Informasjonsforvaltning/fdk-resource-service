@@ -1,6 +1,8 @@
 package no.fdk.resourceservice.config
 
 import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry
+import io.github.resilience4j.micrometer.tagged.TaggedCircuitBreakerMetrics
+import io.micrometer.core.instrument.MeterRegistry
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import java.time.Duration
@@ -9,7 +11,7 @@ import io.github.resilience4j.circuitbreaker.CircuitBreakerConfig as Resilience4
 @Configuration
 class CircuitBreakerConfig {
     @Bean
-    fun circuitBreakerRegistry(): CircuitBreakerRegistry {
+    fun circuitBreakerRegistry(meterRegistry: MeterRegistry): CircuitBreakerRegistry {
         val defaultConfig =
             Resilience4jConfig
                 .custom()
@@ -24,6 +26,12 @@ class CircuitBreakerConfig {
                 .slowCallDurationThreshold(Duration.ofSeconds(5))
                 .build()
 
-        return CircuitBreakerRegistry.of(defaultConfig)
+        val registry = CircuitBreakerRegistry.of(defaultConfig)
+
+        TaggedCircuitBreakerMetrics
+            .ofCircuitBreakerRegistry(registry)
+            .bindTo(meterRegistry)
+
+        return registry
     }
 }

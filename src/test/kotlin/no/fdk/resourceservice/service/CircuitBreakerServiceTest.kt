@@ -40,7 +40,15 @@ class CircuitBreakerServiceTest {
     fun setUp() {
         clearAllMocks()
         circuitBreakerService =
-            CircuitBreakerService(resourceService, rdfService, harvestEventProducer, circuitBreakerRegistry, jacksonObjectMapper())
+            CircuitBreakerService(
+                resourceService,
+                rdfService,
+                harvestEventProducer,
+                circuitBreakerRegistry,
+                jacksonObjectMapper(),
+                mockk(relaxed = true),
+                mockk(relaxed = true),
+            )
 
         // Mock ResourceService methods with relaxed mocking
         every { resourceService.shouldUpdateResource(any(), any()) } returns true // Default: allow updates

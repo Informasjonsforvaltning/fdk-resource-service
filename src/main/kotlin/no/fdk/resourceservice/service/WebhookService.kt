@@ -5,9 +5,11 @@ import no.fdk.resourceservice.model.UnionGraphOrder
 import org.slf4j.LoggerFactory
 import org.springframework.http.HttpEntity
 import org.springframework.http.HttpHeaders
+import org.springframework.http.HttpStatusCode
 import org.springframework.http.MediaType
 import org.springframework.scheduling.annotation.Async
 import org.springframework.stereotype.Service
+import org.springframework.web.client.HttpStatusCodeException
 import org.springframework.web.client.ResourceAccessException
 import org.springframework.web.client.RestClientException
 import org.springframework.web.client.RestTemplate
@@ -20,6 +22,7 @@ import java.util.concurrent.CompletableFuture
 class WebhookService(
     private val restTemplate: RestTemplate,
     private val objectMapper: ObjectMapper,
+    private val metricsService: UnionGraphMetricsService,
 ) {
     private val logger = LoggerFactory.getLogger(WebhookService::class.java)
 
@@ -38,6 +41,10 @@ class WebhookService(
         if (webhookUrl.isNullOrBlank()) {
             return CompletableFuture.completedFuture(null)
         }
+
+        val started = System.nanoTime()
+
+        fun elapsedSeconds() = (System.nanoTime() - started) / 1_000_000_000.0
 
         return try {
             logger.info(
@@ -70,6 +77,8 @@ class WebhookService(
                 )
 
             val response = restTemplate.postForEntity(webhookUrl, request, String::class.java)
+            metricsService.recordWebhookCall(elapsedSeconds(), status = statusClass(response.statusCode))
+
             logger.info(
                 "Successfully called webhook for order {}: HTTP {}",
                 order.id,
@@ -77,18 +86,33 @@ class WebhookService(
             )
             CompletableFuture.completedFuture(null)
         } catch (e: ResourceAccessException) {
+            metricsService.recordWebhookCall(elapsedSeconds(), status = "timeout")
             logger.error(
                 "Failed to call webhook for order {} (connection error): {}",
                 order.id,
                 e.message,
             )
             CompletableFuture.completedFuture(null)
+        } catch (e: HttpStatusCodeException) {
+            metricsService.recordWebhookCall(elapsedSeconds(), status = statusClass(e.statusCode))
+            logger.error("Failed to call webhook for order {}: {}", order.id, e.message)
+            CompletableFuture.completedFuture(null)
         } catch (e: RestClientException) {
+            metricsService.recordWebhookCall(elapsedSeconds(), status = "error")
             logger.error("Failed to call webhook for order {}: {}", order.id, e.message)
             CompletableFuture.completedFuture(null)
         } catch (e: Exception) {
+            metricsService.recordWebhookCall(elapsedSeconds(), status = "error")
             logger.error("Unexpected error calling webhook for order {}: {}", order.id, e.message, e)
             CompletableFuture.completedFuture(null)
         }
     }
+
+    private fun statusClass(statusCode: HttpStatusCode): String =
+        when {
+            statusCode.is2xxSuccessful -> "2xx"
+            statusCode.is4xxClientError -> "4xx"
+            statusCode.is5xxServerError -> "5xx"
+            else -> "error"
+        }
 }

@@ -7,6 +7,7 @@ import no.fdk.dataset.DatasetEventType
 import no.fdk.rdf.parse.RdfParseEvent
 import no.fdk.rdf.parse.RdfParseResourceType
 import no.fdk.resourceservice.service.CircuitBreakerService
+import no.fdk.resourceservice.service.KafkaConsumerMetricsService
 import org.apache.avro.generic.GenericData
 import org.apache.avro.generic.GenericRecord
 import org.apache.kafka.clients.consumer.ConsumerRecord
@@ -30,13 +31,16 @@ class KafkaConsumerGenericRecordTest {
     private lateinit var circuitBreakerService: CircuitBreakerService
 
     @Mock
+    private lateinit var kafkaConsumerMetricsService: KafkaConsumerMetricsService
+
+    @Mock
     private lateinit var acknowledgment: Acknowledgment
 
     private lateinit var kafkaConsumer: KafkaConsumer
 
     @BeforeEach
     fun setUp() {
-        kafkaConsumer = KafkaConsumer(circuitBreakerService)
+        kafkaConsumer = KafkaConsumer(circuitBreakerService, kafkaConsumerMetricsService)
     }
 
     @Test
