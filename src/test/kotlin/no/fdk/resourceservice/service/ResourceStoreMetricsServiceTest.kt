@@ -17,17 +17,26 @@ class ResourceStoreMetricsServiceTest {
     }
 
     @Test
-    fun `recordStored increments counter with type and action tags`() {
-        metricsService.recordStored(ResourceType.DATASET)
-        metricsService.recordStored(ResourceType.DATASET)
-        metricsService.recordStored(ResourceType.CONCEPT)
+    fun `recordStored increments counter with type and kind tags`() {
+        metricsService.recordStored(ResourceType.DATASET, ResourceStoreMetricsService.StoreKind.JSON)
+        metricsService.recordStored(ResourceType.DATASET, ResourceStoreMetricsService.StoreKind.GRAPH)
+        metricsService.recordStored(ResourceType.CONCEPT, ResourceStoreMetricsService.StoreKind.JSON)
 
         assertEquals(
-            2.0,
+            1.0,
             meterRegistry
                 .find("resources_stored_total")
                 .tag("type", "dataset")
-                .tag("action", "reasoned")
+                .tag("kind", "json")
+                .counter()
+                ?.count(),
+        )
+        assertEquals(
+            1.0,
+            meterRegistry
+                .find("resources_stored_total")
+                .tag("type", "dataset")
+                .tag("kind", "graph")
                 .counter()
                 ?.count(),
         )
@@ -36,7 +45,7 @@ class ResourceStoreMetricsServiceTest {
             meterRegistry
                 .find("resources_stored_total")
                 .tag("type", "concept")
-                .tag("action", "reasoned")
+                .tag("kind", "json")
                 .counter()
                 ?.count(),
         )

@@ -12,12 +12,22 @@ import org.springframework.stereotype.Service
 class ResourceStoreMetricsService(
     private val meterRegistry: MeterRegistry,
 ) {
-    fun recordStored(resourceType: ResourceType) {
+    enum class StoreKind(
+        val value: String,
+    ) {
+        JSON("json"),
+        GRAPH("graph"),
+    }
+
+    fun recordStored(
+        resourceType: ResourceType,
+        kind: StoreKind,
+    ) {
         Counter
             .builder("resources_stored_total")
             .description("Total number of resources stored successfully")
             .tag("type", resourceType.name.lowercase())
-            .tag("action", "reasoned")
+            .tag("kind", kind.value)
             .register(meterRegistry)
             .increment()
     }

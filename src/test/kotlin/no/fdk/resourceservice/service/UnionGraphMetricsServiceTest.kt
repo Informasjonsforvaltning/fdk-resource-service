@@ -88,9 +88,9 @@ class UnionGraphMetricsServiceTest {
     }
 
     @Test
-    fun `recordWebhookCall records timer and success counter`() {
-        metricsService.recordWebhookCall(0.5, true, "2xx")
-        metricsService.recordWebhookCall(0.3, false, "timeout")
+    fun `recordWebhookCall records timer and status counter`() {
+        metricsService.recordWebhookCall(0.5, "2xx")
+        metricsService.recordWebhookCall(0.3, "timeout")
 
         val webhookTimer = meterRegistry.find("union_graph_webhook_call_duration_seconds").timer()
         assertEquals(2, webhookTimer?.count())
@@ -99,7 +99,6 @@ class UnionGraphMetricsServiceTest {
             1.0,
             meterRegistry
                 .find("union_graph_webhook_calls_total")
-                .tag("success", "true")
                 .tag("status", "2xx")
                 .counter()
                 ?.count(),
@@ -108,7 +107,6 @@ class UnionGraphMetricsServiceTest {
             1.0,
             meterRegistry
                 .find("union_graph_webhook_calls_total")
-                .tag("success", "false")
                 .tag("status", "timeout")
                 .counter()
                 ?.count(),
@@ -124,11 +122,12 @@ class UnionGraphMetricsServiceTest {
     }
 
     @Test
-    fun `recordSnapshotBytes records distribution summary`() {
-        metricsService.recordSnapshotBytes(1000)
-        metricsService.recordSnapshotBytes(500)
-        val summary = meterRegistry.find("union_graph_snapshot_bytes").summary()
-        assertEquals(2, summary?.count())
+    fun `recordSnapshotBatchChars records distribution summary`() {
+        metricsService.recordSnapshotBatchChars(1000)
+        metricsService.recordSnapshotBatchChars(500)
+        metricsService.recordSnapshotBatchChars(0)
+        val summary = meterRegistry.find("union_graph_snapshot_batch_chars").summary()
+        assertEquals(3, summary?.count())
         assertEquals(1500.0, summary?.totalAmount())
     }
 

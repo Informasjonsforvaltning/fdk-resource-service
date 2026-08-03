@@ -95,7 +95,7 @@ class CircuitBreakerService(
                     measureTimedValue {
                         if (!resourceService.shouldUpdateResource(event.fdkId, event.timestamp)) {
                             logger.info("Skipped (older timestamp): id=${event.fdkId}, type=$resourceType")
-                            kafkaConsumerMetricsService.recordSkippedStaleTimestamp(resourceType.name)
+                            kafkaConsumerMetricsService.recordSkippedStaleTimestamp(resourceType)
                             return@measureTimedValue
                         }
 
@@ -126,7 +126,10 @@ class CircuitBreakerService(
                             resourceJson = resourceJson,
                             timestamp = event.timestamp,
                         )
-                        resourceStoreMetricsService.recordStored(resourceType)
+                        resourceStoreMetricsService.recordStored(
+                            resourceType,
+                            ResourceStoreMetricsService.StoreKind.JSON,
+                        )
 
                         val endTime = System.currentTimeMillis()
                         harvestEventProducer.produceResourceFinishedEvent(
@@ -373,7 +376,7 @@ class CircuitBreakerService(
             "REASONED" -> {
                 if (!resourceService.shouldUpdateResource(fdkId, timestamp)) {
                     logger.info("Skipped (older timestamp): id=$fdkId, type=$resourceType")
-                    kafkaConsumerMetricsService.recordSkippedStaleTimestamp(resourceType.name)
+                    kafkaConsumerMetricsService.recordSkippedStaleTimestamp(resourceType)
                     return
                 }
 
@@ -409,7 +412,10 @@ class CircuitBreakerService(
                     resourceService.clearCatalogGraphData(fdkId)
                 }
 
-                resourceStoreMetricsService.recordStored(resourceType)
+                resourceStoreMetricsService.recordStored(
+                    resourceType,
+                    ResourceStoreMetricsService.StoreKind.GRAPH,
+                )
                 logger.debug("Storage called: id=$fdkId, type=$resourceType")
 
                 val endTime = System.currentTimeMillis()

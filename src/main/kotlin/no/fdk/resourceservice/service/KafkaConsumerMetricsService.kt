@@ -2,6 +2,7 @@ package no.fdk.resourceservice.service
 
 import io.micrometer.core.instrument.Counter
 import io.micrometer.core.instrument.MeterRegistry
+import no.fdk.resourceservice.model.ResourceType
 import org.springframework.stereotype.Service
 
 /**
@@ -17,7 +18,6 @@ class KafkaConsumerMetricsService(
         ACKED("acked"),
         NACKED("nacked"),
         SKIPPED_INVALID("skipped_invalid"),
-        SKIPPED_STALE_TIMESTAMP("skipped_stale_timestamp"),
     }
 
     /**
@@ -37,9 +37,15 @@ class KafkaConsumerMetricsService(
     }
 
     /**
-     * Record a skip due to an older event timestamp..
+     * Record a skip due to an older event timestamp.
      */
-    fun recordSkippedStaleTimestamp(resourceType: String) {
-        recordOutcome(resourceType.lowercase(), Outcome.SKIPPED_STALE_TIMESTAMP)
+    fun recordSkippedStaleTimestamp(resourceType: ResourceType) {
+        Counter
+            .builder("resource_events_skipped_total")
+            .description("Resource events skipped without processing")
+            .tag("type", resourceType.name.lowercase())
+            .tag("reason", "stale_timestamp")
+            .register(meterRegistry)
+            .increment()
     }
 }

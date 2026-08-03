@@ -1,6 +1,7 @@
 package no.fdk.resourceservice.service
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry
+import no.fdk.resourceservice.model.ResourceType
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -42,15 +43,15 @@ class KafkaConsumerMetricsServiceTest {
     }
 
     @Test
-    fun `recordSkippedStaleTimestamp uses resource type as topic tag`() {
-        metricsService.recordSkippedStaleTimestamp("DATASET")
+    fun `recordSkippedStaleTimestamp uses type and reason tags`() {
+        metricsService.recordSkippedStaleTimestamp(ResourceType.DATASET)
 
         assertEquals(
             1.0,
             meterRegistry
-                .find("kafka_consumer_events_total")
-                .tag("topic", "dataset")
-                .tag("outcome", "skipped_stale_timestamp")
+                .find("resource_events_skipped_total")
+                .tag("type", "dataset")
+                .tag("reason", "stale_timestamp")
                 .counter()
                 ?.count(),
         )

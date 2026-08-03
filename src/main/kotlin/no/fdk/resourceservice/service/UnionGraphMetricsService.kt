@@ -96,11 +96,10 @@ class UnionGraphMetricsService(
             .description("Duration of union graph batch processing in seconds")
             .register(meterRegistry)
 
-    private val snapshotBytesSummary: DistributionSummary =
+    private val snapshotBatchCharsSummary: DistributionSummary =
         DistributionSummary
-            .builder("union_graph_snapshot_bytes")
-            .description("Size in bytes of resource graph snapshots created during union graph building")
-            .baseUnit("bytes")
+            .builder("union_graph_snapshot_batch_chars")
+            .description("Total character length of resource graph snapshots saved in a union graph batch")
             .register(meterRegistry)
 
     // Gauges for order status counts (will be updated dynamically)
@@ -212,19 +211,16 @@ class UnionGraphMetricsService(
      * Record the duration of a webhook call.
      *
      * @param durationSeconds The webhook call duration in seconds
-     * @param success Whether the webhook call was successful
      * @param status Status class: 2xx, 4xx, 5xx, timeout, or error
      */
     fun recordWebhookCall(
         durationSeconds: Double,
-        success: Boolean,
-        status: String = if (success) "2xx" else "error",
+        status: String,
     ) {
         webhookCallTimer.record((durationSeconds * 1000).toLong(), TimeUnit.MILLISECONDS)
         Counter
             .builder("union_graph_webhook_calls_total")
             .description("Total number of webhook calls for union graph status updates")
-            .tag("success", success.toString())
             .tag("status", status)
             .register(meterRegistry)
             .increment()
@@ -238,12 +234,10 @@ class UnionGraphMetricsService(
     }
 
     /**
-     * Record the total byte size of snapshots produced in a batch.
+     * Record the total character length of snapshots produced in a batch.
      */
-    fun recordSnapshotBytes(totalBytes: Long) {
-        if (totalBytes > 0) {
-            snapshotBytesSummary.record(totalBytes.toDouble())
-        }
+    fun recordSnapshotBatchChars(totalChars: Long) {
+        snapshotBatchCharsSummary.record(totalChars.toDouble())
     }
 
     /**

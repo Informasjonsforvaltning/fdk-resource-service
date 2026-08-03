@@ -296,7 +296,7 @@ class UnionGraphBatchProcessor(
                 logger.info("Saving {} snapshots for order {}", snapshotsToSave.size, orderId)
                 unionGraphResourceSnapshotRepository.saveAll(snapshotsToSave)
                 logger.info("Saved {} snapshots for order {}", snapshotsToSave.size, orderId)
-                metricsService.recordSnapshotBytes(
+                metricsService.recordSnapshotBatchChars(
                     snapshotsToSave.sumOf { it.resourceGraphData.length.toLong() },
                 )
             }
