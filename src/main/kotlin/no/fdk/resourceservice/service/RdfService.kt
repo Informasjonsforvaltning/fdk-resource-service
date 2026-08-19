@@ -23,18 +23,13 @@ import org.apache.jena.rdf.model.ModelFactory as JenaModelFactory
  * Uses Eclipse RDF4J for better performance and memory efficiency compared to Apache Jena.
  */
 @Service
-class RdfService(
-    private val meterRegistry: MeterRegistry,
-) {
+class RdfService(private val meterRegistry: MeterRegistry) {
     private val logger = LoggerFactory.getLogger(RdfService::class.java)
 
     /**
      * Supported RDF formats and their corresponding media types.
      */
-    enum class RdfFormat(
-        val mediaType: MediaType,
-        val fileExtension: String,
-    ) {
+    enum class RdfFormat(val mediaType: MediaType, val fileExtension: String) {
         JSON_LD(MediaType("application", "ld+json"), "jsonld"),
         TURTLE(MediaType("text", "turtle"), "ttl"),
         RDF_XML(MediaType("application", "rdf+xml"), "rdf"),
@@ -268,12 +263,7 @@ class RdfService(
         }
     }
 
-    private fun recordConversion(
-        sample: Timer.Sample,
-        from: String,
-        to: String,
-        outcome: String,
-    ) {
+    private fun recordConversion(sample: Timer.Sample, from: String, to: String, outcome: String) {
         sample.stop(
             Timer
                 .builder("rdf_conversion_duration_seconds")
@@ -293,42 +283,35 @@ class RdfService(
      * @param toFormat The target RDF format
      * @return The converted RDF data as a String, or null if conversion failed
      */
-    fun convertFromModelForUnionGraph(
-        model: org.apache.jena.rdf.model.Model,
-        toFormat: RdfFormat,
-    ): String? = convertFromModel(model, toFormat, RdfFormatStyle.STANDARD, expandUris = false, resourceType = null)
+    fun convertFromModelForUnionGraph(model: org.apache.jena.rdf.model.Model, toFormat: RdfFormat): String? =
+        convertFromModel(model, toFormat, RdfFormatStyle.STANDARD, expandUris = false, resourceType = null)
 
     /**
      * Maps format and style enums to RDFFormat enum.
      */
-    private fun getRdfFormat(format: RdfFormat): RDFFormat =
-        when (format) {
-            RdfFormat.TURTLE -> RDFFormat.TURTLE
-            RdfFormat.RDF_XML -> RDFFormat.RDFXML
-            RdfFormat.N_TRIPLES -> RDFFormat.NTRIPLES
-            RdfFormat.N_QUADS -> RDFFormat.NQUADS
-            RdfFormat.JSON_LD -> RDFFormat.JSONLD
-        }
+    private fun getRdfFormat(format: RdfFormat): RDFFormat = when (format) {
+        RdfFormat.TURTLE -> RDFFormat.TURTLE
+        RdfFormat.RDF_XML -> RDFFormat.RDFXML
+        RdfFormat.N_TRIPLES -> RDFFormat.NTRIPLES
+        RdfFormat.N_QUADS -> RDFFormat.NQUADS
+        RdfFormat.JSON_LD -> RDFFormat.JSONLD
+    }
 
     /**
      * Maps RdfFormat to Jena Lang for RDFDataMgr.write.
      */
-    private fun getJenaLang(format: RdfFormat): Lang =
-        when (format) {
-            RdfFormat.TURTLE -> Lang.TURTLE
-            RdfFormat.RDF_XML -> Lang.RDFXML
-            RdfFormat.N_TRIPLES -> Lang.NTRIPLES
-            RdfFormat.N_QUADS -> Lang.NQUADS
-            RdfFormat.JSON_LD -> Lang.JSONLD
-        }
+    private fun getJenaLang(format: RdfFormat): Lang = when (format) {
+        RdfFormat.TURTLE -> Lang.TURTLE
+        RdfFormat.RDF_XML -> Lang.RDFXML
+        RdfFormat.N_TRIPLES -> Lang.NTRIPLES
+        RdfFormat.N_QUADS -> Lang.NQUADS
+        RdfFormat.JSON_LD -> Lang.JSONLD
+    }
 
     /**
      * Adds resource-type-specific prefixes to a Jena model.
      */
-    private fun addPrefixesForResourceTypeJena(
-        model: org.apache.jena.rdf.model.Model,
-        resourceType: ResourceType?,
-    ) {
+    private fun addPrefixesForResourceTypeJena(model: org.apache.jena.rdf.model.Model, resourceType: ResourceType?) {
         when (resourceType) {
             ResourceType.DATASET -> addDatasetPrefixesJena(model)
             ResourceType.DATA_SERVICE -> addDataServicePrefixesJena(model)
@@ -432,10 +415,7 @@ class RdfService(
      * @param model The RDF model to add prefixes to
      * @param resourceType The resource type, or null for common prefixes
      */
-    private fun addPrefixesForResourceType(
-        model: Model,
-        resourceType: ResourceType?,
-    ) {
+    private fun addPrefixesForResourceType(model: Model, resourceType: ResourceType?) {
         when (resourceType) {
             ResourceType.DATASET -> addDatasetPrefixes(model)
             ResourceType.DATA_SERVICE -> addDataServicePrefixes(model)
@@ -640,21 +620,17 @@ class RdfService(
     /**
      * Handles special cases like XML declarations for RDF/XML.
      */
-    private fun handleSpecialCases(
-        result: String,
-        rdfFormat: RDFFormat,
-    ): String =
-        when {
-            rdfFormat == RDFFormat.RDFXML -> {
-                if (!result.startsWith("<?xml")) {
-                    "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n$result"
-                } else {
-                    result
-                }
-            }
-
-            else -> {
+    private fun handleSpecialCases(result: String, rdfFormat: RDFFormat): String = when {
+        rdfFormat == RDFFormat.RDFXML -> {
+            if (!result.startsWith("<?xml")) {
+                "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n$result"
+            } else {
                 result
             }
         }
+
+        else -> {
+            result
+        }
+    }
 }

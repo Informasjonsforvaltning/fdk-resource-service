@@ -43,10 +43,7 @@ class UnionGraphBatchProcessor(
      * @param instanceId The identifier of the instance processing this union graph.
      */
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
-    fun processOrder(
-        order: UnionGraphOrder,
-        instanceId: String,
-    ) {
+    fun processOrder(order: UnionGraphOrder, instanceId: String) {
         logger.info("Processing union graph order {} by instance {}", order.id, instanceId)
 
         try {
@@ -371,10 +368,7 @@ class UnionGraphBatchProcessor(
      * Updates the processing state in the database.
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    private fun updateProcessingState(
-        orderId: String,
-        state: UnionGraphProcessingState,
-    ) {
+    private fun updateProcessingState(orderId: String, state: UnionGraphProcessingState) {
         try {
             val stateJson = objectMapper.writeValueAsString(state)
             unionGraphOrderRepository.updateProcessingState(orderId, stateJson)

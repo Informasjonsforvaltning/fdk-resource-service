@@ -29,10 +29,7 @@ import org.springframework.web.bind.annotation.RestController
 @RestController
 @RequestMapping("/v1/resources")
 @Tag(name = "Resources", description = "API for retrieving resources across all types")
-class ResourceController(
-    resourceService: ResourceService,
-    rdfService: RdfService,
-) : BaseController(resourceService, rdfService) {
+class ResourceController(resourceService: ResourceService, rdfService: RdfService) : BaseController(resourceService, rdfService) {
     @GetMapping("/by-uri")
     @Operation(
         summary = "Get resource by URI",
@@ -81,8 +78,8 @@ class ResourceController(
     @Operation(
         summary = "Get resource graph by URI",
         description =
-            "Retrieve the RDF graph representation of a specific resource by its URI across all resource types. " +
-                "Supports content negotiation for multiple RDF formats (JSON-LD, Turtle, RDF/XML, N-Triples, N-Quads).",
+        "Retrieve the RDF graph representation of a specific resource by its URI across all resource types. " +
+            "Supports content negotiation for multiple RDF formats (JSON-LD, Turtle, RDF/XML, N-Triples, N-Quads).",
     )
     @ApiResponses(
         value = [
@@ -112,8 +109,8 @@ class ResourceController(
         @RequestParam uri: String,
         @Parameter(
             description =
-                "Accept header for content negotiation: application/ld+json, text/turtle, " +
-                    "application/rdf+xml, application/n-triples, application/n-quads",
+            "Accept header for content negotiation: application/ld+json, text/turtle, " +
+                "application/rdf+xml, application/n-triples, application/n-quads",
             hidden = true,
         )
         @RequestHeader(HttpHeaders.ACCEPT, required = false) acceptHeader: String?,

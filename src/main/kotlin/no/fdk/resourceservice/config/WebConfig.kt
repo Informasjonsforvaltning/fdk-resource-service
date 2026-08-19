@@ -14,11 +14,7 @@ class WebConfig : WebMvcConfigurer {
     }
 
     class CacheControlInterceptor : HandlerInterceptor {
-        override fun preHandle(
-            request: HttpServletRequest,
-            response: HttpServletResponse,
-            handler: Any,
-        ): Boolean {
+        override fun preHandle(request: HttpServletRequest, response: HttpServletResponse, handler: Any): Boolean {
             // Set cache control headers for all API responses
             response.setHeader("Cache-Control", "no-cache, no-store, must-revalidate")
             response.setHeader("Pragma", "no-cache")

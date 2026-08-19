@@ -168,13 +168,7 @@ class KafkaConsumerGenericRecordTest {
         return record
     }
 
-    private fun datasetGenericRecord(
-        fdkId: String,
-        type: String,
-        graph: String,
-        catalogGraph: String?,
-        timestamp: Long,
-    ): GenericRecord {
+    private fun datasetGenericRecord(fdkId: String, type: String, graph: String, catalogGraph: String?, timestamp: Long): GenericRecord {
         val schema = DatasetEvent.getClassSchema()
         val record = GenericData.Record(schema)
         record.put("type", enumSymbol(schema, "type", type))
@@ -204,9 +198,6 @@ class KafkaConsumerGenericRecordTest {
         return record
     }
 
-    private fun enumSymbol(
-        schema: org.apache.avro.Schema,
-        fieldName: String,
-        symbol: String,
-    ): GenericData.EnumSymbol = GenericData.EnumSymbol(schema.getField(fieldName).schema(), symbol)
+    private fun enumSymbol(schema: org.apache.avro.Schema, fieldName: String, symbol: String): GenericData.EnumSymbol =
+        GenericData.EnumSymbol(schema.getField(fieldName).schema(), symbol)
 }

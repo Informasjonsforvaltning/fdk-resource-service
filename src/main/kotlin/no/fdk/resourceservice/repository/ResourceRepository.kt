@@ -26,10 +26,7 @@ interface ResourceRepository : JpaRepository<ResourceEntity, String> {
     """,
         nativeQuery = true,
     )
-    fun findByResourceTypeAndUri(
-        @Param("resourceType") resourceType: String,
-        @Param("uri") uri: String,
-    ): ResourceEntity?
+    fun findByResourceTypeAndUri(@Param("resourceType") resourceType: String, @Param("uri") uri: String): ResourceEntity?
 
     @Query(
         value = """
@@ -42,10 +39,7 @@ interface ResourceRepository : JpaRepository<ResourceEntity, String> {
     """,
         nativeQuery = true,
     )
-    fun findByResourceTypeAndUriAndDeletedFalse(
-        @Param("resourceType") resourceType: String,
-        @Param("uri") uri: String,
-    ): ResourceEntity?
+    fun findByResourceTypeAndUriAndDeletedFalse(@Param("resourceType") resourceType: String, @Param("uri") uri: String): ResourceEntity?
 
     @Modifying
     @Transactional
@@ -74,10 +68,7 @@ interface ResourceRepository : JpaRepository<ResourceEntity, String> {
     """,
         nativeQuery = true,
     )
-    fun markAsDeleted(
-        @Param("id") id: String,
-        @Param("timestamp") timestamp: Long,
-    ): Int
+    fun markAsDeleted(@Param("id") id: String, @Param("timestamp") timestamp: Long): Int
 
     @Modifying
     @Transactional
@@ -133,9 +124,7 @@ interface ResourceRepository : JpaRepository<ResourceEntity, String> {
     """,
         nativeQuery = true,
     )
-    fun clearCatalogGraphData(
-        @Param("id") id: String,
-    ): Int
+    fun clearCatalogGraphData(@Param("id") id: String): Int
 
     @Query(
         value = """
@@ -146,9 +135,7 @@ interface ResourceRepository : JpaRepository<ResourceEntity, String> {
     """,
         nativeQuery = true,
     )
-    fun findByUri(
-        @Param("uri") uri: String,
-    ): ResourceEntity?
+    fun findByUri(@Param("uri") uri: String): ResourceEntity?
 
     @Query(
         value = """
@@ -159,9 +146,7 @@ interface ResourceRepository : JpaRepository<ResourceEntity, String> {
     """,
         nativeQuery = true,
     )
-    fun findByUriInJson(
-        @Param("uri") uri: String,
-    ): ResourceEntity?
+    fun findByUriInJson(@Param("uri") uri: String): ResourceEntity?
 
     @Query(
         value = """
@@ -173,9 +158,7 @@ interface ResourceRepository : JpaRepository<ResourceEntity, String> {
     """,
         nativeQuery = true,
     )
-    fun findConceptByIdentifier(
-        @Param("uri") uri: String,
-    ): ResourceEntity?
+    fun findConceptByIdentifier(@Param("uri") uri: String): ResourceEntity?
 
     @Query(
         value = """
@@ -187,9 +170,7 @@ interface ResourceRepository : JpaRepository<ResourceEntity, String> {
     """,
         nativeQuery = true,
     )
-    fun findByUriAndDeletedFalse(
-        @Param("uri") uri: String,
-    ): ResourceEntity?
+    fun findByUriAndDeletedFalse(@Param("uri") uri: String): ResourceEntity?
 
     @Query(
         """
@@ -199,10 +180,7 @@ interface ResourceRepository : JpaRepository<ResourceEntity, String> {
         ORDER BY r.timestamp DESC
     """,
     )
-    fun findResourcesSince(
-        @Param("resourceType") resourceType: String,
-        @Param("since") since: Long,
-    ): List<ResourceEntity>
+    fun findResourcesSince(@Param("resourceType") resourceType: String, @Param("since") since: Long): List<ResourceEntity>
 
     @Query(
         value = """
@@ -212,9 +190,7 @@ interface ResourceRepository : JpaRepository<ResourceEntity, String> {
     """,
         nativeQuery = true,
     )
-    fun findTimestampById(
-        @Param("id") id: String,
-    ): Long?
+    fun findTimestampById(@Param("id") id: String): Long?
 
     /**
      * Finds resources by type with pagination for memory-efficient processing.
@@ -293,9 +269,7 @@ interface ResourceRepository : JpaRepository<ResourceEntity, String> {
     """,
         nativeQuery = true,
     )
-    fun countByResourceTypeAndDeletedFalse(
-        @Param("resourceType") resourceType: String,
-    ): Long
+    fun countByResourceTypeAndDeletedFalse(@Param("resourceType") resourceType: String): Long
 
     @Query(
         value = """

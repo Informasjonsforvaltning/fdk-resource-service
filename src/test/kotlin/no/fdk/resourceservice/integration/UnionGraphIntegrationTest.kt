@@ -240,10 +240,10 @@ class UnionGraphIntegrationTest : BaseIntegrationTest() {
         val filters =
             UnionGraphResourceFilters(
                 dataset =
-                    UnionGraphResourceFilters.DatasetFilters(
-                        isOpenData = true, // Filter that likely won't match existing test data
-                        isRelatedToTransportportal = true, // Additional filter to ensure no match
-                    ),
+                UnionGraphResourceFilters.DatasetFilters(
+                    isOpenData = true, // Filter that likely won't match existing test data
+                    isRelatedToTransportportal = true, // Additional filter to ensure no match
+                ),
             )
 
         // Create order in a transaction that commits (simulating controller)
@@ -948,10 +948,10 @@ class UnionGraphIntegrationTest : BaseIntegrationTest() {
         val filters =
             no.fdk.resourceservice.model.UnionGraphResourceFilters(
                 dataset =
-                    no.fdk.resourceservice.model.UnionGraphResourceFilters.DatasetFilters(
-                        isOpenData = true,
-                        isRelatedToTransportportal = false,
-                    ),
+                no.fdk.resourceservice.model.UnionGraphResourceFilters.DatasetFilters(
+                    isOpenData = true,
+                    isRelatedToTransportportal = false,
+                ),
             )
 
         // When
@@ -1903,9 +1903,9 @@ class UnionGraphIntegrationTest : BaseIntegrationTest() {
             unionGraphService.buildUnionGraph(
                 listOf(ResourceType.DATASET),
                 resourceFilters =
-                    UnionGraphResourceFilters(
-                        dataset = UnionGraphResourceFilters.DatasetFilters(isDatasetSeries = true),
-                    ),
+                UnionGraphResourceFilters(
+                    dataset = UnionGraphResourceFilters.DatasetFilters(isDatasetSeries = true),
+                ),
                 orderId = orderId,
             )
 
@@ -2009,9 +2009,9 @@ class UnionGraphIntegrationTest : BaseIntegrationTest() {
             unionGraphService.buildUnionGraph(
                 listOf(ResourceType.DATASET),
                 resourceFilters =
-                    UnionGraphResourceFilters(
-                        dataset = UnionGraphResourceFilters.DatasetFilters(isDatasetSeries = false),
-                    ),
+                UnionGraphResourceFilters(
+                    dataset = UnionGraphResourceFilters.DatasetFilters(isDatasetSeries = false),
+                ),
                 orderId = orderId,
             )
 
@@ -2111,9 +2111,9 @@ class UnionGraphIntegrationTest : BaseIntegrationTest() {
             unionGraphService.buildUnionGraph(
                 listOf(ResourceType.DATASET),
                 resourceFilters =
-                    UnionGraphResourceFilters(
-                        dataset = UnionGraphResourceFilters.DatasetFilters(isDatasetSeries = null),
-                    ),
+                UnionGraphResourceFilters(
+                    dataset = UnionGraphResourceFilters.DatasetFilters(isDatasetSeries = null),
+                ),
                 orderId = orderId,
             )
 
@@ -2199,9 +2199,9 @@ class UnionGraphIntegrationTest : BaseIntegrationTest() {
             unionGraphService.buildUnionGraph(
                 listOf(ResourceType.DATASET),
                 resourceFilters =
-                    UnionGraphResourceFilters(
-                        dataset = UnionGraphResourceFilters.DatasetFilters(isDatasetSeries = true),
-                    ),
+                UnionGraphResourceFilters(
+                    dataset = UnionGraphResourceFilters.DatasetFilters(isDatasetSeries = true),
+                ),
                 orderId = orderId,
             )
 

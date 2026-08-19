@@ -18,10 +18,7 @@ import org.springframework.web.bind.annotation.RequestHeader
  * - RDF graph requests with content negotiation
  * - Consistent error handling and response formatting
  */
-abstract class BaseController(
-    protected val resourceService: ResourceService,
-    protected val rdfService: RdfService,
-) {
+abstract class BaseController(protected val resourceService: ResourceService, protected val rdfService: RdfService) {
     protected val logger = LoggerFactory.getLogger(this::class.java)
 
     /**
@@ -31,10 +28,7 @@ abstract class BaseController(
      * @param resourceType The type of resource
      * @return ResponseEntity with the JSON resource data
      */
-    protected fun handleJsonResourceRequest(
-        id: String,
-        resourceType: ResourceType,
-    ): ResponseEntity<Map<String, Any>> {
+    protected fun handleJsonResourceRequest(id: String, resourceType: ResourceType): ResponseEntity<Map<String, Any>> {
         logger.debug("Getting ${resourceType.name.lowercase()} with id: $id")
 
         val resource = resourceService.getResourceJson(id, resourceType)
@@ -55,10 +49,7 @@ abstract class BaseController(
      * @param resourceType The type of resource
      * @return ResponseEntity with the JSON resource data
      */
-    protected fun handleJsonResourceRequestByUri(
-        uri: String,
-        resourceType: ResourceType,
-    ): ResponseEntity<Map<String, Any>> {
+    protected fun handleJsonResourceRequestByUri(uri: String, resourceType: ResourceType): ResponseEntity<Map<String, Any>> {
         logger.debug("Getting ${resourceType.name.lowercase()} with uri: $uri")
 
         val resource = resourceService.getResourceJsonByUri(uri, resourceType)
@@ -79,10 +70,7 @@ abstract class BaseController(
      * @param resourceType The type of resource
      * @return ResponseEntity with the list of JSON resource data
      */
-    protected fun handleJsonResourceListRequest(
-        ids: List<String>,
-        resourceType: ResourceType,
-    ): ResponseEntity<List<Map<String, Any>>> {
+    protected fun handleJsonResourceListRequest(ids: List<String>, resourceType: ResourceType): ResponseEntity<List<Map<String, Any>>> {
         logger.debug("Retrieve list of {} for ids: {}", resourceType.name.lowercase(), ids)
 
         return ResponseEntity

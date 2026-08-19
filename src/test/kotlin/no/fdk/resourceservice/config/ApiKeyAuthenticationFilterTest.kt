@@ -21,11 +21,7 @@ class ApiKeyAuthenticationFilterTest {
         SecurityContextHolder.clearContext()
     }
 
-    private fun doFilterInternal(
-        request: HttpServletRequest,
-        response: HttpServletResponse,
-        filterChain: FilterChain,
-    ) {
+    private fun doFilterInternal(request: HttpServletRequest, response: HttpServletResponse, filterChain: FilterChain) {
         val method: Method =
             ApiKeyAuthenticationFilter::class.java.getDeclaredMethod(
                 "doFilterInternal",

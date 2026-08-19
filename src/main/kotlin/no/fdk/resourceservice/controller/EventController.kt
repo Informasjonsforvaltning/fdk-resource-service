@@ -25,10 +25,7 @@ import org.springframework.web.bind.annotation.RestController
 @RestController
 @RequestMapping("/v1/events")
 @Tag(name = "Events", description = "API for retrieving events")
-class EventController(
-    resourceService: ResourceService,
-    rdfService: RdfService,
-) : BaseController(resourceService, rdfService) {
+class EventController(resourceService: ResourceService, rdfService: RdfService) : BaseController(resourceService, rdfService) {
     @GetMapping("/{id}")
     @Operation(
         summary = "Get event by ID",
@@ -88,8 +85,8 @@ class EventController(
     @Operation(
         summary = "Get event graph by ID",
         description =
-            "Retrieve the RDF graph representation of a specific event by its unique identifier. " +
-                "Supports content negotiation for multiple RDF formats (JSON-LD, Turtle, RDF/XML, N-Triples, N-Quads).",
+        "Retrieve the RDF graph representation of a specific event by its unique identifier. " +
+            "Supports content negotiation for multiple RDF formats (JSON-LD, Turtle, RDF/XML, N-Triples, N-Quads).",
     )
     @ApiResponses(
         value = [
@@ -119,8 +116,8 @@ class EventController(
         @PathVariable id: String,
         @Parameter(
             description =
-                "Accept header for content negotiation: application/ld+json, text/turtle, " +
-                    "application/rdf+xml, application/n-triples, application/n-quads",
+            "Accept header for content negotiation: application/ld+json, text/turtle, " +
+                "application/rdf+xml, application/n-triples, application/n-quads",
             hidden = true,
         )
         @RequestHeader(HttpHeaders.ACCEPT, required = false) acceptHeader: String?,
@@ -139,8 +136,8 @@ class EventController(
     @Operation(
         summary = "Get event graph by URI",
         description =
-            "Retrieve the RDF graph representation of a specific event by its URI. " +
-                "Supports content negotiation for multiple RDF formats (JSON-LD, Turtle, RDF/XML, N-Triples, N-Quads).",
+        "Retrieve the RDF graph representation of a specific event by its URI. " +
+            "Supports content negotiation for multiple RDF formats (JSON-LD, Turtle, RDF/XML, N-Triples, N-Quads).",
     )
     @ApiResponses(
         value = [
@@ -170,8 +167,8 @@ class EventController(
         @RequestParam uri: String,
         @Parameter(
             description =
-                "Accept header for content negotiation: application/ld+json, text/turtle, " +
-                    "application/rdf+xml, application/n-triples, application/n-quads",
+            "Accept header for content negotiation: application/ld+json, text/turtle, " +
+                "application/rdf+xml, application/n-triples, application/n-quads",
             hidden = true,
         )
         @RequestHeader(HttpHeaders.ACCEPT, required = false) acceptHeader: String?,

@@ -25,10 +25,7 @@ import org.springframework.web.bind.annotation.RestController
 @RestController
 @RequestMapping("/v1/data-services")
 @Tag(name = "Data Services", description = "API for retrieving data services")
-class DataServiceController(
-    resourceService: ResourceService,
-    rdfService: RdfService,
-) : BaseController(resourceService, rdfService) {
+class DataServiceController(resourceService: ResourceService, rdfService: RdfService) : BaseController(resourceService, rdfService) {
     @GetMapping("/{id}")
     @Operation(
         summary = "Get data service by ID",
@@ -88,8 +85,8 @@ class DataServiceController(
     @Operation(
         summary = "Get data service graph by ID",
         description =
-            "Retrieve the RDF graph representation of a specific data service by its unique identifier. " +
-                "Supports content negotiation for multiple RDF formats (JSON-LD, Turtle, RDF/XML, N-Triples, N-Quads).",
+        "Retrieve the RDF graph representation of a specific data service by its unique identifier. " +
+            "Supports content negotiation for multiple RDF formats (JSON-LD, Turtle, RDF/XML, N-Triples, N-Quads).",
     )
     @ApiResponses(
         value = [
@@ -119,8 +116,8 @@ class DataServiceController(
         @PathVariable id: String,
         @Parameter(
             description =
-                "Accept header for content negotiation: application/ld+json, text/turtle, " +
-                    "application/rdf+xml, application/n-triples, application/n-quads",
+            "Accept header for content negotiation: application/ld+json, text/turtle, " +
+                "application/rdf+xml, application/n-triples, application/n-quads",
             hidden = true,
         )
         @RequestHeader(HttpHeaders.ACCEPT, required = false) acceptHeader: String?,
@@ -139,8 +136,8 @@ class DataServiceController(
     @Operation(
         summary = "Get data service graph by URI",
         description =
-            "Retrieve the RDF graph representation of a specific data service by its URI. " +
-                "Supports content negotiation for multiple RDF formats (JSON-LD, Turtle, RDF/XML, N-Triples, N-Quads).",
+        "Retrieve the RDF graph representation of a specific data service by its URI. " +
+            "Supports content negotiation for multiple RDF formats (JSON-LD, Turtle, RDF/XML, N-Triples, N-Quads).",
     )
     @ApiResponses(
         value = [
@@ -170,8 +167,8 @@ class DataServiceController(
         @RequestParam uri: String,
         @Parameter(
             description =
-                "Accept header for content negotiation: application/ld+json, text/turtle, " +
-                    "application/rdf+xml, application/n-triples, application/n-quads",
+            "Accept header for content negotiation: application/ld+json, text/turtle, " +
+                "application/rdf+xml, application/n-triples, application/n-quads",
             hidden = true,
         )
         @RequestHeader(HttpHeaders.ACCEPT, required = false) acceptHeader: String?,

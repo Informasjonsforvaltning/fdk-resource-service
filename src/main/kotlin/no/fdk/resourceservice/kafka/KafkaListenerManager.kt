@@ -56,10 +56,7 @@ class KafkaListenerManager(
         }
     }
 
-    private fun handleCircuitBreakerStateChange(
-        circuitBreakerName: String,
-        stateTransition: CircuitBreaker.StateTransition,
-    ) {
+    private fun handleCircuitBreakerStateChange(circuitBreakerName: String, stateTransition: CircuitBreaker.StateTransition) {
         val fromState = stateTransition.fromState
         val toState = stateTransition.toState
 
@@ -128,33 +125,32 @@ class KafkaListenerManager(
     /**
      * Get the current status of all circuit breakers and their corresponding listeners
      */
-    fun getCircuitBreakerStatus(): Map<String, CircuitBreakerStatus> =
-        circuitBreakerToContainers.keys.associateWith { circuitBreakerName ->
-            val circuitBreaker = circuitBreakerRegistry.circuitBreaker(circuitBreakerName)
-            val topics = circuitBreakerToContainers[circuitBreakerName] ?: emptyList()
+    fun getCircuitBreakerStatus(): Map<String, CircuitBreakerStatus> = circuitBreakerToContainers.keys.associateWith { circuitBreakerName ->
+        val circuitBreaker = circuitBreakerRegistry.circuitBreaker(circuitBreakerName)
+        val topics = circuitBreakerToContainers[circuitBreakerName] ?: emptyList()
 
-            val listenerStatus =
-                kafkaListenerContainers
-                    .filter { container -> topics.any { topic -> container.listenerId.contains(topic) } }
-                    .associate { container ->
-                        container.listenerId to
-                            ListenerStatus(
-                                isRunning = container.isRunning,
-                                isPaused = !container.isRunning,
-                                topics = topics,
-                            )
-                    }
+        val listenerStatus =
+            kafkaListenerContainers
+                .filter { container -> topics.any { topic -> container.listenerId.contains(topic) } }
+                .associate { container ->
+                    container.listenerId to
+                        ListenerStatus(
+                            isRunning = container.isRunning,
+                            isPaused = !container.isRunning,
+                            topics = topics,
+                        )
+                }
 
-            CircuitBreakerStatus(
-                name = circuitBreakerName,
-                state = circuitBreaker.state.name,
-                failureRate = circuitBreaker.metrics.failureRate.toDouble(),
-                numberOfBufferedCalls = circuitBreaker.metrics.numberOfBufferedCalls,
-                numberOfFailedCalls = circuitBreaker.metrics.numberOfFailedCalls,
-                numberOfSuccessfulCalls = circuitBreaker.metrics.numberOfSuccessfulCalls,
-                listeners = listenerStatus,
-            )
-        }
+        CircuitBreakerStatus(
+            name = circuitBreakerName,
+            state = circuitBreaker.state.name,
+            failureRate = circuitBreaker.metrics.failureRate.toDouble(),
+            numberOfBufferedCalls = circuitBreaker.metrics.numberOfBufferedCalls,
+            numberOfFailedCalls = circuitBreaker.metrics.numberOfFailedCalls,
+            numberOfSuccessfulCalls = circuitBreaker.metrics.numberOfSuccessfulCalls,
+            listeners = listenerStatus,
+        )
+    }
 
     /**
      * Manually pause all listeners (for maintenance or emergency situations)
@@ -201,8 +197,4 @@ data class CircuitBreakerStatus(
     val listeners: Map<String, ListenerStatus>,
 )
 
-data class ListenerStatus(
-    val isRunning: Boolean,
-    val isPaused: Boolean,
-    val topics: List<String>,
-)
+data class ListenerStatus(val isRunning: Boolean, val isPaused: Boolean, val topics: List<String>)

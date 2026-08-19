@@ -188,12 +188,7 @@ class KafkaIntegrationTest : BaseIntegrationTest() {
 
     @Test
     fun `should handle multiple resource types via Kafka`() {
-        data class ResourceTestData(
-            val topic: String,
-            val resourceType: ResourceType,
-            val resourceUri: String,
-            val expectedTitle: String,
-        )
+        data class ResourceTestData(val topic: String, val resourceType: ResourceType, val resourceUri: String, val expectedTitle: String)
 
         val resources =
             listOf(

@@ -9,8 +9,7 @@ import org.springframework.context.annotation.Configuration
 @Configuration
 class JacksonConfig {
     @Bean
-    fun objectMapper(): ObjectMapper =
-        ObjectMapper()
-            .registerKotlinModule()
-            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+    fun objectMapper(): ObjectMapper = ObjectMapper()
+        .registerKotlinModule()
+        .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
 }

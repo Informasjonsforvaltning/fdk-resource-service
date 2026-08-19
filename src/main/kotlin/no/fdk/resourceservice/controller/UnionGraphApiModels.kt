@@ -13,8 +13,8 @@ data class UnionGraphOrderRequest(
      */
     @param:io.swagger.v3.oas.annotations.media.Schema(
         description =
-            "List of resource types to include in the union graph. " +
-                "Valid values: CONCEPT, DATASET, DATA_SERVICE, INFORMATION_MODEL, SERVICE, EVENT",
+        "List of resource types to include in the union graph. " +
+            "Valid values: CONCEPT, DATASET, DATA_SERVICE, INFORMATION_MODEL, SERVICE, EVENT",
         example = "[\"DATASET\", \"DATA_SERVICE\"]",
     )
     val resourceTypes: List<String>? = null,
@@ -64,8 +64,8 @@ data class UnionGraphOrderRequest(
      */
     @param:io.swagger.v3.oas.annotations.media.Schema(
         description =
-            "Optional list of resource IDs (fdkId) to filter by. " +
-                "If provided, only resources with matching IDs will be included in the union graph.",
+        "Optional list of resource IDs (fdkId) to filter by. " +
+            "If provided, only resources with matching IDs will be included in the union graph.",
         example = "[\"resource-id-1\", \"resource-id-2\"]",
     )
     val resourceIds: List<String>? = null,
@@ -75,8 +75,8 @@ data class UnionGraphOrderRequest(
      */
     @param:io.swagger.v3.oas.annotations.media.Schema(
         description =
-            "Optional list of resource URIs to filter by. " +
-                "If provided, only resources with matching URIs will be included in the union graph.",
+        "Optional list of resource URIs to filter by. " +
+            "If provided, only resources with matching URIs will be included in the union graph.",
         example = "[\"https://example.com/resource1\", \"https://example.com/resource2\"]",
     )
     val resourceUris: List<String>? = null,
@@ -89,9 +89,9 @@ data class UnionGraphOrderRequest(
      */
     @param:io.swagger.v3.oas.annotations.media.Schema(
         description =
-            "If true (default), Catalog and CatalogRecord resources are included in union graph snapshots. " +
-                "If false, Catalog and CatalogRecord resources are removed from snapshots (as subjects), " +
-                "but references to their URIs (as objects) are preserved.",
+        "If true (default), Catalog and CatalogRecord resources are included in union graph snapshots. " +
+            "If false, Catalog and CatalogRecord resources are removed from snapshots (as subjects), " +
+            "but references to their URIs (as objects) are preserved.",
         example = "true",
     )
     val includeCatalog: Boolean? = null,
@@ -147,10 +147,10 @@ data class DatasetFiltersRequest(
      */
     @param:io.swagger.v3.oas.annotations.media.Schema(
         description =
-            "Filter datasets by whether they are DatasetSeries (have rdf:type = dcat:DatasetSeries). " +
-                "If true, only datasets that ARE DatasetSeries are included. " +
-                "If false, only datasets that are NOT DatasetSeries are included. " +
-                "If null, this filter is not applied (both series and non-series are included).",
+        "Filter datasets by whether they are DatasetSeries (have rdf:type = dcat:DatasetSeries). " +
+            "If true, only datasets that ARE DatasetSeries are included. " +
+            "If false, only datasets that are NOT DatasetSeries are included. " +
+            "If null, this filter is not applied (both series and non-series are included).",
         example = "true",
     )
     val isDatasetSeries: Boolean? = null,

@@ -301,10 +301,10 @@ class UnionGraphServiceTest {
         val filters =
             UnionGraphResourceFilters(
                 dataset =
-                    UnionGraphResourceFilters.DatasetFilters(
-                        isOpenData = true,
-                        isRelatedToTransportportal = null,
-                    ),
+                UnionGraphResourceFilters.DatasetFilters(
+                    isOpenData = true,
+                    isRelatedToTransportportal = null,
+                ),
             )
         every { unionGraphOrderRepository.findByConfiguration(any(), any(), any(), any(), any(), any(), any(), any()) } returns null
         every { unionGraphOrderRepository.save(any()) } answers { firstArg() }
@@ -338,9 +338,9 @@ class UnionGraphServiceTest {
         val filters =
             UnionGraphResourceFilters(
                 dataset =
-                    UnionGraphResourceFilters.DatasetFilters(
-                        isDatasetSeries = true,
-                    ),
+                UnionGraphResourceFilters.DatasetFilters(
+                    isDatasetSeries = true,
+                ),
             )
         every { unionGraphOrderRepository.findByConfiguration(any(), any(), any(), any(), any(), any(), any(), any()) } returns null
         every { unionGraphOrderRepository.save(any()) } answers { firstArg() }
@@ -369,11 +369,11 @@ class UnionGraphServiceTest {
         val filters =
             UnionGraphResourceFilters(
                 dataset =
-                    UnionGraphResourceFilters.DatasetFilters(
-                        isOpenData = true,
-                        isRelatedToTransportportal = false,
-                        isDatasetSeries = true,
-                    ),
+                UnionGraphResourceFilters.DatasetFilters(
+                    isOpenData = true,
+                    isRelatedToTransportportal = false,
+                    isDatasetSeries = true,
+                ),
             )
         every { unionGraphOrderRepository.findByConfiguration(any(), any(), any(), any(), any(), any(), any(), any()) } returns null
         every { unionGraphOrderRepository.save(any()) } answers { firstArg() }
@@ -921,9 +921,9 @@ class UnionGraphServiceTest {
             unionGraphService.buildUnionGraph(
                 listOf(ResourceType.DATASET),
                 resourceFilters =
-                    UnionGraphResourceFilters(
-                        dataset = UnionGraphResourceFilters.DatasetFilters(isOpenData = true),
-                    ),
+                UnionGraphResourceFilters(
+                    dataset = UnionGraphResourceFilters.DatasetFilters(isOpenData = true),
+                ),
                 orderId = "test-order-id",
             )
 

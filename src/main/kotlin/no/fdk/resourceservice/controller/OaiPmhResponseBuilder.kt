@@ -88,10 +88,7 @@ class OaiPmhResponseBuilder {
      * Snapshots are stored in RDF-XML format and returned directly without conversion.
      * The XML declaration is stripped so the metadata starts with <rdf:RDF.
      */
-    fun getSnapshotContent(
-        snapshot: UnionGraphResourceSnapshot,
-        metadataPrefix: String,
-    ): String? {
+    fun getSnapshotContent(snapshot: UnionGraphResourceSnapshot, metadataPrefix: String): String? {
         // OAI-PMH only supports RDF-XML, so return the snapshot data directly
         val graphData = snapshot.resourceGraphData
         return if (graphData.isBlank()) {
@@ -141,20 +138,13 @@ class OaiPmhResponseBuilder {
         return request
     }
 
-    fun createTextElement(
-        doc: Document,
-        tagName: String,
-        text: String,
-    ): Element {
+    fun createTextElement(doc: Document, tagName: String, text: String): Element {
         val element = doc.createElement(tagName)
         element.textContent = text
         return element
     }
 
-    fun errorResponse(
-        code: String,
-        message: String,
-    ): ResponseEntity<String> {
+    fun errorResponse(code: String, message: String): ResponseEntity<String> {
         val doc = createOaiPmhDocument()
         val error = doc.createElement("error")
         error.setAttribute("code", code)
@@ -176,10 +166,7 @@ class OaiPmhResponseBuilder {
     fun formatDate(instant: Instant): String =
         instant.atOffset(ZoneOffset.UTC).format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'Z'"))
 
-    fun getBaseUrl(
-        id: String,
-        httpRequest: HttpServletRequest,
-    ): String {
+    fun getBaseUrl(id: String, httpRequest: HttpServletRequest): String {
         // Build full URL with scheme, host, and path
         return ServletUriComponentsBuilder
             .fromRequest(httpRequest)
@@ -196,11 +183,7 @@ class OaiPmhResponseBuilder {
      * The baseURL already contains the union graph ID, so we don't need to repeat it.
      * Uses "records" terminology as per OAI-PMH specification.
      */
-    fun createIdentifier(
-        id: String,
-        resourceId: String,
-        httpRequest: HttpServletRequest,
-    ): String {
+    fun createIdentifier(id: String, resourceId: String, httpRequest: HttpServletRequest): String {
         val baseUrl = getBaseUrl(id, httpRequest)
         // Use path-based identifier to make it a valid URI
         // URL-encode the resourceId to handle special characters
@@ -222,11 +205,7 @@ class OaiPmhResponseBuilder {
     }
 
     /** OAI-PMH optional filter params (from/until dates and set orgnr). */
-    data class OaiPmhFilterParams(
-        val fromTs: java.sql.Timestamp?,
-        val untilTs: java.sql.Timestamp?,
-        val publisherOrgnr: String?,
-    )
+    data class OaiPmhFilterParams(val fromTs: java.sql.Timestamp?, val untilTs: java.sql.Timestamp?, val publisherOrgnr: String?)
 
     /**
      * Parses OAI-PMH date (from/until). Supports yyyy-MM-dd and yyyy-MM-dd'T'HH:mm:ss'Z'.
@@ -262,12 +241,7 @@ class OaiPmhResponseBuilder {
      * Format without filters: {id}:{metadataPrefix}:{startIndex}
      * Format with filters: {id}:{metadataPrefix}:{startIndex}|{from}|{until}|{publisherOrgnr} (empty segment for absent)
      */
-    fun createResumptionToken(
-        id: String,
-        metadataPrefix: String,
-        startIndex: Int,
-        filterParams: OaiPmhFilterParams? = null,
-    ): String {
+    fun createResumptionToken(id: String, metadataPrefix: String, startIndex: Int, filterParams: OaiPmhFilterParams? = null): String {
         val base = "$id:$metadataPrefix:$startIndex"
         if (filterParams == null ||
             (filterParams.fromTs == null && filterParams.untilTs == null && filterParams.publisherOrgnr.isNullOrBlank())
@@ -284,18 +258,13 @@ class OaiPmhResponseBuilder {
      * Parses a resumption token to extract offset, metadata prefix, and optional filter params.
      * Returns null if the token is invalid.
      */
-    fun parseResumptionToken(
-        token: String,
-        expectedId: String,
-    ): Pair<Int, String>? = parseResumptionTokenWithFilters(token, expectedId)?.let { (offset, prefix, _) -> Pair(offset, prefix) }
+    fun parseResumptionToken(token: String, expectedId: String): Pair<Int, String>? =
+        parseResumptionTokenWithFilters(token, expectedId)?.let { (offset, prefix, _) -> Pair(offset, prefix) }
 
     /**
      * Parses a resumption token including optional from/until/set. Returns (offset, metadataPrefix, filterParams) or null.
      */
-    fun parseResumptionTokenWithFilters(
-        token: String,
-        expectedId: String,
-    ): Triple<Int, String, OaiPmhFilterParams?>? {
+    fun parseResumptionTokenWithFilters(token: String, expectedId: String): Triple<Int, String, OaiPmhFilterParams?>? {
         val pipe = token.indexOf('|')
         val base = if (pipe >= 0) token.substring(0, pipe) else token
         val parts = base.split(":")
@@ -330,11 +299,7 @@ class OaiPmhResponseBuilder {
     /**
      * Parses from/until/set request params and validates. Returns filter params or null if invalid or no filters.
      */
-    fun parseAndValidateFilters(
-        from: String?,
-        until: String?,
-        set: String?,
-    ): OaiPmhFilterParams? {
+    fun parseAndValidateFilters(from: String?, until: String?, set: String?): OaiPmhFilterParams? {
         val fromTs = parseOaiDate(from)?.let { java.sql.Timestamp.from(it) }
         val untilTs = parseOaiDate(until)?.let { java.sql.Timestamp.from(it) }
         val publisherOrgnr = parseSetOrgnr(set)
@@ -356,10 +321,7 @@ class OaiPmhResponseBuilder {
      * Where baseURL is /v1/union-graphs/{unionGraphId}/oai-pmh
      * Returns null if the format is invalid.
      */
-    fun parseIdentifier(
-        identifier: String,
-        expectedUnionGraphId: String,
-    ): String? {
+    fun parseIdentifier(identifier: String, expectedUnionGraphId: String): String? {
         try {
             // Parse as URI to handle the path properly
             val uri = java.net.URI(identifier)

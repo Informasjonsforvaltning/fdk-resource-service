@@ -33,10 +33,7 @@ class WebhookService(
      * @param previousStatus The previous status (null if this is the initial status)
      */
     @Async
-    fun callWebhook(
-        order: UnionGraphOrder,
-        previousStatus: UnionGraphOrder.GraphStatus?,
-    ): CompletableFuture<Void> {
+    fun callWebhook(order: UnionGraphOrder, previousStatus: UnionGraphOrder.GraphStatus?): CompletableFuture<Void> {
         val webhookUrl = order.webhookUrl
         if (webhookUrl.isNullOrBlank()) {
             return CompletableFuture.completedFuture(null)
@@ -108,11 +105,10 @@ class WebhookService(
         }
     }
 
-    private fun statusClass(statusCode: HttpStatusCode): String =
-        when {
-            statusCode.is2xxSuccessful -> "2xx"
-            statusCode.is4xxClientError -> "4xx"
-            statusCode.is5xxServerError -> "5xx"
-            else -> "error"
-        }
+    private fun statusClass(statusCode: HttpStatusCode): String = when {
+        statusCode.is2xxSuccessful -> "2xx"
+        statusCode.is4xxClientError -> "4xx"
+        statusCode.is5xxServerError -> "5xx"
+        else -> "error"
+    }
 }

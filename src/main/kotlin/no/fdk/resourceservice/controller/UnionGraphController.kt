@@ -55,20 +55,20 @@ class UnionGraphController(
     @Operation(
         summary = "Create a union graph",
         description =
-            "Create a new union graph, or return an existing one if one with the same " +
-                "configuration already exists. The graph will be built asynchronously in the background. " +
-                "You can specify which resource types to include, or leave empty to include all types. " +
-                "Optionally, you can provide resource filters to filter resources by type-specific criteria. " +
-                "For example, dataset filters can filter by isOpenData, isRelatedToTransportportal, and isDatasetSeries fields. " +
-                "You can also filter by specific resource IDs (fdkId) using resourceIds, or by resource URIs using resourceUris. " +
-                "If both resourceIds and resourceUris are provided, resources matching either filter will be included. " +
-                "You can also enable automatic expansion of DataService graphs when datasets reference them " +
-                "via distribution accessService URIs (expandDistributionAccessServices). " +
-                "The updateTtlHours must be 0 (never update) or at least 24. " +
-                "If a union graph with the same configuration (resource types, update TTL, webhook URL, filters, " +
-                "resource IDs, resource URIs, and expansion settings) already exists, it will be returned with HTTP 409 Conflict. " +
-                "The response includes a Location header pointing to the union graph resource. " +
-                "If a webhook URL is provided, it must use HTTPS protocol.",
+        "Create a new union graph, or return an existing one if one with the same " +
+            "configuration already exists. The graph will be built asynchronously in the background. " +
+            "You can specify which resource types to include, or leave empty to include all types. " +
+            "Optionally, you can provide resource filters to filter resources by type-specific criteria. " +
+            "For example, dataset filters can filter by isOpenData, isRelatedToTransportportal, and isDatasetSeries fields. " +
+            "You can also filter by specific resource IDs (fdkId) using resourceIds, or by resource URIs using resourceUris. " +
+            "If both resourceIds and resourceUris are provided, resources matching either filter will be included. " +
+            "You can also enable automatic expansion of DataService graphs when datasets reference them " +
+            "via distribution accessService URIs (expandDistributionAccessServices). " +
+            "The updateTtlHours must be 0 (never update) or at least 24. " +
+            "If a union graph with the same configuration (resource types, update TTL, webhook URL, filters, " +
+            "resource IDs, resource URIs, and expansion settings) already exists, it will be returned with HTTP 409 Conflict. " +
+            "The response includes a Location header pointing to the union graph resource. " +
+            "If a webhook URL is provided, it must use HTTPS protocol.",
         security = [SecurityRequirement(name = "ApiKeyAuth")],
     )
     @ApiResponses(
@@ -86,8 +86,8 @@ class UnionGraphController(
             ApiResponse(
                 responseCode = "409",
                 description =
-                    "A union graph with the same configuration already exists (any status). " +
-                        "The existing union graph is returned in the response body.",
+                "A union graph with the same configuration already exists (any status). " +
+                    "The existing union graph is returned in the response body.",
                 content = [Content(mediaType = "application/json")],
             ),
         ],
@@ -104,7 +104,7 @@ class UnionGraphController(
                         io.swagger.v3.oas.annotations.media.ExampleObject(
                             name = "Basic example",
                             value =
-                                """
+                            """
                                 {
                                     "name": "My Union Graph",
                                     "resourceTypes": ["DATASET", "DATA_SERVICE"],
@@ -116,7 +116,7 @@ class UnionGraphController(
                         io.swagger.v3.oas.annotations.media.ExampleObject(
                             name = "With filters and expansion",
                             value =
-                                """
+                            """
                                 {
                                     "name": "Open Data Datasets with Data Services",
                                     "description": "Union graph containing only open data datasets with expanded data services",
@@ -137,7 +137,7 @@ class UnionGraphController(
                         io.swagger.v3.oas.annotations.media.ExampleObject(
                             name = "With resource ID and URI filters",
                             value =
-                                """
+                            """
                                 {
                                     "name": "Filtered Union Graph",
                                     "description": "Union graph with specific resources",
@@ -151,7 +151,7 @@ class UnionGraphController(
                         io.swagger.v3.oas.annotations.media.ExampleObject(
                             name = "DatasetSeries only",
                             value =
-                                """
+                            """
                                 {
                                     "name": "Dataset Series Union Graph",
                                     "description": "Union graph containing only DatasetSeries resources",
@@ -168,7 +168,7 @@ class UnionGraphController(
                         io.swagger.v3.oas.annotations.media.ExampleObject(
                             name = "Without Catalog resources",
                             value =
-                                """
+                            """
                                 {
                                     "name": "Union Graph Without Catalogs",
                                     "description": "Union graph excluding Catalog and CatalogRecord resources",
@@ -236,16 +236,16 @@ class UnionGraphController(
     @Operation(
         summary = "Update a union graph",
         description =
-            "Update an existing union graph order. " +
-                "You can update any field of the union graph configuration. " +
-                "If fields that affect the graph content are changed (resourceTypes, resourceFilters, " +
-                "resourceIds, resourceUris, expandDistributionAccessServices, includeCatalog), the order will be " +
-                "reset to PENDING status to trigger a rebuild with the new configuration. " +
-                "Safe fields that don't require a rebuild (updateTtlHours, webhookUrl, name, description) can be " +
-                "updated without affecting the graph status. " +
-                "The updateTtlHours must be 0 (never update) or at least 24. " +
-                "If a webhook URL is provided, it must use HTTPS protocol. " +
-                "To remove a webhook, set webhookUrl to an empty string.",
+        "Update an existing union graph order. " +
+            "You can update any field of the union graph configuration. " +
+            "If fields that affect the graph content are changed (resourceTypes, resourceFilters, " +
+            "resourceIds, resourceUris, expandDistributionAccessServices, includeCatalog), the order will be " +
+            "reset to PENDING status to trigger a rebuild with the new configuration. " +
+            "Safe fields that don't require a rebuild (updateTtlHours, webhookUrl, name, description) can be " +
+            "updated without affecting the graph status. " +
+            "The updateTtlHours must be 0 (never update) or at least 24. " +
+            "If a webhook URL is provided, it must use HTTPS protocol. " +
+            "To remove a webhook, set webhookUrl to an empty string.",
         security = [SecurityRequirement(name = "ApiKeyAuth")],
     )
     @ApiResponses(
@@ -330,9 +330,9 @@ class UnionGraphController(
     @Operation(
         summary = "List all union graphs",
         description =
-            "Retrieve a list of all union graphs with their metadata. " +
-                "The actual graph data is excluded to keep the response lightweight. " +
-                "Use the individual graph endpoints to retrieve the graph data.",
+        "Retrieve a list of all union graphs with their metadata. " +
+            "The actual graph data is excluded to keep the response lightweight. " +
+            "Use the individual graph endpoints to retrieve the graph data.",
         security = [SecurityRequirement(name = "ApiKeyAuth")],
     )
     @ApiResponses(
@@ -370,10 +370,10 @@ class UnionGraphController(
     @Operation(
         summary = "Reset union graph to PENDING",
         description =
-            "Reset a union graph to PENDING status for retry. " +
-                "This clears error messages and releases any locks. " +
-                "Useful for retrying failed union graphs or restarting stuck ones. " +
-                "This endpoint must be explicitly enabled in configuration (app.union-graphs.reset-enabled).",
+        "Reset a union graph to PENDING status for retry. " +
+            "This clears error messages and releases any locks. " +
+            "Useful for retrying failed union graphs or restarting stuck ones. " +
+            "This endpoint must be explicitly enabled in configuration (app.union-graphs.reset-enabled).",
         security = [SecurityRequirement(name = "ApiKeyAuth")],
     )
     @ApiResponses(
@@ -469,12 +469,12 @@ class UnionGraphController(
     @Operation(
         summary = "List available union graphs",
         description =
-            "Retrieve a list of all union graphs that have graph data available. " +
-                "This includes graphs that are currently COMPLETED, as well as graphs " +
-                "that were previously completed but are now being updated. " +
-                "This endpoint is publicly accessible and returns only minimal information " +
-                "(id, name, description, resource types, and creation date). " +
-                "Use this endpoint to discover available union graphs without authentication.",
+        "Retrieve a list of all union graphs that have graph data available. " +
+            "This includes graphs that are currently COMPLETED, as well as graphs " +
+            "that were previously completed but are now being updated. " +
+            "This endpoint is publicly accessible and returns only minimal information " +
+            "(id, name, description, resource types, and creation date). " +
+            "Use this endpoint to discover available union graphs without authentication.",
     )
     @ApiResponses(
         value = [
@@ -514,10 +514,10 @@ class UnionGraphController(
     @Operation(
         summary = "Get union graph minimal information",
         description =
-            "Retrieve minimal information about a specific union graph. " +
-                "This endpoint is publicly accessible and returns only basic information " +
-                "(id, name, description, resource types, and creation date). " +
-                "Returns 404 if the union graph is not found or does not have graph data available.",
+        "Retrieve minimal information about a specific union graph. " +
+            "This endpoint is publicly accessible and returns only basic information " +
+            "(id, name, description, resource types, and creation date). " +
+            "Returns 404 if the union graph is not found or does not have graph data available.",
     )
     @ApiResponses(
         value = [
@@ -568,9 +568,9 @@ class UnionGraphController(
     @Operation(
         summary = "Delete union graph",
         description =
-            "Delete a union graph. This permanently removes the union graph and its associated graph data. " +
-                "Use with caution as this action cannot be undone. " +
-                "This endpoint must be explicitly enabled in configuration (app.union-graphs.delete-enabled).",
+        "Delete a union graph. This permanently removes the union graph and its associated graph data. " +
+            "Use with caution as this action cannot be undone. " +
+            "This endpoint must be explicitly enabled in configuration (app.union-graphs.delete-enabled).",
         security = [SecurityRequirement(name = "ApiKeyAuth")],
     )
     @ApiResponses(

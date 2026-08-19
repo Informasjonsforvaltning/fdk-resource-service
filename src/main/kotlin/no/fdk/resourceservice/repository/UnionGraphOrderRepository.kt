@@ -33,9 +33,7 @@ interface UnionGraphOrderRepository : JpaRepository<UnionGraphOrder, String> {
     """,
         nativeQuery = true,
     )
-    fun findNextPendingOrder(
-        @Param("lockTimeout") lockTimeout: java.sql.Timestamp,
-    ): UnionGraphOrder?
+    fun findNextPendingOrder(@Param("lockTimeout") lockTimeout: java.sql.Timestamp): UnionGraphOrder?
 
     /**
      * Finds multiple pending orders to process, using pessimistic locking.
@@ -64,10 +62,7 @@ interface UnionGraphOrderRepository : JpaRepository<UnionGraphOrder, String> {
     """,
         nativeQuery = true,
     )
-    fun findNextPendingOrders(
-        @Param("lockTimeout") lockTimeout: java.sql.Timestamp,
-        @Param("limit") limit: Int,
-    ): List<UnionGraphOrder>
+    fun findNextPendingOrders(@Param("lockTimeout") lockTimeout: java.sql.Timestamp, @Param("limit") limit: Int): List<UnionGraphOrder>
 
     /**
      * Locks an order for processing by a specific instance.
@@ -86,10 +81,7 @@ interface UnionGraphOrderRepository : JpaRepository<UnionGraphOrder, String> {
     """,
         nativeQuery = true,
     )
-    fun lockOrderForProcessing(
-        @Param("id") id: String,
-        @Param("lockedBy") lockedBy: String,
-    ): Int
+    fun lockOrderForProcessing(@Param("id") id: String, @Param("lockedBy") lockedBy: String): Int
 
     /**
      * Updates the order as completed.
@@ -106,9 +98,7 @@ interface UnionGraphOrderRepository : JpaRepository<UnionGraphOrder, String> {
     """,
         nativeQuery = true,
     )
-    fun markAsCompleted(
-        @Param("id") id: String,
-    ): Int
+    fun markAsCompleted(@Param("id") id: String): Int
 
     /**
      * Marks the order as failed with an error message.
@@ -125,10 +115,7 @@ interface UnionGraphOrderRepository : JpaRepository<UnionGraphOrder, String> {
     """,
         nativeQuery = true,
     )
-    fun markAsFailed(
-        @Param("id") id: String,
-        @Param("errorMessage") errorMessage: String,
-    ): Int
+    fun markAsFailed(@Param("id") id: String, @Param("errorMessage") errorMessage: String): Int
 
     /**
      * Updates the processing state for an order.
@@ -144,10 +131,7 @@ interface UnionGraphOrderRepository : JpaRepository<UnionGraphOrder, String> {
     """,
         nativeQuery = true,
     )
-    fun updateProcessingState(
-        @Param("id") id: String,
-        @Param("processingState") processingState: String,
-    ): Int
+    fun updateProcessingState(@Param("id") id: String, @Param("processingState") processingState: String): Int
 
     /**
      * Releases the lock on an order (for cleanup or retry).
@@ -164,9 +148,7 @@ interface UnionGraphOrderRepository : JpaRepository<UnionGraphOrder, String> {
     """,
         nativeQuery = true,
     )
-    fun releaseLock(
-        @Param("id") id: String,
-    ): Int
+    fun releaseLock(@Param("id") id: String): Int
 
     /**
      * Resets the status of an order to PENDING (for retry after stale lock cleanup or failed order retry).
@@ -186,9 +168,7 @@ interface UnionGraphOrderRepository : JpaRepository<UnionGraphOrder, String> {
     """,
         nativeQuery = true,
     )
-    fun resetToPending(
-        @Param("id") id: String,
-    ): Int
+    fun resetToPending(@Param("id") id: String): Int
 
     /**
      * Finds orders by status.
@@ -206,9 +186,7 @@ interface UnionGraphOrderRepository : JpaRepository<UnionGraphOrder, String> {
     """,
         nativeQuery = true,
     )
-    fun findByStatus(
-        @Param("status") status: String,
-    ): List<UnionGraphOrder>
+    fun findByStatus(@Param("status") status: String): List<UnionGraphOrder>
 
     /**
      * Finds all orders that have snapshots available (COMPLETED or PROCESSING status).
@@ -253,9 +231,7 @@ interface UnionGraphOrderRepository : JpaRepository<UnionGraphOrder, String> {
      * Used for metrics.
      */
     @Query("SELECT COUNT(o) FROM UnionGraphOrder o WHERE o.status = :status")
-    fun countByStatus(
-        @Param("status") status: UnionGraphOrder.GraphStatus,
-    ): Long
+    fun countByStatus(@Param("status") status: UnionGraphOrder.GraphStatus): Long
 
     /**
      * Finds an order by configuration (resource types, update TTL, and webhook URL).
@@ -464,34 +440,33 @@ interface UnionGraphOrderRepository : JpaRepository<UnionGraphOrder, String> {
         resourceUris: String?,
         includeCatalog: Boolean,
         resetToPending: Boolean,
-    ): Int =
-        if (resetToPending) {
-            updateOrderWithReset(
-                id = id,
-                updateTtlHours = updateTtlHours,
-                webhookUrl = webhookUrl,
-                resourceTypes = resourceTypes,
-                resourceFilters = resourceFilters,
-                expandDistributionAccessServices = expandDistributionAccessServices,
-                name = name,
-                description = description,
-                resourceIds = resourceIds,
-                resourceUris = resourceUris,
-                includeCatalog = includeCatalog,
-            )
-        } else {
-            updateOrderWithoutReset(
-                id = id,
-                updateTtlHours = updateTtlHours,
-                webhookUrl = webhookUrl,
-                resourceTypes = resourceTypes,
-                resourceFilters = resourceFilters,
-                expandDistributionAccessServices = expandDistributionAccessServices,
-                name = name,
-                description = description,
-                resourceIds = resourceIds,
-                resourceUris = resourceUris,
-                includeCatalog = includeCatalog,
-            )
-        }
+    ): Int = if (resetToPending) {
+        updateOrderWithReset(
+            id = id,
+            updateTtlHours = updateTtlHours,
+            webhookUrl = webhookUrl,
+            resourceTypes = resourceTypes,
+            resourceFilters = resourceFilters,
+            expandDistributionAccessServices = expandDistributionAccessServices,
+            name = name,
+            description = description,
+            resourceIds = resourceIds,
+            resourceUris = resourceUris,
+            includeCatalog = includeCatalog,
+        )
+    } else {
+        updateOrderWithoutReset(
+            id = id,
+            updateTtlHours = updateTtlHours,
+            webhookUrl = webhookUrl,
+            resourceTypes = resourceTypes,
+            resourceFilters = resourceFilters,
+            expandDistributionAccessServices = expandDistributionAccessServices,
+            name = name,
+            description = description,
+            resourceIds = resourceIds,
+            resourceUris = resourceUris,
+            includeCatalog = includeCatalog,
+        )
+    }
 }
