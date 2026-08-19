@@ -85,9 +85,9 @@ class ResourceControllerTest : BaseControllerTest() {
                 id = "test-id",
                 resourceType = "DATASET",
                 resourceGraphData =
-                    """<https://example.com/resource> a <http://example.org/Resource> ;
+                """<https://example.com/resource> a <http://example.org/Resource> ;
                         |<http://purl.org/dc/terms/title> "Test Resource" .
-                    """.trimMargin(),
+                """.trimMargin(),
                 resourceGraphFormat = "TURTLE",
                 uri = "https://example.com/resource",
             )
@@ -129,9 +129,9 @@ class ResourceControllerTest : BaseControllerTest() {
                 id = "test-id",
                 resourceType = "DATASET",
                 resourceGraphData =
-                    """<https://example.com/resource> a <http://example.org/Resource> ;
+                """<https://example.com/resource> a <http://example.org/Resource> ;
                         |<http://purl.org/dc/terms/title> "Test Resource" .
-                    """.trimMargin(),
+                """.trimMargin(),
                 resourceGraphFormat = "TURTLE",
                 uri = "https://example.com/resource",
             )
@@ -172,9 +172,9 @@ class ResourceControllerTest : BaseControllerTest() {
                 id = "test-id",
                 resourceType = "DATASET",
                 resourceGraphData =
-                    """<https://example.com/resource> a <http://example.org/Resource> ;
+                """<https://example.com/resource> a <http://example.org/Resource> ;
                         |<http://purl.org/dc/terms/title> "Test Resource" .
-                    """.trimMargin(),
+                """.trimMargin(),
                 resourceGraphFormat = "TURTLE",
                 uri = "https://example.com/resource",
             )
@@ -216,9 +216,9 @@ class ResourceControllerTest : BaseControllerTest() {
                 id = "test-id",
                 resourceType = "DATASET",
                 resourceGraphData =
-                    """<https://example.com/resource> a <http://example.org/Resource> ;
+                """<https://example.com/resource> a <http://example.org/Resource> ;
                         |<http://purl.org/dc/terms/title> "Test Resource" .
-                    """.trimMargin(),
+                """.trimMargin(),
                 resourceGraphFormat = "TURTLE",
                 uri = "https://example.com/resource",
             )
@@ -260,9 +260,9 @@ class ResourceControllerTest : BaseControllerTest() {
                 id = "test-id",
                 resourceType = "DATASET",
                 resourceGraphData =
-                    """<https://example.com/resource> a <http://example.org/Resource> ;
+                """<https://example.com/resource> a <http://example.org/Resource> ;
                         |<http://purl.org/dc/terms/title> "Test Resource" .
-                    """.trimMargin(),
+                """.trimMargin(),
                 resourceGraphFormat = "TURTLE",
                 uri = "https://example.com/resource",
             )
@@ -302,9 +302,9 @@ class ResourceControllerTest : BaseControllerTest() {
                 id = "test-id",
                 resourceType = "DATASET",
                 resourceGraphData =
-                    """<https://example.com/resource> a <http://example.org/Resource> ;
+                """<https://example.com/resource> a <http://example.org/Resource> ;
                         |<http://purl.org/dc/terms/title> "Test Resource" .
-                    """.trimMargin(),
+                """.trimMargin(),
                 resourceGraphFormat = "TURTLE",
                 uri = "https://example.com/resource",
             )
@@ -342,9 +342,9 @@ class ResourceControllerTest : BaseControllerTest() {
                 id = "test-id",
                 resourceType = "DATASET",
                 resourceGraphData =
-                    """<https://example.com/resource> a <http://example.org/Resource> ;
+                """<https://example.com/resource> a <http://example.org/Resource> ;
                         |<http://purl.org/dc/terms/title> "Test Resource" .
-                    """.trimMargin(),
+                """.trimMargin(),
                 resourceGraphFormat = "TURTLE",
                 uri = "https://example.com/resource",
             )
@@ -390,9 +390,9 @@ class ResourceControllerTest : BaseControllerTest() {
                 id = "test-id",
                 resourceType = "DATASET",
                 resourceGraphData =
-                    """<https://example.com/resource> a <http://example.org/Resource> ;
+                """<https://example.com/resource> a <http://example.org/Resource> ;
                         |<http://purl.org/dc/terms/title> "Test Resource" .
-                    """.trimMargin(),
+                """.trimMargin(),
                 resourceGraphFormat = "TURTLE",
                 uri = "https://example.com/resource",
             )
@@ -430,9 +430,9 @@ class ResourceControllerTest : BaseControllerTest() {
                 id = "dataset-id",
                 resourceType = "DATASET",
                 resourceGraphData =
-                    """<https://example.com/resource> a <http://example.org/Resource> ;
+                """<https://example.com/resource> a <http://example.org/Resource> ;
                         |<http://purl.org/dc/terms/title> "Test Resource" .
-                    """.trimMargin(),
+                """.trimMargin(),
                 resourceGraphFormat = "TURTLE",
                 uri = "https://example.com/dataset",
             )
@@ -469,9 +469,9 @@ class ResourceControllerTest : BaseControllerTest() {
                 id = "unknown-id",
                 resourceType = "UNKNOWN_TYPE",
                 resourceGraphData =
-                    """<https://example.com/resource> a <http://example.org/Resource> ;
+                """<https://example.com/resource> a <http://example.org/Resource> ;
                         |<http://purl.org/dc/terms/title> "Test Resource" .
-                    """.trimMargin(),
+                """.trimMargin(),
                 resourceGraphFormat = "TURTLE",
                 uri = "https://example.com/unknown",
             )

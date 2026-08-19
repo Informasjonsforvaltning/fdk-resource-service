@@ -25,9 +25,7 @@ import java.util.concurrent.atomic.AtomicLong
  * - Webhook call metrics
  */
 @Service
-class UnionGraphMetricsService(
-    private val meterRegistry: MeterRegistry,
-) {
+class UnionGraphMetricsService(private val meterRegistry: MeterRegistry) {
     private val logger = LoggerFactory.getLogger(javaClass)
 
     // Track processing progress per order
@@ -213,10 +211,7 @@ class UnionGraphMetricsService(
      * @param durationSeconds The webhook call duration in seconds
      * @param status Status class: 2xx, 4xx, 5xx, timeout, or error
      */
-    fun recordWebhookCall(
-        durationSeconds: Double,
-        status: String,
-    ) {
+    fun recordWebhookCall(durationSeconds: Double, status: String) {
         webhookCallTimer.record((durationSeconds * 1000).toLong(), TimeUnit.MILLISECONDS)
         Counter
             .builder("union_graph_webhook_calls_total")
@@ -246,10 +241,7 @@ class UnionGraphMetricsService(
      * @param orderId The order ID
      * @param totalResources The total number of resources to process
      */
-    fun startProcessingProgress(
-        orderId: String,
-        totalResources: Long,
-    ) {
+    fun startProcessingProgress(orderId: String, totalResources: Long) {
         processingProgress[orderId] = ProcessingProgress(totalResources, AtomicLong(0))
         updateProgressGauges(orderId)
     }
@@ -260,10 +252,7 @@ class UnionGraphMetricsService(
      * @param orderId The order ID
      * @param processedCount The number of resources processed so far
      */
-    fun updateProcessingProgress(
-        orderId: String,
-        processedCount: Long,
-    ) {
+    fun updateProcessingProgress(orderId: String, processedCount: Long) {
         processingProgress[orderId]?.processedCount?.set(processedCount)
         updateProgressGauges(orderId)
     }
@@ -401,8 +390,5 @@ class UnionGraphMetricsService(
     /**
      * Internal data class to track processing progress.
      */
-    private data class ProcessingProgress(
-        val totalResources: Long,
-        val processedCount: AtomicLong,
-    )
+    private data class ProcessingProgress(val totalResources: Long, val processedCount: AtomicLong)
 }

@@ -239,9 +239,7 @@ interface UnionGraphResourceSnapshotRepository : JpaRepository<UnionGraphResourc
     """,
         nativeQuery = true,
     )
-    fun deleteByUnionGraphId(
-        @Param("unionGraphId") unionGraphId: String,
-    )
+    fun deleteByUnionGraphId(@Param("unionGraphId") unionGraphId: String)
 
     /**
      * Deletes snapshots for a given union graph that were created before a specified timestamp.

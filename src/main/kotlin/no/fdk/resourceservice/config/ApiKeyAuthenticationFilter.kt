@@ -13,18 +13,12 @@ import org.springframework.web.filter.OncePerRequestFilter
  * Filter for API key authentication.
  * Validates the API key from the X-API-Key header and sets authentication context.
  */
-class ApiKeyAuthenticationFilter(
-    private val apiKey: String,
-) : OncePerRequestFilter() {
+class ApiKeyAuthenticationFilter(private val apiKey: String) : OncePerRequestFilter() {
     companion object {
         private const val API_KEY_HEADER = "X-API-Key"
     }
 
-    override fun doFilterInternal(
-        request: HttpServletRequest,
-        response: HttpServletResponse,
-        filterChain: FilterChain,
-    ) {
+    override fun doFilterInternal(request: HttpServletRequest, response: HttpServletResponse, filterChain: FilterChain) {
         val apiKeyHeader = request.getHeader(API_KEY_HEADER)
         val trimmedKey = apiKeyHeader?.trim()?.takeIf { it.isNotEmpty() }
 

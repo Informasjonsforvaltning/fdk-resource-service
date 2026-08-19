@@ -9,12 +9,8 @@ import org.springframework.stereotype.Service
  * Metrics for Kafka consumer processing outcomes (ack / nack / skip).
  */
 @Service
-class KafkaConsumerMetricsService(
-    private val meterRegistry: MeterRegistry,
-) {
-    enum class Outcome(
-        val value: String,
-    ) {
+class KafkaConsumerMetricsService(private val meterRegistry: MeterRegistry) {
+    enum class Outcome(val value: String) {
         ACKED("acked"),
         NACKED("nacked"),
         SKIPPED_INVALID("skipped_invalid"),
@@ -23,10 +19,7 @@ class KafkaConsumerMetricsService(
     /**
      * Record a consumer outcome for a Kafka topic.
      */
-    fun recordOutcome(
-        topic: String,
-        outcome: Outcome,
-    ) {
+    fun recordOutcome(topic: String, outcome: Outcome) {
         Counter
             .builder("kafka_consumer_events_total")
             .description("Total Kafka consumer events by processing outcome")

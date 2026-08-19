@@ -41,17 +41,9 @@ class KafkaConsumer(
         val catalogGraph: String?,
     )
 
-    private data class RdfParseRequiredFields(
-        val fdkId: String,
-        val timestamp: Long,
-        val data: String,
-    )
+    private data class RdfParseRequiredFields(val fdkId: String, val timestamp: Long, val data: String)
 
-    private fun requireNonBlankString(
-        value: GenericRecord,
-        fieldName: String,
-        eventTypeName: String,
-    ): String {
+    private fun requireNonBlankString(value: GenericRecord, fieldName: String, eventTypeName: String): String {
         val fieldValue = value.get(fieldName)?.toString()
         if (fieldValue.isNullOrBlank()) {
             throw IllegalArgumentException("Missing or empty $fieldName in $eventTypeName")
@@ -59,11 +51,7 @@ class KafkaConsumer(
         return fieldValue
     }
 
-    private fun requireLong(
-        value: GenericRecord,
-        fieldName: String,
-        eventTypeName: String,
-    ): Long {
+    private fun requireLong(value: GenericRecord, fieldName: String, eventTypeName: String): Long {
         val fieldValue =
             value.get(fieldName) as? Long
                 ?: throw IllegalArgumentException("Missing or invalid $fieldName in $eventTypeName")
@@ -75,32 +63,24 @@ class KafkaConsumer(
      * Throws IllegalArgumentException if any required field is missing or empty.
      * Graph can be empty, so it's not validated.
      */
-    private fun extractRequiredFields(
-        value: GenericRecord,
-        eventTypeName: String,
-    ): RequiredFields =
-        RequiredFields(
-            fdkId = requireNonBlankString(value, "fdkId", eventTypeName),
-            type = requireNonBlankString(value, "type", eventTypeName),
-            timestamp = requireLong(value, "timestamp", eventTypeName),
-            graph = value.get("graph")?.toString() ?: "",
-            catalogGraph = value.get("catalogGraph")?.toString(),
-        )
+    private fun extractRequiredFields(value: GenericRecord, eventTypeName: String): RequiredFields = RequiredFields(
+        fdkId = requireNonBlankString(value, "fdkId", eventTypeName),
+        type = requireNonBlankString(value, "type", eventTypeName),
+        timestamp = requireLong(value, "timestamp", eventTypeName),
+        graph = value.get("graph")?.toString() ?: "",
+        catalogGraph = value.get("catalogGraph")?.toString(),
+    )
 
     /**
      * Validates and extracts required fields from a GenericRecord for RdfParseEvent.
      * Throws IllegalArgumentException if any required field is missing or empty.
      * Data can be empty, so it's not validated.
      */
-    private fun extractRdfParseRequiredFields(
-        value: GenericRecord,
-        eventTypeName: String,
-    ): RdfParseRequiredFields =
-        RdfParseRequiredFields(
-            fdkId = requireNonBlankString(value, "fdkId", eventTypeName),
-            timestamp = requireLong(value, "timestamp", eventTypeName),
-            data = value.get("data")?.toString() ?: "",
-        )
+    private fun extractRdfParseRequiredFields(value: GenericRecord, eventTypeName: String): RdfParseRequiredFields = RdfParseRequiredFields(
+        fdkId = requireNonBlankString(value, "fdkId", eventTypeName),
+        timestamp = requireLong(value, "timestamp", eventTypeName),
+        data = value.get("data")?.toString() ?: "",
+    )
 
     private fun <T> processRecord(
         record: ConsumerRecord<String, Any>,
@@ -167,35 +147,33 @@ class KafkaConsumer(
         }
     }
 
-    private fun extractConceptEvent(record: ConsumerRecord<String, Any>): ConceptEvent? =
-        extractEvent(record, "ConceptEvent") { value ->
-            val fields = extractRequiredFields(value, "ConceptEvent")
-            ConceptEvent
-                .newBuilder()
-                .setFdkId(fields.fdkId)
-                .setType(ConceptEventType.valueOf(fields.type))
-                .setTimestamp(fields.timestamp)
-                .setGraph(fields.graph)
-                .setCatalogGraph(fields.catalogGraph)
-                .setHarvestRunId(value.get("harvestRunId")?.toString())
-                .setUri(value.get("uri")?.toString())
-                .build()
-        }
+    private fun extractConceptEvent(record: ConsumerRecord<String, Any>): ConceptEvent? = extractEvent(record, "ConceptEvent") { value ->
+        val fields = extractRequiredFields(value, "ConceptEvent")
+        ConceptEvent
+            .newBuilder()
+            .setFdkId(fields.fdkId)
+            .setType(ConceptEventType.valueOf(fields.type))
+            .setTimestamp(fields.timestamp)
+            .setGraph(fields.graph)
+            .setCatalogGraph(fields.catalogGraph)
+            .setHarvestRunId(value.get("harvestRunId")?.toString())
+            .setUri(value.get("uri")?.toString())
+            .build()
+    }
 
-    private fun extractDatasetEvent(record: ConsumerRecord<String, Any>): DatasetEvent? =
-        extractEvent(record, "DatasetEvent") { value ->
-            val fields = extractRequiredFields(value, "DatasetEvent")
-            DatasetEvent
-                .newBuilder()
-                .setFdkId(fields.fdkId)
-                .setType(DatasetEventType.valueOf(fields.type))
-                .setTimestamp(fields.timestamp)
-                .setGraph(fields.graph)
-                .setCatalogGraph(fields.catalogGraph)
-                .setHarvestRunId(value.get("harvestRunId")?.toString())
-                .setUri(value.get("uri")?.toString())
-                .build()
-        }
+    private fun extractDatasetEvent(record: ConsumerRecord<String, Any>): DatasetEvent? = extractEvent(record, "DatasetEvent") { value ->
+        val fields = extractRequiredFields(value, "DatasetEvent")
+        DatasetEvent
+            .newBuilder()
+            .setFdkId(fields.fdkId)
+            .setType(DatasetEventType.valueOf(fields.type))
+            .setTimestamp(fields.timestamp)
+            .setGraph(fields.graph)
+            .setCatalogGraph(fields.catalogGraph)
+            .setHarvestRunId(value.get("harvestRunId")?.toString())
+            .setUri(value.get("uri")?.toString())
+            .build()
+    }
 
     private fun extractDataServiceEvent(record: ConsumerRecord<String, Any>): DataServiceEvent? =
         extractEvent(record, "DataServiceEvent") { value ->
@@ -212,20 +190,19 @@ class KafkaConsumer(
                 .build()
         }
 
-    private fun extractEventEvent(record: ConsumerRecord<String, Any>): EventEvent? =
-        extractEvent(record, "EventEvent") { value ->
-            val fields = extractRequiredFields(value, "EventEvent")
-            EventEvent
-                .newBuilder()
-                .setFdkId(fields.fdkId)
-                .setType(EventEventType.valueOf(fields.type))
-                .setTimestamp(fields.timestamp)
-                .setGraph(fields.graph)
-                .setCatalogGraph(fields.catalogGraph)
-                .setHarvestRunId(value.get("harvestRunId")?.toString())
-                .setUri(value.get("uri")?.toString())
-                .build()
-        }
+    private fun extractEventEvent(record: ConsumerRecord<String, Any>): EventEvent? = extractEvent(record, "EventEvent") { value ->
+        val fields = extractRequiredFields(value, "EventEvent")
+        EventEvent
+            .newBuilder()
+            .setFdkId(fields.fdkId)
+            .setType(EventEventType.valueOf(fields.type))
+            .setTimestamp(fields.timestamp)
+            .setGraph(fields.graph)
+            .setCatalogGraph(fields.catalogGraph)
+            .setHarvestRunId(value.get("harvestRunId")?.toString())
+            .setUri(value.get("uri")?.toString())
+            .build()
+    }
 
     private fun extractInformationModelEvent(record: ConsumerRecord<String, Any>): InformationModelEvent? =
         extractEvent(record, "InformationModelEvent") { value ->
@@ -242,35 +219,33 @@ class KafkaConsumer(
                 .build()
         }
 
-    private fun extractServiceEvent(record: ConsumerRecord<String, Any>): ServiceEvent? =
-        extractEvent(record, "ServiceEvent") { value ->
-            val fields = extractRequiredFields(value, "ServiceEvent")
-            ServiceEvent
-                .newBuilder()
-                .setFdkId(fields.fdkId)
-                .setType(ServiceEventType.valueOf(fields.type))
-                .setTimestamp(fields.timestamp)
-                .setGraph(fields.graph)
-                .setCatalogGraph(fields.catalogGraph)
-                .setHarvestRunId(value.get("harvestRunId")?.toString())
-                .setUri(value.get("uri")?.toString())
-                .build()
-        }
+    private fun extractServiceEvent(record: ConsumerRecord<String, Any>): ServiceEvent? = extractEvent(record, "ServiceEvent") { value ->
+        val fields = extractRequiredFields(value, "ServiceEvent")
+        ServiceEvent
+            .newBuilder()
+            .setFdkId(fields.fdkId)
+            .setType(ServiceEventType.valueOf(fields.type))
+            .setTimestamp(fields.timestamp)
+            .setGraph(fields.graph)
+            .setCatalogGraph(fields.catalogGraph)
+            .setHarvestRunId(value.get("harvestRunId")?.toString())
+            .setUri(value.get("uri")?.toString())
+            .build()
+    }
 
-    private fun extractRdfParseEvent(record: ConsumerRecord<String, Any>): RdfParseEvent? =
-        extractEvent(record, "RdfParseEvent") { value ->
-            val fields = extractRdfParseRequiredFields(value, "RdfParseEvent")
-            val resourceTypeStr = requireNonBlankString(value, "resourceType", "RdfParseEvent")
-            RdfParseEvent
-                .newBuilder()
-                .setFdkId(fields.fdkId)
-                .setHarvestRunId(value.get("harvestRunId")?.toString())
-                .setUri(value.get("uri")?.toString())
-                .setResourceType(RdfParseResourceType.valueOf(resourceTypeStr))
-                .setTimestamp(fields.timestamp)
-                .setData(fields.data)
-                .build()
-        }
+    private fun extractRdfParseEvent(record: ConsumerRecord<String, Any>): RdfParseEvent? = extractEvent(record, "RdfParseEvent") { value ->
+        val fields = extractRdfParseRequiredFields(value, "RdfParseEvent")
+        val resourceTypeStr = requireNonBlankString(value, "resourceType", "RdfParseEvent")
+        RdfParseEvent
+            .newBuilder()
+            .setFdkId(fields.fdkId)
+            .setHarvestRunId(value.get("harvestRunId")?.toString())
+            .setUri(value.get("uri")?.toString())
+            .setResourceType(RdfParseResourceType.valueOf(resourceTypeStr))
+            .setTimestamp(fields.timestamp)
+            .setData(fields.data)
+            .build()
+    }
 
     @KafkaListener(topics = ["\${app.kafka.topics.rdf-parse}"], concurrency = "4")
     fun handleRdfParseEvent(

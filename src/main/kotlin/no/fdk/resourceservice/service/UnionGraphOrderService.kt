@@ -315,10 +315,7 @@ class UnionGraphOrderService(
         )
     }
 
-    fun updateOrder(
-        id: String,
-        fields: UnionGraphService.UpdateFields,
-    ): UnionGraphOrder? {
+    fun updateOrder(id: String, fields: UnionGraphService.UpdateFields): UnionGraphOrder? {
         logger.info("Updating union graph order: {}", id)
 
         val existingOrder = unionGraphOrderRepository.findById(id).orElse(null)
@@ -328,18 +325,10 @@ class UnionGraphOrderService(
         }
 
         // Helper to get value or keep existing (for nullable fields that can be set to null)
-        fun <T> getOrKeepNullable(
-            field: String,
-            value: T?,
-            existing: T?,
-        ) = if (fields.has(field)) value else existing
+        fun <T> getOrKeepNullable(field: String, value: T?, existing: T?) = if (fields.has(field)) value else existing
 
         // Helper to get value or keep existing (for non-nullable fields - null values use existing)
-        fun <T> getOrKeep(
-            field: String,
-            value: T?,
-            existing: T,
-        ) = if (fields.has(field) && value != null) value else existing
+        fun <T> getOrKeep(field: String, value: T?, existing: T) = if (fields.has(field) && value != null) value else existing
 
         // Validate updateTtlHours if provided
         val newUpdateTtlHours = getOrKeep("updateTtlHours", fields.updateTtlHours, existingOrder.updateTtlHours)
@@ -513,10 +502,7 @@ class UnionGraphOrderService(
      * @return true if the lock was successful, false otherwise
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    fun lockOrderInNewTransaction(
-        orderId: String,
-        instanceId: String,
-    ): Boolean {
+    fun lockOrderInNewTransaction(orderId: String, instanceId: String): Boolean {
         val locked = unionGraphOrderRepository.lockOrderForProcessing(orderId, instanceId)
         return locked > 0
     }
@@ -531,10 +517,7 @@ class UnionGraphOrderService(
     @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = true)
     fun getOrderInNewTransaction(orderId: String): UnionGraphOrder? = unionGraphOrderRepository.findById(orderId).orElse(null)
 
-    private fun validateResourceFilters(
-        resourceTypes: List<ResourceType>?,
-        resourceFilters: UnionGraphResourceFilters?,
-    ) {
+    private fun validateResourceFilters(resourceTypes: List<ResourceType>?, resourceFilters: UnionGraphResourceFilters?) {
         val filters = resourceFilters?.normalized() ?: return
 
         if (filters.dataset != null) {

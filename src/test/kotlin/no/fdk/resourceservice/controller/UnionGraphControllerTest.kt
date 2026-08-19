@@ -43,11 +43,10 @@ class UnionGraphControllerTest : BaseControllerTest() {
     @TestConfiguration
     class TestConfig {
         @Bean
-        fun unionGraphFeatureConfig(): UnionGraphFeatureConfig =
-            UnionGraphFeatureConfig(
-                deleteEnabled = true,
-                resetEnabled = true,
-            )
+        fun unionGraphFeatureConfig(): UnionGraphFeatureConfig = UnionGraphFeatureConfig(
+            deleteEnabled = true,
+            resetEnabled = true,
+        )
     }
 
     @Test
@@ -345,10 +344,10 @@ class UnionGraphControllerTest : BaseControllerTest() {
         val filters =
             UnionGraphResourceFilters(
                 dataset =
-                    UnionGraphResourceFilters.DatasetFilters(
-                        isOpenData = true,
-                        isRelatedToTransportportal = false,
-                    ),
+                UnionGraphResourceFilters.DatasetFilters(
+                    isOpenData = true,
+                    isRelatedToTransportportal = false,
+                ),
             )
         val order =
             UnionGraphOrder(
@@ -400,9 +399,9 @@ class UnionGraphControllerTest : BaseControllerTest() {
         val filters =
             UnionGraphResourceFilters(
                 dataset =
-                    UnionGraphResourceFilters.DatasetFilters(
-                        isDatasetSeries = true,
-                    ),
+                UnionGraphResourceFilters.DatasetFilters(
+                    isDatasetSeries = true,
+                ),
             )
         val order =
             UnionGraphOrder(
@@ -452,11 +451,11 @@ class UnionGraphControllerTest : BaseControllerTest() {
         val filters =
             UnionGraphResourceFilters(
                 dataset =
-                    UnionGraphResourceFilters.DatasetFilters(
-                        isOpenData = true,
-                        isRelatedToTransportportal = false,
-                        isDatasetSeries = true,
-                    ),
+                UnionGraphResourceFilters.DatasetFilters(
+                    isOpenData = true,
+                    isRelatedToTransportportal = false,
+                    isDatasetSeries = true,
+                ),
             )
         val order =
             UnionGraphOrder(

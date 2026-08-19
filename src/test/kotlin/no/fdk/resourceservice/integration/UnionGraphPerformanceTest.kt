@@ -480,7 +480,7 @@ class UnionGraphPerformanceTest : BaseIntegrationTest() {
                 skos:related <https://example.com/concept/related-$index-1>, <https://example.com/concept/related-$index-2>, <https://example.com/concept/related-$index-3>, <https://example.com/concept/related-$index-4>, <https://example.com/concept/related-$index-5> ;
                 dct:publisher <https://example.com/organization/publisher-$index> ;
                 dct:creator <https://example.com/organization/creator-$index-1>, <https://example.com/organization/creator-$index-2> .
-            """.trimIndent()
+        """.trimIndent()
     }
 
     private fun buildLargeConceptJsonLd(index: Int): Map<String, Any> {
@@ -514,7 +514,7 @@ class UnionGraphPerformanceTest : BaseIntegrationTest() {
                                     "This description is intentionally long to simulate real-world data with substantial content. ".repeat(
                                         3,
                                     )
-                            ),
+                                ),
                         "@language" to "nb",
                     ),
                     mapOf(
@@ -523,7 +523,7 @@ class UnionGraphPerformanceTest : BaseIntegrationTest() {
                                 "English description for concept $index with detailed information " +
                                     "about its characteristics and usage patterns. " +
                                     "Extended content to increase the size of the resource. ".repeat(2)
-                            ),
+                                ),
                         "@language" to "en",
                     ),
                 ),
@@ -534,7 +534,7 @@ class UnionGraphPerformanceTest : BaseIntegrationTest() {
                             (
                                 "Abstract description for concept $index providing a high-level overview of " +
                                     "the concept's meaning and application."
-                            ),
+                                ),
                         "@language" to "nb",
                     ),
                 ),

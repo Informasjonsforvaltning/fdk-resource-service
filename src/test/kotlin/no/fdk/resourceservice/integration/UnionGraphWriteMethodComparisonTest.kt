@@ -92,10 +92,7 @@ class UnionGraphWriteMethodComparisonTest : BaseIntegrationTest() {
     /**
      * Test direct write approach: parse each resource individually, accumulate in temp model, add in sub-batches.
      */
-    private fun testDirectWriteApproach(
-        resources: List<*>,
-        batchSize: Int,
-    ): Double {
+    private fun testDirectWriteApproach(resources: List<*>, batchSize: Int): Double {
         val tempDir = Files.createTempDirectory("jena-tdb2-direct-").toFile()
         var dataset: Dataset? = null
 
@@ -162,10 +159,7 @@ class UnionGraphWriteMethodComparisonTest : BaseIntegrationTest() {
     /**
      * Test merged JSON string approach: combine all JSON-LD into one string, parse once per batch.
      */
-    private fun testMergedJsonApproach(
-        resources: List<*>,
-        batchSize: Int,
-    ): Double {
+    private fun testMergedJsonApproach(resources: List<*>, batchSize: Int): Double {
         val tempDir = Files.createTempDirectory("jena-tdb2-merged-").toFile()
         var dataset: Dataset? = null
 
@@ -236,7 +230,7 @@ class UnionGraphWriteMethodComparisonTest : BaseIntegrationTest() {
                 skos:narrower <https://example.com/concept/narrower-$index-1>, <https://example.com/concept/narrower-$index-2>, <https://example.com/concept/narrower-$index-3>, <https://example.com/concept/narrower-$index-4> ;
                 dct:publisher <https://example.com/organization/publisher-$index> ;
                 dct:created "2024-01-${String.format("%02d", (index % 28) + 1)}"^^<http://www.w3.org/2001/XMLSchema#date> .
-            """.trimIndent()
+        """.trimIndent()
     }
 
     private fun buildLargeConceptJsonLd(index: Int): Map<String, Any> {
@@ -263,7 +257,7 @@ class UnionGraphWriteMethodComparisonTest : BaseIntegrationTest() {
                                     "This description is intentionally long to simulate real-world data with substantial content. ".repeat(
                                         3,
                                     )
-                            ),
+                                ),
                         "@language" to "nb",
                     ),
                 ),

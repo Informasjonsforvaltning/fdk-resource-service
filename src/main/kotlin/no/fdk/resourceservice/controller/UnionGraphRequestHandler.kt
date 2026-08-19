@@ -78,16 +78,10 @@ class UnionGraphRequestHandler {
         )
     }
 
-    fun buildUpdateFields(
-        rawBody: Map<String, Any?>?,
-        request: UnionGraphOrderRequest,
-    ): UnionGraphService.UpdateFields {
+    fun buildUpdateFields(rawBody: Map<String, Any?>?, request: UnionGraphOrderRequest): UnionGraphService.UpdateFields {
         fun hasField(fieldName: String): Boolean = rawBody?.containsKey(fieldName) == true
 
-        fun <T> getIfPresent(
-            field: String,
-            value: T?,
-        ): T? = if (hasField(field)) value else null
+        fun <T> getIfPresent(field: String, value: T?): T? = if (hasField(field)) value else null
 
         val resourceTypes =
             getIfPresent("resourceTypes", request.resourceTypes)
@@ -134,78 +128,68 @@ class UnionGraphRequestHandler {
         )
     }
 
-    fun toOrderResponse(order: UnionGraphOrder): UnionGraphOrderResponse =
-        UnionGraphOrderResponse(
-            id = order.id,
-            status = order.status.name,
-            resourceTypes = order.resourceTypes,
-            updateTtlHours = order.updateTtlHours,
-            webhookUrl = order.webhookUrl,
-            createdAt = order.createdAt.toString(),
-            resourceFilters = toResponseFilters(order.resourceFilters),
-            expandDistributionAccessServices = order.expandDistributionAccessServices,
-            name = order.name,
-            description = order.description,
-            resourceIds = order.resourceIds,
-            resourceUris = order.resourceUris,
-        )
+    fun toOrderResponse(order: UnionGraphOrder): UnionGraphOrderResponse = UnionGraphOrderResponse(
+        id = order.id,
+        status = order.status.name,
+        resourceTypes = order.resourceTypes,
+        updateTtlHours = order.updateTtlHours,
+        webhookUrl = order.webhookUrl,
+        createdAt = order.createdAt.toString(),
+        resourceFilters = toResponseFilters(order.resourceFilters),
+        expandDistributionAccessServices = order.expandDistributionAccessServices,
+        name = order.name,
+        description = order.description,
+        resourceIds = order.resourceIds,
+        resourceUris = order.resourceUris,
+    )
 
-    fun toStatusResponse(order: UnionGraphOrder): UnionGraphOrderStatusResponse =
-        UnionGraphOrderStatusResponse(
-            id = order.id,
-            status = order.status.name,
-            resourceTypes = order.resourceTypes,
-            updateTtlHours = order.updateTtlHours,
-            webhookUrl = order.webhookUrl,
-            errorMessage = order.errorMessage,
-            createdAt = order.createdAt.toString(),
-            updatedAt = order.updatedAt.toString(),
-            processedAt = order.processedAt?.toString(),
-            resourceFilters = toResponseFilters(order.resourceFilters),
-            expandDistributionAccessServices = order.expandDistributionAccessServices,
-            name = order.name,
-            description = order.description,
-            resourceIds = order.resourceIds,
-            resourceUris = order.resourceUris,
-        )
+    fun toStatusResponse(order: UnionGraphOrder): UnionGraphOrderStatusResponse = UnionGraphOrderStatusResponse(
+        id = order.id,
+        status = order.status.name,
+        resourceTypes = order.resourceTypes,
+        updateTtlHours = order.updateTtlHours,
+        webhookUrl = order.webhookUrl,
+        errorMessage = order.errorMessage,
+        createdAt = order.createdAt.toString(),
+        updatedAt = order.updatedAt.toString(),
+        processedAt = order.processedAt?.toString(),
+        resourceFilters = toResponseFilters(order.resourceFilters),
+        expandDistributionAccessServices = order.expandDistributionAccessServices,
+        name = order.name,
+        description = order.description,
+        resourceIds = order.resourceIds,
+        resourceUris = order.resourceUris,
+    )
 
-    fun toSummaryResponse(order: UnionGraphOrder): UnionGraphOrderSummaryResponse =
-        UnionGraphOrderSummaryResponse(
-            id = order.id,
-            status = order.status.name,
-            resourceTypes = order.resourceTypes,
-            updateTtlHours = order.updateTtlHours,
-            webhookUrl = order.webhookUrl,
-            errorMessage = order.errorMessage,
-            createdAt = order.createdAt.toString(),
-            updatedAt = order.updatedAt.toString(),
-            processedAt = order.processedAt?.toString(),
-            resourceFilters = toResponseFilters(order.resourceFilters),
-            expandDistributionAccessServices = order.expandDistributionAccessServices,
-            name = order.name,
-            description = order.description,
-            resourceIds = order.resourceIds,
-            resourceUris = order.resourceUris,
-        )
+    fun toSummaryResponse(order: UnionGraphOrder): UnionGraphOrderSummaryResponse = UnionGraphOrderSummaryResponse(
+        id = order.id,
+        status = order.status.name,
+        resourceTypes = order.resourceTypes,
+        updateTtlHours = order.updateTtlHours,
+        webhookUrl = order.webhookUrl,
+        errorMessage = order.errorMessage,
+        createdAt = order.createdAt.toString(),
+        updatedAt = order.updatedAt.toString(),
+        processedAt = order.processedAt?.toString(),
+        resourceFilters = toResponseFilters(order.resourceFilters),
+        expandDistributionAccessServices = order.expandDistributionAccessServices,
+        name = order.name,
+        description = order.description,
+        resourceIds = order.resourceIds,
+        resourceUris = order.resourceUris,
+    )
 
-    fun toMinimalInfoResponse(
-        order: UnionGraphOrder,
-        count: Long,
-    ): UnionGraphMinimalInfoResponse =
-        UnionGraphMinimalInfoResponse(
-            id = order.id,
-            name = order.name,
-            description = order.description,
-            resourceTypes = order.resourceTypes,
-            createdAt = order.createdAt.toString(),
-            updatedAt = order.updatedAt.toString(),
-            count = count,
-        )
+    fun toMinimalInfoResponse(order: UnionGraphOrder, count: Long): UnionGraphMinimalInfoResponse = UnionGraphMinimalInfoResponse(
+        id = order.id,
+        name = order.name,
+        description = order.description,
+        resourceTypes = order.resourceTypes,
+        createdAt = order.createdAt.toString(),
+        updatedAt = order.updatedAt.toString(),
+        count = count,
+    )
 
-    fun createdOrConflictResponse(
-        order: UnionGraphOrder,
-        isNew: Boolean,
-    ): ResponseEntity<UnionGraphOrderResponse> {
+    fun createdOrConflictResponse(order: UnionGraphOrder, isNew: Boolean): ResponseEntity<UnionGraphOrderResponse> {
         val httpStatus = if (isNew) HttpStatus.CREATED else HttpStatus.CONFLICT
         return ResponseEntity
             .status(httpStatus)
@@ -220,11 +204,11 @@ class UnionGraphRequestHandler {
 
         return ResourceFiltersResponse(
             dataset =
-                DatasetFiltersResponse(
-                    isOpenData = dataset.isOpenData,
-                    isRelatedToTransportportal = dataset.isRelatedToTransportportal,
-                    isDatasetSeries = dataset.isDatasetSeries,
-                ),
+            DatasetFiltersResponse(
+                isOpenData = dataset.isOpenData,
+                isRelatedToTransportportal = dataset.isRelatedToTransportportal,
+                isDatasetSeries = dataset.isDatasetSeries,
+            ),
         )
     }
 }

@@ -9,20 +9,13 @@ import org.springframework.stereotype.Service
  * Metrics for successful resource store and delete operations.
  */
 @Service
-class ResourceStoreMetricsService(
-    private val meterRegistry: MeterRegistry,
-) {
-    enum class StoreKind(
-        val value: String,
-    ) {
+class ResourceStoreMetricsService(private val meterRegistry: MeterRegistry) {
+    enum class StoreKind(val value: String) {
         JSON("json"),
         GRAPH("graph"),
     }
 
-    fun recordStored(
-        resourceType: ResourceType,
-        kind: StoreKind,
-    ) {
+    fun recordStored(resourceType: ResourceType, kind: StoreKind) {
         Counter
             .builder("resources_stored_total")
             .description("Total number of resources stored successfully")

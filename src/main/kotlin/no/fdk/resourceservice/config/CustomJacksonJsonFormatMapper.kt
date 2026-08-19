@@ -46,11 +46,7 @@ class CustomJacksonJsonFormatMapper : FormatMapper {
         }
     }
 
-    override fun <T : Any?> toString(
-        value: T?,
-        hibernateJavaType: HibernateJavaType<T?>?,
-        mutabilityPlan: WrapperOptions?,
-    ): String? {
+    override fun <T : Any?> toString(value: T?, hibernateJavaType: HibernateJavaType<T?>?, mutabilityPlan: WrapperOptions?): String? {
         if (value == null) {
             return null
         }

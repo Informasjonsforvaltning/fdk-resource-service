@@ -37,10 +37,7 @@ class UnionGraphService(
     /**
      * Result of creating a union graph, indicating whether it's new or existing.
      */
-    data class CreateOrderResult(
-        val order: UnionGraphOrder,
-        val isNew: Boolean,
-    )
+    data class CreateOrderResult(val order: UnionGraphOrder, val isNew: Boolean)
 
     /**
      * Data class to track which fields should be updated.
@@ -78,19 +75,18 @@ class UnionGraphService(
         resourceIds: List<String>? = null,
         resourceUris: List<String>? = null,
         includeCatalog: Boolean = true,
-    ): CreateOrderResult =
-        orderService.createOrder(
-            resourceTypes = resourceTypes,
-            updateTtlHours = updateTtlHours,
-            webhookUrl = webhookUrl,
-            resourceFilters = resourceFilters,
-            expandDistributionAccessServices = expandDistributionAccessServices,
-            name = name,
-            description = description,
-            resourceIds = resourceIds,
-            resourceUris = resourceUris,
-            includeCatalog = includeCatalog,
-        )
+    ): CreateOrderResult = orderService.createOrder(
+        resourceTypes = resourceTypes,
+        updateTtlHours = updateTtlHours,
+        webhookUrl = webhookUrl,
+        resourceFilters = resourceFilters,
+        expandDistributionAccessServices = expandDistributionAccessServices,
+        name = name,
+        description = description,
+        resourceIds = resourceIds,
+        resourceUris = resourceUris,
+        includeCatalog = includeCatalog,
+    )
 
     /**
      * Resets a union graph to PENDING status for retry.
@@ -142,23 +138,19 @@ class UnionGraphService(
         name: String? = null,
         description: String? = null,
         includeCatalog: Boolean? = null,
-    ): UnionGraphOrder? =
-        orderService.updateOrder(
-            id = id,
-            updateTtlHours = updateTtlHours,
-            webhookUrl = webhookUrl,
-            resourceTypes = resourceTypes,
-            resourceFilters = resourceFilters,
-            expandDistributionAccessServices = expandDistributionAccessServices,
-            name = name,
-            description = description,
-            includeCatalog = includeCatalog,
-        )
+    ): UnionGraphOrder? = orderService.updateOrder(
+        id = id,
+        updateTtlHours = updateTtlHours,
+        webhookUrl = webhookUrl,
+        resourceTypes = resourceTypes,
+        resourceFilters = resourceFilters,
+        expandDistributionAccessServices = expandDistributionAccessServices,
+        name = name,
+        description = description,
+        includeCatalog = includeCatalog,
+    )
 
-    fun updateOrder(
-        id: String,
-        fields: UpdateFields,
-    ): UnionGraphOrder? = orderService.updateOrder(id, fields)
+    fun updateOrder(id: String, fields: UpdateFields): UnionGraphOrder? = orderService.updateOrder(id, fields)
 
     /**
      * Deletes a union graph.
@@ -194,10 +186,8 @@ class UnionGraphService(
      *
      * @see UnionGraphOrderService.lockOrderInNewTransaction
      */
-    fun lockOrderInNewTransaction(
-        orderId: String,
-        instanceId: String,
-    ): Boolean = orderService.lockOrderInNewTransaction(orderId, instanceId)
+    fun lockOrderInNewTransaction(orderId: String, instanceId: String): Boolean =
+        orderService.lockOrderInNewTransaction(orderId, instanceId)
 
     /**
      * Fetches an order in a new transaction to ensure we see the committed state.
@@ -211,10 +201,7 @@ class UnionGraphService(
      *
      * @see UnionGraphBatchProcessor.processOrder
      */
-    fun processOrder(
-        order: UnionGraphOrder,
-        instanceId: String,
-    ) = batchProcessor.processOrder(order, instanceId)
+    fun processOrder(order: UnionGraphOrder, instanceId: String) = batchProcessor.processOrder(order, instanceId)
 
     /**
      * Processes the next batch of resources for a union graph order.

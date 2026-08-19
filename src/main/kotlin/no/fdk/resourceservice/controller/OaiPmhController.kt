@@ -39,27 +39,27 @@ class OaiPmhController(
     @Operation(
         summary = "OAI-PMH endpoint",
         description =
-            "OAI-PMH 2.0 protocol endpoint for harvesting union graph resources. " +
-                "Supports Identify, ListMetadataFormats, GetRecord, ListIdentifiers, and ListRecords verbs. " +
-                "Each resource is treated as a record with identifier format: {unionGraphId}:resource:{resourceId}. " +
-                "\n\n" +
-                "**Supported Verbs:**\n" +
-                "- `Identify`: Returns repository information\n" +
-                "- `ListMetadataFormats`: Lists available metadata formats (only rdfxml)\n" +
-                "- `GetRecord`: Retrieves a single record by identifier\n" +
-                "- `ListIdentifiers`: Lists record identifiers (headers only)\n" +
-                "- `ListRecords`: Lists complete records with metadata\n" +
-                "\n\n" +
-                "**metadataPrefix Usage:**\n" +
-                "The metadataPrefix parameter must be `rdfxml` (RDF/XML format). " +
-                "This is the only supported format for OAI-PMH. " +
-                "Resources are stored as RDF-XML snapshots and returned directly without conversion. " +
-                "\n\n" +
-                "**Pagination:**\n" +
-                "Pagination is supported via resumption tokens for ListIdentifiers and ListRecords. " +
-                "When a resumption token is provided, the metadataPrefix " +
-                "is extracted from the token and does not need to be specified again. " +
-                "The resumption token format is: `{unionGraphId}:rdfxml:{resourceOffset}`",
+        "OAI-PMH 2.0 protocol endpoint for harvesting union graph resources. " +
+            "Supports Identify, ListMetadataFormats, GetRecord, ListIdentifiers, and ListRecords verbs. " +
+            "Each resource is treated as a record with identifier format: {unionGraphId}:resource:{resourceId}. " +
+            "\n\n" +
+            "**Supported Verbs:**\n" +
+            "- `Identify`: Returns repository information\n" +
+            "- `ListMetadataFormats`: Lists available metadata formats (only rdfxml)\n" +
+            "- `GetRecord`: Retrieves a single record by identifier\n" +
+            "- `ListIdentifiers`: Lists record identifiers (headers only)\n" +
+            "- `ListRecords`: Lists complete records with metadata\n" +
+            "\n\n" +
+            "**metadataPrefix Usage:**\n" +
+            "The metadataPrefix parameter must be `rdfxml` (RDF/XML format). " +
+            "This is the only supported format for OAI-PMH. " +
+            "Resources are stored as RDF-XML snapshots and returned directly without conversion. " +
+            "\n\n" +
+            "**Pagination:**\n" +
+            "Pagination is supported via resumption tokens for ListIdentifiers and ListRecords. " +
+            "When a resumption token is provided, the metadataPrefix " +
+            "is extracted from the token and does not need to be specified again. " +
+            "The resumption token format is: `{unionGraphId}:rdfxml:{resourceOffset}`",
     )
     @ApiResponses(
         value = [
@@ -88,8 +88,8 @@ class OaiPmhController(
         @RequestParam(required = false) verb: String?,
         @Parameter(
             description =
-                "Metadata prefix must be `rdfxml` (RDF/XML format). " +
-                    "Required for GetRecord, ListIdentifiers, and ListRecords (unless resumptionToken is provided).",
+            "Metadata prefix must be `rdfxml` (RDF/XML format). " +
+                "Required for GetRecord, ListIdentifiers, and ListRecords (unless resumptionToken is provided).",
             example = "rdfxml",
         )
         @RequestParam(required = false) metadataPrefix: String?,
@@ -145,10 +145,7 @@ class OaiPmhController(
         }
     }
 
-    private fun handleIdentify(
-        id: String,
-        httpRequest: HttpServletRequest,
-    ): ResponseEntity<String> {
+    private fun handleIdentify(id: String, httpRequest: HttpServletRequest): ResponseEntity<String> {
         // Get union graph order to verify it exists
         val order =
             unionGraphService.getOrder(id)
@@ -187,11 +184,7 @@ class OaiPmhController(
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_XML).body(responseBuilder.documentToString(doc))
     }
 
-    private fun handleListMetadataFormats(
-        id: String,
-        identifier: String?,
-        httpRequest: HttpServletRequest,
-    ): ResponseEntity<String> {
+    private fun handleListMetadataFormats(id: String, identifier: String?, httpRequest: HttpServletRequest): ResponseEntity<String> {
         // Get union graph order to verify it exists
         val order =
             unionGraphService.getOrder(id)
@@ -319,10 +312,7 @@ class OaiPmhController(
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_XML).body(responseBuilder.documentToString(doc))
     }
 
-    private fun handleListSets(
-        id: String,
-        httpRequest: HttpServletRequest,
-    ): ResponseEntity<String> {
+    private fun handleListSets(id: String, httpRequest: HttpServletRequest): ResponseEntity<String> {
         val order =
             unionGraphService.getOrder(id)
                 ?: return responseBuilder.errorResponse("idDoesNotExist", "Union graph with id '$id' does not exist")

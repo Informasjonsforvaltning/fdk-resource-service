@@ -17,10 +17,7 @@ import org.springframework.transaction.annotation.Transactional
  */
 @Service
 @Transactional
-class ResourceService(
-    private val resourceRepository: ResourceRepository,
-    private val objectMapper: ObjectMapper,
-) {
+class ResourceService(private val resourceRepository: ResourceRepository, private val objectMapper: ObjectMapper) {
     private val logger = LoggerFactory.getLogger(ResourceService::class.java)
 
     /**
@@ -43,10 +40,7 @@ class ResourceService(
      * @param resourceType The type of resource to retrieve
      * @return ResourceEntity, or null if not found or type mismatch
      */
-    fun getResourceEntity(
-        id: String,
-        resourceType: ResourceType,
-    ): ResourceEntity? {
+    fun getResourceEntity(id: String, resourceType: ResourceType): ResourceEntity? {
         logger.debug("Getting resource entity with id: {} and type: {}", id, resourceType)
 
         val entity = resourceRepository.findById(id).orElse(null)
@@ -64,10 +58,7 @@ class ResourceService(
      * @param resourceType The type of resource to retrieve
      * @return JSON representation of the resource, or null if not found or type mismatch
      */
-    fun getResourceJson(
-        id: String,
-        resourceType: ResourceType,
-    ): Map<String, Any>? {
+    fun getResourceJson(id: String, resourceType: ResourceType): Map<String, Any>? {
         logger.debug("Getting resource JSON with id: {} and type: {}", id, resourceType)
 
         val entity = resourceRepository.findById(id).orElse(null)
@@ -103,10 +94,7 @@ class ResourceService(
      * @param timestamp The new timestamp to compare
      * @return true if resource should be updated (doesn't exist or new timestamp is >= existing), false otherwise
      */
-    fun shouldUpdateResource(
-        id: String,
-        timestamp: Long,
-    ): Boolean {
+    fun shouldUpdateResource(id: String, timestamp: Long): Boolean {
         val existingTimestamp = resourceRepository.findTimestampById(id)
         return when {
             existingTimestamp == null -> true
@@ -167,10 +155,7 @@ class ResourceService(
      * @param resourceType The type of resource to retrieve
      * @return Graph data representation of the resource (typically Turtle text), or null if not found or type mismatch
      */
-    fun getResourceGraphDataByUri(
-        uri: String,
-        resourceType: ResourceType,
-    ): String? {
+    fun getResourceGraphDataByUri(uri: String, resourceType: ResourceType): String? {
         logger.debug("Getting resource graph data with uri: {} and type: {}", uri, resourceType)
 
         val entity = getResourceEntityByUri(uri)
@@ -192,10 +177,7 @@ class ResourceService(
      * @param resourceType The type of resource to retrieve
      * @return JSON representation of the resource, or null if not found or type mismatch
      */
-    fun getResourceJsonByUri(
-        uri: String,
-        resourceType: ResourceType,
-    ): Map<String, Any>? {
+    fun getResourceJsonByUri(uri: String, resourceType: ResourceType): Map<String, Any>? {
         logger.debug("Getting resource JSON with uri: {} and type: {}", uri, resourceType)
 
         // For concepts, try identifier field first
@@ -223,12 +205,7 @@ class ResourceService(
      * @param resourceJson The parsed JSON representation of the resource (FDK internal model)
      * @param timestamp The timestamp when the resource was processed
      */
-    fun storeResourceJson(
-        id: String,
-        resourceType: ResourceType,
-        resourceJson: Map<String, Any>,
-        timestamp: Long,
-    ) {
+    fun storeResourceJson(id: String, resourceType: ResourceType, resourceJson: Map<String, Any>, timestamp: Long) {
         // Note: Timestamp check already done in CircuitBreakerService, but double-check here as safety
         val existingEntity = resourceRepository.findById(id).orElse(null)
 
@@ -276,13 +253,7 @@ class ResourceService(
      * @param format The format of the original RDF data (default: TURTLE)
      * @param timestamp The timestamp when the resource was processed
      */
-    fun storeResourceGraphData(
-        id: String,
-        resourceType: ResourceType,
-        graphData: String,
-        format: String = "TURTLE",
-        timestamp: Long,
-    ) {
+    fun storeResourceGraphData(id: String, resourceType: ResourceType, graphData: String, format: String = "TURTLE", timestamp: Long) {
         // Note: Timestamp check already done in CircuitBreakerService, but double-check here as safety
         val existingEntity = resourceRepository.findById(id).orElse(null)
 
@@ -326,12 +297,7 @@ class ResourceService(
      * @param format The format of the catalog RDF data (default: TURTLE)
      * @param timestamp The timestamp when the resource was processed
      */
-    fun storeCatalogGraphData(
-        id: String,
-        graphData: String,
-        format: String = "TURTLE",
-        timestamp: Long,
-    ) {
+    fun storeCatalogGraphData(id: String, graphData: String, format: String = "TURTLE", timestamp: Long) {
         val existingEntity = resourceRepository.findById(id).orElse(null)
 
         if (existingEntity != null) {
@@ -375,10 +341,7 @@ class ResourceService(
      * @param resourceType The type of resources to retrieve
      * @return JSON representation of the resources, or null if not found or type mismatch
      */
-    fun getResourceJsonListById(
-        ids: List<String>,
-        resourceType: ResourceType,
-    ): List<Map<String, Any>> {
+    fun getResourceJsonListById(ids: List<String>, resourceType: ResourceType): List<Map<String, Any>> {
         logger.debug("Getting resources JSON with ids: {} and type: {}", ids, resourceType)
 
         return resourceRepository
@@ -394,10 +357,7 @@ class ResourceService(
      * @param since The timestamp to filter resources (only resources updated after this timestamp)
      * @return List of JSON representations (may include null values for resources without JSON data)
      */
-    fun getResourceJsonListSince(
-        resourceType: ResourceType,
-        since: Long,
-    ): List<Map<String, Any>?> {
+    fun getResourceJsonListSince(resourceType: ResourceType, since: Long): List<Map<String, Any>?> {
         logger.debug("Getting resource JSON for type: {} since: {}", resourceType, since)
 
         val entities = resourceRepository.findResourcesSince(resourceType.name, since)
@@ -414,11 +374,7 @@ class ResourceService(
      * @param resourceType The type of resource (CONCEPT, DATASET, etc.)
      * @param timestamp The timestamp when the resource was deleted
      */
-    fun markResourceAsDeleted(
-        id: String,
-        resourceType: ResourceType,
-        timestamp: Long,
-    ) {
+    fun markResourceAsDeleted(id: String, resourceType: ResourceType, timestamp: Long) {
         logger.debug("Marking resource as deleted with id: {}, type: {}, timestamp: {}", id, resourceType, timestamp)
 
         val existingEntity = resourceRepository.findById(id).orElse(null)

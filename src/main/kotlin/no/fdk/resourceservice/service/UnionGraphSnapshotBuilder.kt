@@ -38,9 +38,7 @@ class UnionGraphSnapshotBuilder(
      * Outcome of attempting to create a snapshot from a single resource.
      */
     internal sealed class SnapshotResult {
-        data class Included(
-            val snapshot: UnionGraphResourceSnapshot,
-        ) : SnapshotResult()
+        data class Included(val snapshot: UnionGraphResourceSnapshot) : SnapshotResult()
 
         data object Skipped : SnapshotResult()
 
@@ -329,10 +327,7 @@ class UnionGraphSnapshotBuilder(
      * @param model The existing model to merge DataService graphs into (modified in place)
      * @param dataServiceUris Set of DataService URIs to fetch and merge
      */
-    private fun mergeDataServiceGraphsIntoModel(
-        model: org.apache.jena.rdf.model.Model,
-        dataServiceUris: Set<String>,
-    ) {
+    private fun mergeDataServiceGraphsIntoModel(model: org.apache.jena.rdf.model.Model, dataServiceUris: Set<String>) {
         if (dataServiceUris.isEmpty()) {
             return
         }
@@ -399,11 +394,7 @@ class UnionGraphSnapshotBuilder(
     /**
      * Merges catalog graph data into a resource model for union graph snapshots.
      */
-    private fun mergeCatalogGraphIntoModel(
-        model: org.apache.jena.rdf.model.Model,
-        catalogGraphData: String,
-        catalogGraphFormat: String?,
-    ) {
+    private fun mergeCatalogGraphIntoModel(model: org.apache.jena.rdf.model.Model, catalogGraphData: String, catalogGraphFormat: String?) {
         val catalogModel = parseGraphToModel(catalogGraphData, catalogGraphFormat) ?: return
         try {
             model.add(catalogModel)
@@ -419,10 +410,7 @@ class UnionGraphSnapshotBuilder(
      * @param graphFormat The format of the graph data (TURTLE, JSON-LD, RDF/XML, etc.)
      * @return The parsed model, or null on error
      */
-    private fun parseGraphToModel(
-        graphData: String,
-        graphFormat: String?,
-    ): org.apache.jena.rdf.model.Model? {
+    private fun parseGraphToModel(graphData: String, graphFormat: String?): org.apache.jena.rdf.model.Model? {
         return try {
             if (graphData.isBlank()) {
                 return null
@@ -449,10 +437,7 @@ class UnionGraphSnapshotBuilder(
      * @param datasetUri The URI of the dataset resource to check
      * @return true if the dataset is a DatasetSeries, false otherwise
      */
-    private fun isDatasetSeriesInModel(
-        model: org.apache.jena.rdf.model.Model,
-        datasetUri: String?,
-    ): Boolean {
+    private fun isDatasetSeriesInModel(model: org.apache.jena.rdf.model.Model, datasetUri: String?): Boolean {
         if (datasetUri.isNullOrBlank()) {
             return false
         }
@@ -522,15 +507,14 @@ class UnionGraphSnapshotBuilder(
     /**
      * Parses a format string to Jena Lang enum.
      */
-    private fun parseLang(format: String): Lang =
-        when (format.uppercase()) {
-            "TURTLE" -> Lang.TURTLE
-            "JSON-LD", "JSONLD" -> Lang.JSONLD
-            "RDF/XML", "RDFXML" -> Lang.RDFXML
-            "N-TRIPLES", "NTRIPLES" -> Lang.NTRIPLES
-            "N-QUADS", "NQUADS" -> Lang.NQUADS
-            else -> Lang.TURTLE
-        }
+    private fun parseLang(format: String): Lang = when (format.uppercase()) {
+        "TURTLE" -> Lang.TURTLE
+        "JSON-LD", "JSONLD" -> Lang.JSONLD
+        "RDF/XML", "RDFXML" -> Lang.RDFXML
+        "N-TRIPLES", "NTRIPLES" -> Lang.NTRIPLES
+        "N-QUADS", "NQUADS" -> Lang.NQUADS
+        else -> Lang.TURTLE
+    }
 
     /**
      * Extracts DataService URIs from a dataset JSON payload.
@@ -541,10 +525,7 @@ class UnionGraphSnapshotBuilder(
      * @param datasetJson The dataset JSON map
      * @param uriSet Thread-safe set to add URIs to
      */
-    private fun extractDataServiceUris(
-        datasetJson: Map<String, Any>,
-        uriSet: MutableSet<String>,
-    ) {
+    private fun extractDataServiceUris(datasetJson: Map<String, Any>, uriSet: MutableSet<String>) {
         try {
             // Extract distributions from the dataset
             val distributions =
