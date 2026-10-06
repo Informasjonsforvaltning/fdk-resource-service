@@ -479,6 +479,10 @@ class OaiPmhController(
                 }
             }
 
+        if (resumptionToken != null && resourceOffset > 0 && snapshots.isEmpty()) {
+            return responseBuilder.errorResponse("badResumptionToken", "Resumption token is out of range")
+        }
+
         val doc = responseBuilder.createOaiPmhDocument()
         val requestParams =
             mutableMapOf<String, String>().apply {
@@ -526,15 +530,14 @@ class OaiPmhController(
                 }
             }
 
-        if (snapshots.size >= pageSize) {
-            val resumptionTokenElement = doc.createElement("resumptionToken")
-            val nextToken = responseBuilder.createResumptionToken(id, actualMetadataPrefix, resourceOffset + snapshots.size, filterParams)
-            resumptionTokenElement.textContent = nextToken
-            resumptionTokenElement.setAttribute("completeListSize", totalCount.toString())
-            listIdentifiers.appendChild(resumptionTokenElement)
-        } else if (resourceOffset == 0) {
+        val hasMoreRecords = resourceOffset + snapshots.size < totalCount
+        if (resumptionToken != null || hasMoreRecords) {
             val resumptionTokenElement = doc.createElement("resumptionToken")
             resumptionTokenElement.setAttribute("completeListSize", totalCount.toString())
+            if (hasMoreRecords) {
+                resumptionTokenElement.textContent =
+                    responseBuilder.createResumptionToken(id, actualMetadataPrefix, resourceOffset + snapshots.size, filterParams)
+            }
             listIdentifiers.appendChild(resumptionTokenElement)
         }
 
@@ -678,6 +681,10 @@ class OaiPmhController(
                 }
             }
 
+        if (resumptionToken != null && resourceOffset > 0 && snapshots.isEmpty()) {
+            return responseBuilder.errorResponse("badResumptionToken", "Resumption token is out of range")
+        }
+
         val doc = responseBuilder.createOaiPmhDocument()
         val requestParams =
             mutableMapOf<String, String>().apply {
@@ -718,15 +725,14 @@ class OaiPmhController(
                 }
             }
 
-        if (snapshots.size >= pageSize) {
-            val resumptionTokenElement = doc.createElement("resumptionToken")
-            val nextToken = responseBuilder.createResumptionToken(id, actualMetadataPrefix, resourceOffset + snapshots.size, filterParams)
-            resumptionTokenElement.textContent = nextToken
-            resumptionTokenElement.setAttribute("completeListSize", totalCount.toString())
-            listRecords.appendChild(resumptionTokenElement)
-        } else if (resourceOffset == 0) {
+        val hasMoreRecords = resourceOffset + snapshots.size < totalCount
+        if (resumptionToken != null || hasMoreRecords) {
             val resumptionTokenElement = doc.createElement("resumptionToken")
             resumptionTokenElement.setAttribute("completeListSize", totalCount.toString())
+            if (hasMoreRecords) {
+                resumptionTokenElement.textContent =
+                    responseBuilder.createResumptionToken(id, actualMetadataPrefix, resourceOffset + snapshots.size, filterParams)
+            }
             listRecords.appendChild(resumptionTokenElement)
         }
 
