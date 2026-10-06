@@ -137,6 +137,122 @@ class OaiPmhControllerTest : BaseControllerTest() {
     }
 
     @Test
+    fun `ListRecords should omit resumptionToken when the complete list fits in one response`() {
+        val order =
+            UnionGraphOrder(
+                id = "test-order-single",
+                name = "Test Order",
+                status = UnionGraphOrder.GraphStatus.COMPLETED,
+                resourceTypes = listOf("CONCEPT"),
+                processedAt = Instant.now(),
+            )
+
+        val snapshots =
+            listOf(
+                UnionGraphResourceSnapshot(
+                    unionGraphId = "test-order-single",
+                    resourceId = "resource-1",
+                    resourceType = "CONCEPT",
+                    resourceGraphData =
+                    "<?xml version=\"1.0\"?><rdf:RDF xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\">" +
+                        "<rdf:Description rdf:about=\"http://example.org/resource1\"/></rdf:RDF>",
+                    resourceGraphFormat = "RDF_XML",
+                ),
+            )
+
+        every { unionGraphService.getOrder("test-order-single") } returns order
+        every {
+            unionGraphResourceSnapshotRepository.findByUnionGraphIdAndResourceTypePaginated(
+                "test-order-single",
+                "CONCEPT",
+                0,
+                50,
+                java.sql.Timestamp.valueOf("2099-12-31 23:59:59"),
+            )
+        } returns snapshots
+        every {
+            unionGraphResourceSnapshotRepository.countByUnionGraphIdAndResourceType(
+                "test-order-single",
+                "CONCEPT",
+                java.sql.Timestamp.valueOf("2099-12-31 23:59:59"),
+            )
+        } returns 1L
+
+        mockMvc
+            .perform(
+                get("/v1/union-graphs/test-order-single/oai-pmh")
+                    .param("verb", "ListRecords")
+                    .param("metadataPrefix", "rdfxml"),
+            ).andExpect(status().isOk)
+            .andExpect(xpath("/OAI-PMH/ListRecords/record/header/identifier[contains(., '/records/resource-1')]").exists())
+            .andExpect(xpath("/OAI-PMH/ListRecords/resumptionToken").doesNotExist())
+    }
+
+    @Test
+    fun `ListRecords should return badResumptionToken when token is out of range`() {
+        val order =
+            UnionGraphOrder(
+                id = "test-order-range",
+                name = "Test Order",
+                status = UnionGraphOrder.GraphStatus.COMPLETED,
+                resourceTypes = listOf("CONCEPT"),
+                processedAt = Instant.now(),
+            )
+
+        every { unionGraphService.getOrder("test-order-range") } returns order
+        every {
+            unionGraphResourceSnapshotRepository.findByUnionGraphIdAndResourceTypePaginated(
+                "test-order-range",
+                "CONCEPT",
+                1650,
+                50,
+                java.sql.Timestamp.valueOf("2099-12-31 23:59:59"),
+            )
+        } returns emptyList()
+
+        mockMvc
+            .perform(
+                get("/v1/union-graphs/test-order-range/oai-pmh")
+                    .param("verb", "ListRecords")
+                    .param("resumptionToken", "test-order-range:rdfxml:1650"),
+            ).andExpect(status().isBadRequest)
+            .andExpect(xpath("/OAI-PMH/error/@code").string("badResumptionToken"))
+            .andExpect(xpath("/OAI-PMH/ListRecords").doesNotExist())
+    }
+
+    @Test
+    fun `ListIdentifiers should return badResumptionToken when token is out of range`() {
+        val order =
+            UnionGraphOrder(
+                id = "test-order-range-ids",
+                name = "Test Order",
+                status = UnionGraphOrder.GraphStatus.COMPLETED,
+                resourceTypes = listOf("CONCEPT"),
+                processedAt = Instant.now(),
+            )
+
+        every { unionGraphService.getOrder("test-order-range-ids") } returns order
+        every {
+            unionGraphResourceSnapshotRepository.findByUnionGraphIdAndResourceTypePaginated(
+                "test-order-range-ids",
+                "CONCEPT",
+                1650,
+                50,
+                java.sql.Timestamp.valueOf("2099-12-31 23:59:59"),
+            )
+        } returns emptyList()
+
+        mockMvc
+            .perform(
+                get("/v1/union-graphs/test-order-range-ids/oai-pmh")
+                    .param("verb", "ListIdentifiers")
+                    .param("resumptionToken", "test-order-range-ids:rdfxml:1650"),
+            ).andExpect(status().isBadRequest)
+            .andExpect(xpath("/OAI-PMH/error/@code").string("badResumptionToken"))
+            .andExpect(xpath("/OAI-PMH/ListIdentifiers").doesNotExist())
+    }
+
+    @Test
     fun `should return 400 when verb is invalid`() {
         // Given
         val order =
@@ -563,6 +679,9 @@ class OaiPmhControllerTest : BaseControllerTest() {
                     .param("resumptionToken", resumptionToken),
             ).andExpect(status().isOk)
             .andExpect(xpath("/OAI-PMH/ListIdentifiers/header/identifier[contains(., '/records/resource-2')]").exists())
+            .andExpect(xpath("/OAI-PMH/ListIdentifiers/resumptionToken").exists())
+            .andExpect(xpath("/OAI-PMH/ListIdentifiers/resumptionToken").string(""))
+            .andExpect(xpath("/OAI-PMH/ListIdentifiers/resumptionToken/@completeListSize").string("2"))
     }
 
     @Test
