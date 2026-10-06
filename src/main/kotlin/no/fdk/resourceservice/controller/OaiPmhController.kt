@@ -534,6 +534,7 @@ class OaiPmhController(
         if (resumptionToken != null || hasMoreRecords) {
             val resumptionTokenElement = doc.createElement("resumptionToken")
             resumptionTokenElement.setAttribute("completeListSize", totalCount.toString())
+            resumptionTokenElement.setAttribute("cursor", resourceOffset.toString())
             if (hasMoreRecords) {
                 resumptionTokenElement.textContent =
                     responseBuilder.createResumptionToken(id, actualMetadataPrefix, resourceOffset + snapshots.size, filterParams)
@@ -729,6 +730,7 @@ class OaiPmhController(
         if (resumptionToken != null || hasMoreRecords) {
             val resumptionTokenElement = doc.createElement("resumptionToken")
             resumptionTokenElement.setAttribute("completeListSize", totalCount.toString())
+            resumptionTokenElement.setAttribute("cursor", resourceOffset.toString())
             if (hasMoreRecords) {
                 resumptionTokenElement.textContent =
                     responseBuilder.createResumptionToken(id, actualMetadataPrefix, resourceOffset + snapshots.size, filterParams)
