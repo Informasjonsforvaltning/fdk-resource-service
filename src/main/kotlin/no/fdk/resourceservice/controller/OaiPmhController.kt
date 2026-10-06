@@ -356,6 +356,13 @@ class OaiPmhController(
             return responseBuilder.errorResponse("idDoesNotExist", "Union graph with id '$id' is not available (status: ${order.status})")
         }
 
+        if (resumptionToken != null && (metadataPrefix != null || from != null || until != null || set != null)) {
+            return responseBuilder.errorResponse(
+                "badArgument",
+                "resumptionToken is an exclusive argument and cannot be combined with metadataPrefix, from, until or set",
+            )
+        }
+
         // Validate metadataPrefix - must be "rdfxml" if provided
         if (metadataPrefix != null && metadataPrefix.lowercase() != "rdfxml") {
             return responseBuilder.errorResponse("badArgument", "Only 'rdfxml' metadataPrefix is supported. Received: $metadataPrefix")
@@ -564,6 +571,13 @@ class OaiPmhController(
         if (order.status == UnionGraphOrder.GraphStatus.FAILED) {
             return responseBuilder.errorResponse("idDoesNotExist", "Union graph with id '$id' is not available (status: ${order.status})")
         }
+        if (resumptionToken != null && (metadataPrefix != null || from != null || until != null || set != null)) {
+            return responseBuilder.errorResponse(
+                "badArgument",
+                "resumptionToken is an exclusive argument and cannot be combined with metadataPrefix, from, until or set",
+            )
+        }
+
         if (metadataPrefix != null && metadataPrefix.lowercase() != "rdfxml") {
             return responseBuilder.errorResponse("badArgument", "Only 'rdfxml' metadataPrefix is supported. Received: $metadataPrefix")
         }
