@@ -131,7 +131,9 @@ class OaiPmhControllerTest : BaseControllerTest() {
             ).andExpect(status().isOk)
             .andExpect(content().contentType(MediaType.APPLICATION_XML))
             .andExpect(xpath("/OAI-PMH/ListRecords/record/header/identifier[contains(., '/records/resource-2')]").exists())
-            .andExpect(xpath("/OAI-PMH/ListRecords/resumptionToken").doesNotExist())
+            .andExpect(xpath("/OAI-PMH/ListRecords/resumptionToken").exists())
+            .andExpect(xpath("/OAI-PMH/ListRecords/resumptionToken").string(""))
+            .andExpect(xpath("/OAI-PMH/ListRecords/resumptionToken/@completeListSize").string("2"))
     }
 
     @Test

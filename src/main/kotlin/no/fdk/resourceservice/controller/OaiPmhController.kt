@@ -526,17 +526,13 @@ class OaiPmhController(
                 }
             }
 
+        val resumptionTokenElement = doc.createElement("resumptionToken")
+        resumptionTokenElement.setAttribute("completeListSize", totalCount.toString())
         if (snapshots.size >= pageSize) {
-            val resumptionTokenElement = doc.createElement("resumptionToken")
-            val nextToken = responseBuilder.createResumptionToken(id, actualMetadataPrefix, resourceOffset + snapshots.size, filterParams)
-            resumptionTokenElement.textContent = nextToken
-            resumptionTokenElement.setAttribute("completeListSize", totalCount.toString())
-            listIdentifiers.appendChild(resumptionTokenElement)
-        } else if (resourceOffset == 0) {
-            val resumptionTokenElement = doc.createElement("resumptionToken")
-            resumptionTokenElement.setAttribute("completeListSize", totalCount.toString())
-            listIdentifiers.appendChild(resumptionTokenElement)
+            resumptionTokenElement.textContent =
+                responseBuilder.createResumptionToken(id, actualMetadataPrefix, resourceOffset + snapshots.size, filterParams)
         }
+        listIdentifiers.appendChild(resumptionTokenElement)
 
         val response = doc.getElementsByTagName("OAI-PMH").item(0) as Element
         response.appendChild(request)
@@ -718,17 +714,13 @@ class OaiPmhController(
                 }
             }
 
+        val resumptionTokenElement = doc.createElement("resumptionToken")
+        resumptionTokenElement.setAttribute("completeListSize", totalCount.toString())
         if (snapshots.size >= pageSize) {
-            val resumptionTokenElement = doc.createElement("resumptionToken")
-            val nextToken = responseBuilder.createResumptionToken(id, actualMetadataPrefix, resourceOffset + snapshots.size, filterParams)
-            resumptionTokenElement.textContent = nextToken
-            resumptionTokenElement.setAttribute("completeListSize", totalCount.toString())
-            listRecords.appendChild(resumptionTokenElement)
-        } else if (resourceOffset == 0) {
-            val resumptionTokenElement = doc.createElement("resumptionToken")
-            resumptionTokenElement.setAttribute("completeListSize", totalCount.toString())
-            listRecords.appendChild(resumptionTokenElement)
+            resumptionTokenElement.textContent =
+                responseBuilder.createResumptionToken(id, actualMetadataPrefix, resourceOffset + snapshots.size, filterParams)
         }
+        listRecords.appendChild(resumptionTokenElement)
 
         val response = doc.getElementsByTagName("OAI-PMH").item(0) as Element
         response.appendChild(request)
