@@ -253,6 +253,52 @@ class OaiPmhControllerTest : BaseControllerTest() {
     }
 
     @Test
+    fun `ListRecords should return badArgument when resumptionToken is combined with metadataPrefix`() {
+        val order =
+            UnionGraphOrder(
+                id = "test-order-exclusive",
+                name = "Test Order",
+                status = UnionGraphOrder.GraphStatus.COMPLETED,
+                resourceTypes = listOf("CONCEPT"),
+                processedAt = Instant.now(),
+            )
+
+        every { unionGraphService.getOrder("test-order-exclusive") } returns order
+
+        mockMvc
+            .perform(
+                get("/v1/union-graphs/test-order-exclusive/oai-pmh")
+                    .param("verb", "ListRecords")
+                    .param("metadataPrefix", "rdfxml")
+                    .param("resumptionToken", "test-order-exclusive:rdfxml:50"),
+            ).andExpect(status().isBadRequest)
+            .andExpect(xpath("/OAI-PMH/error/@code").string("badArgument"))
+    }
+
+    @Test
+    fun `ListIdentifiers should return badArgument when resumptionToken is combined with set`() {
+        val order =
+            UnionGraphOrder(
+                id = "test-order-exclusive-ids",
+                name = "Test Order",
+                status = UnionGraphOrder.GraphStatus.COMPLETED,
+                resourceTypes = listOf("CONCEPT"),
+                processedAt = Instant.now(),
+            )
+
+        every { unionGraphService.getOrder("test-order-exclusive-ids") } returns order
+
+        mockMvc
+            .perform(
+                get("/v1/union-graphs/test-order-exclusive-ids/oai-pmh")
+                    .param("verb", "ListIdentifiers")
+                    .param("set", "org:123456789")
+                    .param("resumptionToken", "test-order-exclusive-ids:rdfxml:50"),
+            ).andExpect(status().isBadRequest)
+            .andExpect(xpath("/OAI-PMH/error/@code").string("badArgument"))
+    }
+
+    @Test
     fun `should return 400 when verb is invalid`() {
         // Given
         val order =
