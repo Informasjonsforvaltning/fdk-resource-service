@@ -134,6 +134,7 @@ class OaiPmhControllerTest : BaseControllerTest() {
             .andExpect(xpath("/OAI-PMH/ListRecords/resumptionToken").exists())
             .andExpect(xpath("/OAI-PMH/ListRecords/resumptionToken").string(""))
             .andExpect(xpath("/OAI-PMH/ListRecords/resumptionToken/@completeListSize").string("2"))
+            .andExpect(xpath("/OAI-PMH/ListRecords/resumptionToken/@cursor").string("1"))
     }
 
     @Test
@@ -728,6 +729,7 @@ class OaiPmhControllerTest : BaseControllerTest() {
             .andExpect(xpath("/OAI-PMH/ListIdentifiers/resumptionToken").exists())
             .andExpect(xpath("/OAI-PMH/ListIdentifiers/resumptionToken").string(""))
             .andExpect(xpath("/OAI-PMH/ListIdentifiers/resumptionToken/@completeListSize").string("2"))
+            .andExpect(xpath("/OAI-PMH/ListIdentifiers/resumptionToken/@cursor").string("1"))
     }
 
     @Test
