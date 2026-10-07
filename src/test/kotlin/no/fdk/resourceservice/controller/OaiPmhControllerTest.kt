@@ -68,7 +68,7 @@ class OaiPmhControllerTest : BaseControllerTest() {
                 "CONCEPT",
                 java.sql.Timestamp.valueOf("2099-12-31 23:59:59"),
             )
-        } returns 1L
+        } returns 2L
 
         // When & Then - First page should return resource-1 with resumption token if there are more
         val result1 =
@@ -82,6 +82,8 @@ class OaiPmhControllerTest : BaseControllerTest() {
                 .andExpect(xpath("/OAI-PMH/ListRecords/record/header/identifier[contains(., '/records/resource-1')]").exists())
                 .andExpect(xpath("/OAI-PMH/ListRecords/record/header/datestamp").exists())
                 .andExpect(xpath("/OAI-PMH/ListRecords/record/metadata").exists())
+                .andExpect(xpath("/OAI-PMH/ListRecords/resumptionToken/@cursor").string("0"))
+                .andExpect(xpath("/OAI-PMH/ListRecords/resumptionToken/@completeListSize").string("2"))
                 .andReturn()
 
         // Verify identifier format is a valid URI
@@ -688,6 +690,17 @@ class OaiPmhControllerTest : BaseControllerTest() {
                 resourceTypes = listOf("CONCEPT"),
             )
 
+        val snapshotsPage1 =
+            listOf(
+                UnionGraphResourceSnapshot(
+                    unionGraphId = "test-order-identifiers",
+                    resourceId = "resource-1",
+                    resourceType = "CONCEPT",
+                    resourceGraphData = "<?xml version=\"1.0\"?><rdf:RDF xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\"/>",
+                    resourceGraphFormat = "RDF_XML",
+                ),
+            )
+
         val snapshotsPage2 =
             listOf(
                 UnionGraphResourceSnapshot(
@@ -716,6 +729,24 @@ class OaiPmhControllerTest : BaseControllerTest() {
                 java.sql.Timestamp.valueOf("2099-12-31 23:59:59"),
             )
         } returns 2L
+        every {
+            unionGraphResourceSnapshotRepository.findByUnionGraphIdAndResourceTypePaginated(
+                "test-order-identifiers",
+                "CONCEPT",
+                0,
+                50,
+                java.sql.Timestamp.valueOf("2099-12-31 23:59:59"),
+            )
+        } returns snapshotsPage1
+
+        mockMvc
+            .perform(
+                get("/v1/union-graphs/test-order-identifiers/oai-pmh")
+                    .param("verb", "ListIdentifiers")
+                    .param("metadataPrefix", "rdfxml"),
+            ).andExpect(status().isOk)
+            .andExpect(xpath("/OAI-PMH/ListIdentifiers/resumptionToken/@cursor").string("0"))
+            .andExpect(xpath("/OAI-PMH/ListIdentifiers/resumptionToken/@completeListSize").string("2"))
 
         // When & Then
         val resumptionToken = "test-order-identifiers:rdfxml:1"
