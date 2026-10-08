@@ -144,13 +144,31 @@ class OaiPmhResponseBuilder {
         return element
     }
 
-    fun errorResponse(code: String, message: String): ResponseEntity<String> {
+    fun errorResponse(
+        code: String,
+        message: String,
+        id: String? = null,
+        httpRequest: HttpServletRequest? = null,
+        params: Map<String, String> = emptyMap(),
+    ): ResponseEntity<String> {
         val doc = createOaiPmhDocument()
         val error = doc.createElement("error")
         error.setAttribute("code", code)
         error.textContent = message
 
         val response = doc.getElementsByTagName("OAI-PMH").item(0) as Element
+        if (id != null && httpRequest != null) {
+            val request = doc.createElement("request")
+            request.textContent = getBaseUrl(id, httpRequest)
+            if (code != "badVerb" && code != "badArgument") {
+                params.forEach { (key, value) ->
+                    if (value.isNotEmpty()) {
+                        request.setAttribute(key, value)
+                    }
+                }
+            }
+            response.appendChild(request)
+        }
         response.appendChild(error)
 
         val status =

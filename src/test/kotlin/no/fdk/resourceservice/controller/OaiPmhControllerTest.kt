@@ -302,6 +302,64 @@ class OaiPmhControllerTest : BaseControllerTest() {
     }
 
     @Test
+    fun `badArgument error should include request without attributes`() {
+        val order =
+            UnionGraphOrder(
+                id = "test-order-req",
+                name = "Test Order",
+                status = UnionGraphOrder.GraphStatus.COMPLETED,
+                resourceTypes = listOf("CONCEPT"),
+                processedAt = Instant.now(),
+            )
+
+        every { unionGraphService.getOrder("test-order-req") } returns order
+
+        mockMvc
+            .perform(
+                get("/v1/union-graphs/test-order-req/oai-pmh")
+                    .param("verb", "ListRecords")
+                    .param("metadataPrefix", "rdfxml")
+                    .param("resumptionToken", "test-order-req:rdfxml:50"),
+            ).andExpect(status().isBadRequest)
+            .andExpect(xpath("/OAI-PMH/error/@code").string("badArgument"))
+            .andExpect(xpath("/OAI-PMH/request").exists())
+            .andExpect(xpath("/OAI-PMH/request/@verb").doesNotExist())
+            .andExpect(xpath("/OAI-PMH/request/@metadataPrefix").doesNotExist())
+    }
+
+    @Test
+    fun `badResumptionToken error should include request`() {
+        val order =
+            UnionGraphOrder(
+                id = "test-order-req2",
+                name = "Test Order",
+                status = UnionGraphOrder.GraphStatus.COMPLETED,
+                resourceTypes = listOf("CONCEPT"),
+                processedAt = Instant.now(),
+            )
+
+        every { unionGraphService.getOrder("test-order-req2") } returns order
+        every {
+            unionGraphResourceSnapshotRepository.findByUnionGraphIdAndResourceTypePaginated(
+                "test-order-req2",
+                "CONCEPT",
+                1650,
+                50,
+                java.sql.Timestamp.valueOf("2099-12-31 23:59:59"),
+            )
+        } returns emptyList()
+
+        mockMvc
+            .perform(
+                get("/v1/union-graphs/test-order-req2/oai-pmh")
+                    .param("verb", "ListRecords")
+                    .param("resumptionToken", "test-order-req2:rdfxml:1650"),
+            ).andExpect(status().isBadRequest)
+            .andExpect(xpath("/OAI-PMH/error/@code").string("badResumptionToken"))
+            .andExpect(xpath("/OAI-PMH/request").exists())
+    }
+
+    @Test
     fun `should return 400 when verb is invalid`() {
         // Given
         val order =
