@@ -357,6 +357,8 @@ class OaiPmhControllerTest : BaseControllerTest() {
             ).andExpect(status().isBadRequest)
             .andExpect(xpath("/OAI-PMH/error/@code").string("badResumptionToken"))
             .andExpect(xpath("/OAI-PMH/request").exists())
+            .andExpect(xpath("/OAI-PMH/request/@verb").string("ListRecords"))
+            .andExpect(xpath("/OAI-PMH/request/@resumptionToken").string("test-order-req2:rdfxml:1650"))
     }
 
     @Test

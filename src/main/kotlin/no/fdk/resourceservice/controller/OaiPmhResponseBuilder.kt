@@ -144,6 +144,24 @@ class OaiPmhResponseBuilder {
         return element
     }
 
+    fun requestParams(
+        verb: String,
+        metadataPrefix: String? = null,
+        identifier: String? = null,
+        resumptionToken: String? = null,
+        from: String? = null,
+        until: String? = null,
+        set: String? = null,
+    ): Map<String, String> = buildMap {
+        put("verb", verb)
+        metadataPrefix?.takeIf { it.isNotBlank() }?.let { put("metadataPrefix", it) }
+        identifier?.takeIf { it.isNotBlank() }?.let { put("identifier", it) }
+        resumptionToken?.takeIf { it.isNotBlank() }?.let { put("resumptionToken", it) }
+        from?.takeIf { it.isNotBlank() }?.let { put("from", it) }
+        until?.takeIf { it.isNotBlank() }?.let { put("until", it) }
+        set?.takeIf { it.isNotBlank() }?.let { put("set", it) }
+    }
+
     fun errorResponse(
         code: String,
         message: String,

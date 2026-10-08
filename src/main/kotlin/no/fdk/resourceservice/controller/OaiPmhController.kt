@@ -149,10 +149,17 @@ class OaiPmhController(
     }
 
     private fun handleIdentify(id: String, httpRequest: HttpServletRequest): ResponseEntity<String> {
+        val errorParams = responseBuilder.requestParams("Identify")
         // Get union graph order to verify it exists
         val order =
             unionGraphService.getOrder(id)
-                ?: return responseBuilder.errorResponse("idDoesNotExist", "Union graph with id '$id' does not exist", id, httpRequest)
+                ?: return responseBuilder.errorResponse(
+                    "idDoesNotExist",
+                    "Union graph with id '$id' does not exist",
+                    id,
+                    httpRequest,
+                    errorParams,
+                )
 
         val doc = responseBuilder.createOaiPmhDocument()
         val request = responseBuilder.createRequestElement(doc, "Identify", id, emptyMap(), httpRequest)
@@ -188,10 +195,17 @@ class OaiPmhController(
     }
 
     private fun handleListMetadataFormats(id: String, identifier: String?, httpRequest: HttpServletRequest): ResponseEntity<String> {
+        val errorParams = responseBuilder.requestParams("ListMetadataFormats", identifier = identifier)
         // Get union graph order to verify it exists
         val order =
             unionGraphService.getOrder(id)
-                ?: return responseBuilder.errorResponse("idDoesNotExist", "Union graph with id '$id' does not exist", id, httpRequest)
+                ?: return responseBuilder.errorResponse(
+                    "idDoesNotExist",
+                    "Union graph with id '$id' does not exist",
+                    id,
+                    httpRequest,
+                    errorParams,
+                )
 
         // If identifier is provided, verify the record exists
         if (identifier != null) {
@@ -224,6 +238,7 @@ class OaiPmhController(
                     "Record with identifier '$identifier' does not exist",
                     id,
                     httpRequest,
+                    errorParams,
                 )
             }
         }
@@ -258,6 +273,7 @@ class OaiPmhController(
         metadataPrefix: String?,
         httpRequest: HttpServletRequest,
     ): ResponseEntity<String> {
+        val errorParams = responseBuilder.requestParams("GetRecord", metadataPrefix = metadataPrefix, identifier = identifier)
         // Validate required parameters
         if (identifier == null) {
             return responseBuilder.errorResponse("badArgument", "Missing required argument: identifier", id, httpRequest)
@@ -279,7 +295,13 @@ class OaiPmhController(
         // Get union graph order
         val order =
             unionGraphService.getOrder(id)
-                ?: return responseBuilder.errorResponse("idDoesNotExist", "Union graph with id '$id' does not exist", id, httpRequest)
+                ?: return responseBuilder.errorResponse(
+                    "idDoesNotExist",
+                    "Union graph with id '$id' does not exist",
+                    id,
+                    httpRequest,
+                    errorParams,
+                )
 
         // Block only when union graph has failed; PENDING (updating) or COMPLETED may still have snapshots
         if (order.status == UnionGraphOrder.GraphStatus.FAILED) {
@@ -288,6 +310,7 @@ class OaiPmhController(
                 "Union graph with id '$id' is not available (status: ${order.status})",
                 id,
                 httpRequest,
+                errorParams,
             )
         }
 
@@ -322,6 +345,7 @@ class OaiPmhController(
                     "Record with identifier '$identifier' does not exist",
                     id,
                     httpRequest,
+                    errorParams,
                 )
 
         val doc = responseBuilder.createOaiPmhDocument()
@@ -346,15 +370,23 @@ class OaiPmhController(
     }
 
     private fun handleListSets(id: String, httpRequest: HttpServletRequest): ResponseEntity<String> {
+        val errorParams = responseBuilder.requestParams("ListSets")
         val order =
             unionGraphService.getOrder(id)
-                ?: return responseBuilder.errorResponse("idDoesNotExist", "Union graph with id '$id' does not exist", id, httpRequest)
+                ?: return responseBuilder.errorResponse(
+                    "idDoesNotExist",
+                    "Union graph with id '$id' does not exist",
+                    id,
+                    httpRequest,
+                    errorParams,
+                )
         if (order.status == UnionGraphOrder.GraphStatus.FAILED) {
             return responseBuilder.errorResponse(
                 "idDoesNotExist",
                 "Union graph with id '$id' is not available (status: ${order.status})",
                 id,
                 httpRequest,
+                errorParams,
             )
         }
         val doc = responseBuilder.createOaiPmhDocument()
@@ -384,10 +416,24 @@ class OaiPmhController(
         set: String?,
         httpRequest: HttpServletRequest,
     ): ResponseEntity<String> {
+        val errorParams = responseBuilder.requestParams(
+            "ListIdentifiers",
+            metadataPrefix = metadataPrefix,
+            resumptionToken = resumptionToken,
+            from = from,
+            until = until,
+            set = set,
+        )
         // Get union graph order
         val order =
             unionGraphService.getOrder(id)
-                ?: return responseBuilder.errorResponse("idDoesNotExist", "Union graph with id '$id' does not exist", id, httpRequest)
+                ?: return responseBuilder.errorResponse(
+                    "idDoesNotExist",
+                    "Union graph with id '$id' does not exist",
+                    id,
+                    httpRequest,
+                    errorParams,
+                )
 
         // Block only when union graph has failed; PENDING (updating) or COMPLETED may still have snapshots
         if (order.status == UnionGraphOrder.GraphStatus.FAILED) {
@@ -396,6 +442,7 @@ class OaiPmhController(
                 "Union graph with id '$id' is not available (status: ${order.status})",
                 id,
                 httpRequest,
+                errorParams,
             )
         }
 
@@ -427,7 +474,13 @@ class OaiPmhController(
             if (resumptionToken != null) {
                 val parsed =
                     responseBuilder.parseResumptionTokenWithFilters(resumptionToken, id)
-                        ?: return responseBuilder.errorResponse("badResumptionToken", "Invalid resumption token", id, httpRequest)
+                        ?: return responseBuilder.errorResponse(
+                            "badResumptionToken",
+                            "Invalid resumption token",
+                            id,
+                            httpRequest,
+                            errorParams,
+                        )
                 Triple(parsed.first, parsed.second, parsed.third)
             } else {
                 val filters =
@@ -549,7 +602,7 @@ class OaiPmhController(
             }
 
         if (resumptionToken != null && resourceOffset > 0 && snapshots.isEmpty()) {
-            return responseBuilder.errorResponse("badResumptionToken", "Resumption token is out of range", id, httpRequest)
+            return responseBuilder.errorResponse("badResumptionToken", "Resumption token is out of range", id, httpRequest, errorParams)
         }
 
         val doc = responseBuilder.createOaiPmhDocument()
@@ -627,9 +680,23 @@ class OaiPmhController(
         set: String?,
         httpRequest: HttpServletRequest,
     ): ResponseEntity<String> {
+        val errorParams = responseBuilder.requestParams(
+            "ListRecords",
+            metadataPrefix = metadataPrefix,
+            resumptionToken = resumptionToken,
+            from = from,
+            until = until,
+            set = set,
+        )
         val order =
             unionGraphService.getOrder(id)
-                ?: return responseBuilder.errorResponse("idDoesNotExist", "Union graph with id '$id' does not exist", id, httpRequest)
+                ?: return responseBuilder.errorResponse(
+                    "idDoesNotExist",
+                    "Union graph with id '$id' does not exist",
+                    id,
+                    httpRequest,
+                    errorParams,
+                )
 
         if (order.status == UnionGraphOrder.GraphStatus.FAILED) {
             return responseBuilder.errorResponse(
@@ -637,6 +704,7 @@ class OaiPmhController(
                 "Union graph with id '$id' is not available (status: ${order.status})",
                 id,
                 httpRequest,
+                errorParams,
             )
         }
         if (resumptionToken != null && (metadataPrefix != null || from != null || until != null || set != null)) {
@@ -665,7 +733,13 @@ class OaiPmhController(
             if (resumptionToken != null) {
                 val parsed =
                     responseBuilder.parseResumptionTokenWithFilters(resumptionToken, id)
-                        ?: return responseBuilder.errorResponse("badResumptionToken", "Invalid resumption token", id, httpRequest)
+                        ?: return responseBuilder.errorResponse(
+                            "badResumptionToken",
+                            "Invalid resumption token",
+                            id,
+                            httpRequest,
+                            errorParams,
+                        )
                 Triple(parsed.first, parsed.second, parsed.third)
             } else {
                 val filters =
@@ -783,7 +857,7 @@ class OaiPmhController(
             }
 
         if (resumptionToken != null && resourceOffset > 0 && snapshots.isEmpty()) {
-            return responseBuilder.errorResponse("badResumptionToken", "Resumption token is out of range", id, httpRequest)
+            return responseBuilder.errorResponse("badResumptionToken", "Resumption token is out of range", id, httpRequest, errorParams)
         }
 
         val doc = responseBuilder.createOaiPmhDocument()
