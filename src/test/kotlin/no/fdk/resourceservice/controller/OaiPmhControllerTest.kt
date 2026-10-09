@@ -302,6 +302,66 @@ class OaiPmhControllerTest : BaseControllerTest() {
     }
 
     @Test
+    fun `badArgument error should include request without attributes`() {
+        val order =
+            UnionGraphOrder(
+                id = "test-order-req",
+                name = "Test Order",
+                status = UnionGraphOrder.GraphStatus.COMPLETED,
+                resourceTypes = listOf("CONCEPT"),
+                processedAt = Instant.now(),
+            )
+
+        every { unionGraphService.getOrder("test-order-req") } returns order
+
+        mockMvc
+            .perform(
+                get("/v1/union-graphs/test-order-req/oai-pmh")
+                    .param("verb", "ListRecords")
+                    .param("metadataPrefix", "rdfxml")
+                    .param("resumptionToken", "test-order-req:rdfxml:50"),
+            ).andExpect(status().isBadRequest)
+            .andExpect(xpath("/OAI-PMH/error/@code").string("badArgument"))
+            .andExpect(xpath("/OAI-PMH/request").exists())
+            .andExpect(xpath("/OAI-PMH/request/@verb").doesNotExist())
+            .andExpect(xpath("/OAI-PMH/request/@metadataPrefix").doesNotExist())
+    }
+
+    @Test
+    fun `badResumptionToken error should include request`() {
+        val order =
+            UnionGraphOrder(
+                id = "test-order-req2",
+                name = "Test Order",
+                status = UnionGraphOrder.GraphStatus.COMPLETED,
+                resourceTypes = listOf("CONCEPT"),
+                processedAt = Instant.now(),
+            )
+
+        every { unionGraphService.getOrder("test-order-req2") } returns order
+        every {
+            unionGraphResourceSnapshotRepository.findByUnionGraphIdAndResourceTypePaginated(
+                "test-order-req2",
+                "CONCEPT",
+                1650,
+                50,
+                java.sql.Timestamp.valueOf("2099-12-31 23:59:59"),
+            )
+        } returns emptyList()
+
+        mockMvc
+            .perform(
+                get("/v1/union-graphs/test-order-req2/oai-pmh")
+                    .param("verb", "ListRecords")
+                    .param("resumptionToken", "test-order-req2:rdfxml:1650"),
+            ).andExpect(status().isBadRequest)
+            .andExpect(xpath("/OAI-PMH/error/@code").string("badResumptionToken"))
+            .andExpect(xpath("/OAI-PMH/request").exists())
+            .andExpect(xpath("/OAI-PMH/request/@verb").string("ListRecords"))
+            .andExpect(xpath("/OAI-PMH/request/@resumptionToken").string("test-order-req2:rdfxml:1650"))
+    }
+
+    @Test
     fun `should return 400 when verb is invalid`() {
         // Given
         val order =
@@ -346,6 +406,8 @@ class OaiPmhControllerTest : BaseControllerTest() {
         mockMvc
             .perform(get("/v1/union-graphs/test-order-identify/oai-pmh").param("verb", "Identify"))
             .andExpect(status().isOk)
+            .andExpect(xpath("/OAI-PMH/request").exists())
+            .andExpect(xpath("/OAI-PMH/request/@verb").string("Identify"))
             .andExpect(content().contentType(MediaType.APPLICATION_XML))
             .andExpect(xpath("/OAI-PMH/Identify/repositoryName").string("FDK Union Graph: Test Union Graph"))
             .andExpect(xpath("/OAI-PMH/Identify/baseURL").exists())
@@ -384,6 +446,8 @@ class OaiPmhControllerTest : BaseControllerTest() {
         mockMvc
             .perform(get("/v1/union-graphs/test-order-formats/oai-pmh").param("verb", "ListMetadataFormats"))
             .andExpect(status().isOk)
+            .andExpect(xpath("/OAI-PMH/request").exists())
+            .andExpect(xpath("/OAI-PMH/request/@verb").string("ListMetadataFormats"))
             .andExpect(content().contentType(MediaType.APPLICATION_XML))
             .andExpect(xpath("/OAI-PMH/ListMetadataFormats/metadataFormat/metadataPrefix").string("rdfxml"))
             .andExpect(xpath("/OAI-PMH/ListMetadataFormats/metadataFormat/schema").exists())
@@ -488,6 +552,8 @@ class OaiPmhControllerTest : BaseControllerTest() {
                         .param("identifier", "$baseUrl/records/resource-1")
                         .param("metadataPrefix", "rdfxml"),
                 ).andExpect(status().isOk)
+                .andExpect(xpath("/OAI-PMH/request").exists())
+                .andExpect(xpath("/OAI-PMH/request/@verb").string("GetRecord"))
                 .andExpect(content().contentType(MediaType.APPLICATION_XML))
                 .andExpect(xpath("/OAI-PMH/GetRecord/record/header/identifier[contains(., '/records/resource-1')]").exists())
                 .andExpect(xpath("/OAI-PMH/GetRecord/record/header/datestamp").exists())
@@ -672,6 +738,8 @@ class OaiPmhControllerTest : BaseControllerTest() {
                     .param("verb", "ListIdentifiers")
                     .param("metadataPrefix", "rdfxml"),
             ).andExpect(status().isOk)
+            .andExpect(xpath("/OAI-PMH/request").exists())
+            .andExpect(xpath("/OAI-PMH/request/@verb").string("ListIdentifiers"))
             .andExpect(content().contentType(MediaType.APPLICATION_XML))
             .andExpect(xpath("/OAI-PMH/ListIdentifiers/header/identifier[contains(., '/records/resource-1')]").exists())
             .andExpect(xpath("/OAI-PMH/ListIdentifiers/header/datestamp").exists())
@@ -939,6 +1007,8 @@ class OaiPmhControllerTest : BaseControllerTest() {
                 .perform(get("/v1/union-graphs/test-order/oai-pmh"))
                 .andExpect(status().isBadRequest)
                 .andExpect(xpath("/OAI-PMH/responseDate").exists())
+                .andExpect(xpath("/OAI-PMH/request").exists())
+                .andExpect(xpath("/OAI-PMH/request/@verb").doesNotExist())
                 .andReturn()
 
         // Extract responseDate and validate ISO format
@@ -972,6 +1042,8 @@ class OaiPmhControllerTest : BaseControllerTest() {
         mockMvc
             .perform(get("/v1/union-graphs/test-order-sets/oai-pmh").param("verb", "ListSets"))
             .andExpect(status().isOk)
+            .andExpect(xpath("/OAI-PMH/request").exists())
+            .andExpect(xpath("/OAI-PMH/request/@verb").string("ListSets"))
             .andExpect(content().contentType(MediaType.APPLICATION_XML))
             .andExpect(xpath("/OAI-PMH/ListSets/set/setSpec").string("org"))
             .andExpect(xpath("/OAI-PMH/ListSets/set/setName").string("Organization (by orgnr)"))

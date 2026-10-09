@@ -122,13 +122,11 @@ class OaiPmhResponseBuilder {
 
     fun createRequestElement(
         doc: Document,
-        verb: String,
         id: String,
         params: Map<String, String> = emptyMap(),
         httpRequest: HttpServletRequest,
     ): Element {
         val request = doc.createElement("request")
-        request.setAttribute("verb", verb)
         request.textContent = getBaseUrl(id, httpRequest)
         params.forEach { (key, value) ->
             if (value.isNotEmpty()) {
@@ -144,13 +142,40 @@ class OaiPmhResponseBuilder {
         return element
     }
 
-    fun errorResponse(code: String, message: String): ResponseEntity<String> {
+    fun requestParams(
+        verb: String,
+        metadataPrefix: String? = null,
+        identifier: String? = null,
+        resumptionToken: String? = null,
+        from: String? = null,
+        until: String? = null,
+        set: String? = null,
+    ): Map<String, String> = buildMap {
+        put("verb", verb)
+        metadataPrefix?.takeIf { it.isNotBlank() }?.let { put("metadataPrefix", it) }
+        identifier?.takeIf { it.isNotBlank() }?.let { put("identifier", it) }
+        resumptionToken?.takeIf { it.isNotBlank() }?.let { put("resumptionToken", it) }
+        from?.takeIf { it.isNotBlank() }?.let { put("from", it) }
+        until?.takeIf { it.isNotBlank() }?.let { put("until", it) }
+        set?.takeIf { it.isNotBlank() }?.let { put("set", it) }
+    }
+
+    fun errorResponse(
+        code: String,
+        message: String,
+        id: String,
+        httpRequest: HttpServletRequest,
+        params: Map<String, String> = emptyMap(),
+    ): ResponseEntity<String> {
         val doc = createOaiPmhDocument()
         val error = doc.createElement("error")
         error.setAttribute("code", code)
         error.textContent = message
 
+        val attributes = if (code == "badVerb" || code == "badArgument") emptyMap() else params
+
         val response = doc.getElementsByTagName("OAI-PMH").item(0) as Element
+        response.appendChild(createRequestElement(doc, id, attributes, httpRequest))
         response.appendChild(error)
 
         val status =

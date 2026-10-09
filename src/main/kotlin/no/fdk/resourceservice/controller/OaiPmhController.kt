@@ -108,7 +108,8 @@ class OaiPmhController(
         logger.debug("OAI-PMH request: verb={}, id={}, metadataPrefix={}, identifier={}", verb, id, metadataPrefix, identifier)
 
         // Validate verb
-        val actualVerb = verb?.uppercase() ?: return responseBuilder.errorResponse("badVerb", "Missing required argument: verb")
+        val actualVerb =
+            verb?.uppercase() ?: return responseBuilder.errorResponse("badVerb", "Missing required argument: verb", id, request)
 
         // Route to appropriate handler
         return when (actualVerb) {
@@ -140,19 +141,28 @@ class OaiPmhController(
                 responseBuilder.errorResponse(
                     "badVerb",
                     "Illegal verb: $actualVerb. Supported verbs: Identify, ListMetadataFormats, GetRecord, ListIdentifiers, ListRecords, ListSets",
+                    id,
+                    request,
                 )
             }
         }
     }
 
     private fun handleIdentify(id: String, httpRequest: HttpServletRequest): ResponseEntity<String> {
+        val errorParams = responseBuilder.requestParams("Identify")
         // Get union graph order to verify it exists
         val order =
             unionGraphService.getOrder(id)
-                ?: return responseBuilder.errorResponse("idDoesNotExist", "Union graph with id '$id' does not exist")
+                ?: return responseBuilder.errorResponse(
+                    "idDoesNotExist",
+                    "Union graph with id '$id' does not exist",
+                    id,
+                    httpRequest,
+                    errorParams,
+                )
 
         val doc = responseBuilder.createOaiPmhDocument()
-        val request = responseBuilder.createRequestElement(doc, "Identify", id, emptyMap(), httpRequest)
+        val request = responseBuilder.createRequestElement(doc, id, responseBuilder.requestParams("Identify"), httpRequest)
         val identify = doc.createElement("Identify")
 
         // Repository name
@@ -185,16 +195,28 @@ class OaiPmhController(
     }
 
     private fun handleListMetadataFormats(id: String, identifier: String?, httpRequest: HttpServletRequest): ResponseEntity<String> {
+        val errorParams = responseBuilder.requestParams("ListMetadataFormats", identifier = identifier)
         // Get union graph order to verify it exists
         val order =
             unionGraphService.getOrder(id)
-                ?: return responseBuilder.errorResponse("idDoesNotExist", "Union graph with id '$id' does not exist")
+                ?: return responseBuilder.errorResponse(
+                    "idDoesNotExist",
+                    "Union graph with id '$id' does not exist",
+                    id,
+                    httpRequest,
+                    errorParams,
+                )
 
         // If identifier is provided, verify the record exists
         if (identifier != null) {
             val resourceId =
                 responseBuilder.parseIdentifier(identifier, id)
-                    ?: return responseBuilder.errorResponse("badArgument", "Invalid identifier format. Expected: $id:resource:{resourceId}")
+                    ?: return responseBuilder.errorResponse(
+                        "badArgument",
+                        "Invalid identifier format. Expected: $id:resource:{resourceId}",
+                        id,
+                        httpRequest,
+                    )
 
             val sentinelTimestamp = java.sql.Timestamp.valueOf("2099-12-31 23:59:59")
             val beforeTimestamp =
@@ -211,7 +233,13 @@ class OaiPmhController(
                     beforeTimestamp,
                 )
             if (snapshot == null) {
-                return responseBuilder.errorResponse("idDoesNotExist", "Record with identifier '$identifier' does not exist")
+                return responseBuilder.errorResponse(
+                    "idDoesNotExist",
+                    "Record with identifier '$identifier' does not exist",
+                    id,
+                    httpRequest,
+                    errorParams,
+                )
             }
         }
 
@@ -220,7 +248,7 @@ class OaiPmhController(
         if (identifier != null) {
             requestParams["identifier"] = identifier
         }
-        val request = responseBuilder.createRequestElement(doc, "ListMetadataFormats", id, requestParams, httpRequest)
+        val request = responseBuilder.createRequestElement(doc, id, mapOf("verb" to "ListMetadataFormats") + requestParams, httpRequest)
         val listMetadataFormats = doc.createElement("ListMetadataFormats")
 
         // Only support rdfxml format
@@ -245,33 +273,56 @@ class OaiPmhController(
         metadataPrefix: String?,
         httpRequest: HttpServletRequest,
     ): ResponseEntity<String> {
+        val errorParams = responseBuilder.requestParams("GetRecord", metadataPrefix = metadataPrefix, identifier = identifier)
         // Validate required parameters
         if (identifier == null) {
-            return responseBuilder.errorResponse("badArgument", "Missing required argument: identifier")
+            return responseBuilder.errorResponse("badArgument", "Missing required argument: identifier", id, httpRequest)
         }
         if (metadataPrefix == null) {
-            return responseBuilder.errorResponse("badArgument", "Missing required argument: metadataPrefix")
+            return responseBuilder.errorResponse("badArgument", "Missing required argument: metadataPrefix", id, httpRequest)
         }
 
         // Validate metadataPrefix
         if (metadataPrefix.lowercase() != "rdfxml") {
-            return responseBuilder.errorResponse("badArgument", "Only 'rdfxml' metadataPrefix is supported. Received: $metadataPrefix")
+            return responseBuilder.errorResponse(
+                "badArgument",
+                "Only 'rdfxml' metadataPrefix is supported. Received: $metadataPrefix",
+                id,
+                httpRequest,
+            )
         }
 
         // Get union graph order
         val order =
             unionGraphService.getOrder(id)
-                ?: return responseBuilder.errorResponse("idDoesNotExist", "Union graph with id '$id' does not exist")
+                ?: return responseBuilder.errorResponse(
+                    "idDoesNotExist",
+                    "Union graph with id '$id' does not exist",
+                    id,
+                    httpRequest,
+                    errorParams,
+                )
 
         // Block only when union graph has failed; PENDING (updating) or COMPLETED may still have snapshots
         if (order.status == UnionGraphOrder.GraphStatus.FAILED) {
-            return responseBuilder.errorResponse("idDoesNotExist", "Union graph with id '$id' is not available (status: ${order.status})")
+            return responseBuilder.errorResponse(
+                "idDoesNotExist",
+                "Union graph with id '$id' is not available (status: ${order.status})",
+                id,
+                httpRequest,
+                errorParams,
+            )
         }
 
         // Parse identifier
         val resourceId =
             responseBuilder.parseIdentifier(identifier, id)
-                ?: return responseBuilder.errorResponse("badArgument", "Invalid identifier format. Expected: $id:resource:{resourceId}")
+                ?: return responseBuilder.errorResponse(
+                    "badArgument",
+                    "Invalid identifier format. Expected: $id:resource:{resourceId}",
+                    id,
+                    httpRequest,
+                )
 
         // Determine beforeTimestamp for consistency during rebuilds
         val sentinelTimestamp = java.sql.Timestamp.valueOf("2099-12-31 23:59:59")
@@ -289,15 +340,20 @@ class OaiPmhController(
                 resourceId,
                 beforeTimestamp,
             )
-                ?: return responseBuilder.errorResponse("idDoesNotExist", "Record with identifier '$identifier' does not exist")
+                ?: return responseBuilder.errorResponse(
+                    "idDoesNotExist",
+                    "Record with identifier '$identifier' does not exist",
+                    id,
+                    httpRequest,
+                    errorParams,
+                )
 
         val doc = responseBuilder.createOaiPmhDocument()
         val request =
             responseBuilder.createRequestElement(
                 doc,
-                "GetRecord",
                 id,
-                mapOf("identifier" to identifier, "metadataPrefix" to metadataPrefix),
+                mapOf("verb" to "GetRecord", "identifier" to identifier, "metadataPrefix" to metadataPrefix),
                 httpRequest,
             )
         val getRecord = doc.createElement("GetRecord")
@@ -313,14 +369,27 @@ class OaiPmhController(
     }
 
     private fun handleListSets(id: String, httpRequest: HttpServletRequest): ResponseEntity<String> {
+        val errorParams = responseBuilder.requestParams("ListSets")
         val order =
             unionGraphService.getOrder(id)
-                ?: return responseBuilder.errorResponse("idDoesNotExist", "Union graph with id '$id' does not exist")
+                ?: return responseBuilder.errorResponse(
+                    "idDoesNotExist",
+                    "Union graph with id '$id' does not exist",
+                    id,
+                    httpRequest,
+                    errorParams,
+                )
         if (order.status == UnionGraphOrder.GraphStatus.FAILED) {
-            return responseBuilder.errorResponse("idDoesNotExist", "Union graph with id '$id' is not available (status: ${order.status})")
+            return responseBuilder.errorResponse(
+                "idDoesNotExist",
+                "Union graph with id '$id' is not available (status: ${order.status})",
+                id,
+                httpRequest,
+                errorParams,
+            )
         }
         val doc = responseBuilder.createOaiPmhDocument()
-        val request = responseBuilder.createRequestElement(doc, "ListSets", id, emptyMap(), httpRequest)
+        val request = responseBuilder.createRequestElement(doc, id, responseBuilder.requestParams("ListSets"), httpRequest)
         val listSets = doc.createElement("ListSets")
         val set = doc.createElement("set")
         set.appendChild(responseBuilder.createTextElement(doc, "setSpec", "org"))
@@ -346,30 +415,57 @@ class OaiPmhController(
         set: String?,
         httpRequest: HttpServletRequest,
     ): ResponseEntity<String> {
+        val errorParams = responseBuilder.requestParams(
+            "ListIdentifiers",
+            metadataPrefix = metadataPrefix,
+            resumptionToken = resumptionToken,
+            from = from,
+            until = until,
+            set = set,
+        )
         // Get union graph order
         val order =
             unionGraphService.getOrder(id)
-                ?: return responseBuilder.errorResponse("idDoesNotExist", "Union graph with id '$id' does not exist")
+                ?: return responseBuilder.errorResponse(
+                    "idDoesNotExist",
+                    "Union graph with id '$id' does not exist",
+                    id,
+                    httpRequest,
+                    errorParams,
+                )
 
         // Block only when union graph has failed; PENDING (updating) or COMPLETED may still have snapshots
         if (order.status == UnionGraphOrder.GraphStatus.FAILED) {
-            return responseBuilder.errorResponse("idDoesNotExist", "Union graph with id '$id' is not available (status: ${order.status})")
+            return responseBuilder.errorResponse(
+                "idDoesNotExist",
+                "Union graph with id '$id' is not available (status: ${order.status})",
+                id,
+                httpRequest,
+                errorParams,
+            )
         }
 
         if (resumptionToken != null && (metadataPrefix != null || from != null || until != null || set != null)) {
             return responseBuilder.errorResponse(
                 "badArgument",
                 "resumptionToken is an exclusive argument and cannot be combined with metadataPrefix, from, until or set",
+                id,
+                httpRequest,
             )
         }
 
         // Validate metadataPrefix - must be "rdfxml" if provided
         if (metadataPrefix != null && metadataPrefix.lowercase() != "rdfxml") {
-            return responseBuilder.errorResponse("badArgument", "Only 'rdfxml' metadataPrefix is supported. Received: $metadataPrefix")
+            return responseBuilder.errorResponse(
+                "badArgument",
+                "Only 'rdfxml' metadataPrefix is supported. Received: $metadataPrefix",
+                id,
+                httpRequest,
+            )
         }
 
         if (metadataPrefix == null && resumptionToken == null) {
-            return responseBuilder.errorResponse("badArgument", "Missing required argument: metadataPrefix")
+            return responseBuilder.errorResponse("badArgument", "Missing required argument: metadataPrefix", id, httpRequest)
         }
 
         // Parse resumption token or start from beginning (including optional from/until/set)
@@ -377,7 +473,13 @@ class OaiPmhController(
             if (resumptionToken != null) {
                 val parsed =
                     responseBuilder.parseResumptionTokenWithFilters(resumptionToken, id)
-                        ?: return responseBuilder.errorResponse("badResumptionToken", "Invalid resumption token")
+                        ?: return responseBuilder.errorResponse(
+                            "badResumptionToken",
+                            "Invalid resumption token",
+                            id,
+                            httpRequest,
+                            errorParams,
+                        )
                 Triple(parsed.first, parsed.second, parsed.third)
             } else {
                 val filters =
@@ -385,13 +487,23 @@ class OaiPmhController(
                         val f = responseBuilder.parseAndValidateFilters(from, until, set)
                         if (f == null) {
                             if (set != null && set.isNotBlank() && responseBuilder.parseSetOrgnr(set) == null) {
-                                return responseBuilder.errorResponse("badArgument", "Invalid set format. Expected org:{orgnr}")
+                                return responseBuilder.errorResponse(
+                                    "badArgument",
+                                    "Invalid set format. Expected org:{orgnr}",
+                                    id,
+                                    httpRequest,
+                                )
                             }
                             if (from != null && until != null) {
                                 val fromTs = responseBuilder.parseOaiDate(from)
                                 val untilTs = responseBuilder.parseOaiDate(until)
                                 if (fromTs != null && untilTs != null && fromTs.isAfter(untilTs)) {
-                                    return responseBuilder.errorResponse("badArgument", "from must be less than or equal to until")
+                                    return responseBuilder.errorResponse(
+                                        "badArgument",
+                                        "from must be less than or equal to until",
+                                        id,
+                                        httpRequest,
+                                    )
                                 }
                             }
                             null
@@ -409,6 +521,8 @@ class OaiPmhController(
             return responseBuilder.errorResponse(
                 "badArgument",
                 "Only 'rdfxml' metadataPrefix is supported. Received: $actualMetadataPrefix",
+                id,
+                httpRequest,
             )
         }
 
@@ -426,7 +540,7 @@ class OaiPmhController(
 
         val currentResourceType =
             resourceTypes.firstOrNull()
-                ?: return responseBuilder.errorResponse("badArgument", "No valid resource types found")
+                ?: return responseBuilder.errorResponse("badArgument", "No valid resource types found", id, httpRequest)
 
         // Determine beforeTimestamp for consistency during rebuilds
         val sentinelTimestamp = java.sql.Timestamp.valueOf("2099-12-31 23:59:59")
@@ -487,7 +601,7 @@ class OaiPmhController(
             }
 
         if (resumptionToken != null && resourceOffset > 0 && snapshots.isEmpty()) {
-            return responseBuilder.errorResponse("badResumptionToken", "Resumption token is out of range")
+            return responseBuilder.errorResponse("badResumptionToken", "Resumption token is out of range", id, httpRequest, errorParams)
         }
 
         val doc = responseBuilder.createOaiPmhDocument()
@@ -500,7 +614,7 @@ class OaiPmhController(
                     set?.takeIf { it.isNotBlank() }?.let { put("set", it) }
                 }
             }
-        val request = responseBuilder.createRequestElement(doc, "ListIdentifiers", id, requestParams, httpRequest)
+        val request = responseBuilder.createRequestElement(doc, id, mapOf("verb" to "ListIdentifiers") + requestParams, httpRequest)
         val listIdentifiers = doc.createElement("ListIdentifiers")
 
         for (snapshot in snapshots) {
@@ -565,33 +679,66 @@ class OaiPmhController(
         set: String?,
         httpRequest: HttpServletRequest,
     ): ResponseEntity<String> {
+        val errorParams = responseBuilder.requestParams(
+            "ListRecords",
+            metadataPrefix = metadataPrefix,
+            resumptionToken = resumptionToken,
+            from = from,
+            until = until,
+            set = set,
+        )
         val order =
             unionGraphService.getOrder(id)
-                ?: return responseBuilder.errorResponse("idDoesNotExist", "Union graph with id '$id' does not exist")
+                ?: return responseBuilder.errorResponse(
+                    "idDoesNotExist",
+                    "Union graph with id '$id' does not exist",
+                    id,
+                    httpRequest,
+                    errorParams,
+                )
 
         if (order.status == UnionGraphOrder.GraphStatus.FAILED) {
-            return responseBuilder.errorResponse("idDoesNotExist", "Union graph with id '$id' is not available (status: ${order.status})")
+            return responseBuilder.errorResponse(
+                "idDoesNotExist",
+                "Union graph with id '$id' is not available (status: ${order.status})",
+                id,
+                httpRequest,
+                errorParams,
+            )
         }
         if (resumptionToken != null && (metadataPrefix != null || from != null || until != null || set != null)) {
             return responseBuilder.errorResponse(
                 "badArgument",
                 "resumptionToken is an exclusive argument and cannot be combined with metadataPrefix, from, until or set",
+                id,
+                httpRequest,
             )
         }
 
         if (metadataPrefix != null && metadataPrefix.lowercase() != "rdfxml") {
-            return responseBuilder.errorResponse("badArgument", "Only 'rdfxml' metadataPrefix is supported. Received: $metadataPrefix")
+            return responseBuilder.errorResponse(
+                "badArgument",
+                "Only 'rdfxml' metadataPrefix is supported. Received: $metadataPrefix",
+                id,
+                httpRequest,
+            )
         }
 
         if (metadataPrefix == null && resumptionToken == null) {
-            return responseBuilder.errorResponse("badArgument", "Missing required argument: metadataPrefix")
+            return responseBuilder.errorResponse("badArgument", "Missing required argument: metadataPrefix", id, httpRequest)
         }
 
         val (resourceOffset, actualMetadataPrefix, filterParams) =
             if (resumptionToken != null) {
                 val parsed =
                     responseBuilder.parseResumptionTokenWithFilters(resumptionToken, id)
-                        ?: return responseBuilder.errorResponse("badResumptionToken", "Invalid resumption token")
+                        ?: return responseBuilder.errorResponse(
+                            "badResumptionToken",
+                            "Invalid resumption token",
+                            id,
+                            httpRequest,
+                            errorParams,
+                        )
                 Triple(parsed.first, parsed.second, parsed.third)
             } else {
                 val filters =
@@ -599,13 +746,23 @@ class OaiPmhController(
                         val f = responseBuilder.parseAndValidateFilters(from, until, set)
                         if (f == null) {
                             if (set != null && set.isNotBlank() && responseBuilder.parseSetOrgnr(set) == null) {
-                                return responseBuilder.errorResponse("badArgument", "Invalid set format. Expected org:{orgnr}")
+                                return responseBuilder.errorResponse(
+                                    "badArgument",
+                                    "Invalid set format. Expected org:{orgnr}",
+                                    id,
+                                    httpRequest,
+                                )
                             }
                             if (from != null && until != null) {
                                 val fromTs = responseBuilder.parseOaiDate(from)
                                 val untilTs = responseBuilder.parseOaiDate(until)
                                 if (fromTs != null && untilTs != null && fromTs.isAfter(untilTs)) {
-                                    return responseBuilder.errorResponse("badArgument", "from must be less than or equal to until")
+                                    return responseBuilder.errorResponse(
+                                        "badArgument",
+                                        "from must be less than or equal to until",
+                                        id,
+                                        httpRequest,
+                                    )
                                 }
                             }
                             null
@@ -622,6 +779,8 @@ class OaiPmhController(
             return responseBuilder.errorResponse(
                 "badArgument",
                 "Only 'rdfxml' metadataPrefix is supported. Received: $actualMetadataPrefix",
+                id,
+                httpRequest,
             )
         }
 
@@ -638,7 +797,7 @@ class OaiPmhController(
 
         val currentResourceType =
             resourceTypes.firstOrNull()
-                ?: return responseBuilder.errorResponse("badArgument", "No valid resource types found")
+                ?: return responseBuilder.errorResponse("badArgument", "No valid resource types found", id, httpRequest)
 
         val sentinelTimestamp = java.sql.Timestamp.valueOf("2099-12-31 23:59:59")
         val beforeTimestamp =
@@ -697,7 +856,7 @@ class OaiPmhController(
             }
 
         if (resumptionToken != null && resourceOffset > 0 && snapshots.isEmpty()) {
-            return responseBuilder.errorResponse("badResumptionToken", "Resumption token is out of range")
+            return responseBuilder.errorResponse("badResumptionToken", "Resumption token is out of range", id, httpRequest, errorParams)
         }
 
         val doc = responseBuilder.createOaiPmhDocument()
@@ -710,7 +869,7 @@ class OaiPmhController(
                     set?.takeIf { it.isNotBlank() }?.let { put("set", it) }
                 }
             }
-        val request = responseBuilder.createRequestElement(doc, "ListRecords", id, requestParams, httpRequest)
+        val request = responseBuilder.createRequestElement(doc, id, mapOf("verb" to "ListRecords") + requestParams, httpRequest)
         val listRecords = doc.createElement("ListRecords")
 
         for (snapshot in snapshots) {
