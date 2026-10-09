@@ -406,6 +406,8 @@ class OaiPmhControllerTest : BaseControllerTest() {
         mockMvc
             .perform(get("/v1/union-graphs/test-order-identify/oai-pmh").param("verb", "Identify"))
             .andExpect(status().isOk)
+            .andExpect(xpath("/OAI-PMH/request").exists())
+            .andExpect(xpath("/OAI-PMH/request/@verb").string("Identify"))
             .andExpect(content().contentType(MediaType.APPLICATION_XML))
             .andExpect(xpath("/OAI-PMH/Identify/repositoryName").string("FDK Union Graph: Test Union Graph"))
             .andExpect(xpath("/OAI-PMH/Identify/baseURL").exists())
@@ -444,6 +446,8 @@ class OaiPmhControllerTest : BaseControllerTest() {
         mockMvc
             .perform(get("/v1/union-graphs/test-order-formats/oai-pmh").param("verb", "ListMetadataFormats"))
             .andExpect(status().isOk)
+            .andExpect(xpath("/OAI-PMH/request").exists())
+            .andExpect(xpath("/OAI-PMH/request/@verb").string("ListMetadataFormats"))
             .andExpect(content().contentType(MediaType.APPLICATION_XML))
             .andExpect(xpath("/OAI-PMH/ListMetadataFormats/metadataFormat/metadataPrefix").string("rdfxml"))
             .andExpect(xpath("/OAI-PMH/ListMetadataFormats/metadataFormat/schema").exists())
@@ -548,6 +552,8 @@ class OaiPmhControllerTest : BaseControllerTest() {
                         .param("identifier", "$baseUrl/records/resource-1")
                         .param("metadataPrefix", "rdfxml"),
                 ).andExpect(status().isOk)
+                .andExpect(xpath("/OAI-PMH/request").exists())
+                .andExpect(xpath("/OAI-PMH/request/@verb").string("GetRecord"))
                 .andExpect(content().contentType(MediaType.APPLICATION_XML))
                 .andExpect(xpath("/OAI-PMH/GetRecord/record/header/identifier[contains(., '/records/resource-1')]").exists())
                 .andExpect(xpath("/OAI-PMH/GetRecord/record/header/datestamp").exists())
@@ -732,6 +738,8 @@ class OaiPmhControllerTest : BaseControllerTest() {
                     .param("verb", "ListIdentifiers")
                     .param("metadataPrefix", "rdfxml"),
             ).andExpect(status().isOk)
+            .andExpect(xpath("/OAI-PMH/request").exists())
+            .andExpect(xpath("/OAI-PMH/request/@verb").string("ListIdentifiers"))
             .andExpect(content().contentType(MediaType.APPLICATION_XML))
             .andExpect(xpath("/OAI-PMH/ListIdentifiers/header/identifier[contains(., '/records/resource-1')]").exists())
             .andExpect(xpath("/OAI-PMH/ListIdentifiers/header/datestamp").exists())
@@ -999,6 +1007,8 @@ class OaiPmhControllerTest : BaseControllerTest() {
                 .perform(get("/v1/union-graphs/test-order/oai-pmh"))
                 .andExpect(status().isBadRequest)
                 .andExpect(xpath("/OAI-PMH/responseDate").exists())
+                .andExpect(xpath("/OAI-PMH/request").exists())
+                .andExpect(xpath("/OAI-PMH/request/@verb").doesNotExist())
                 .andReturn()
 
         // Extract responseDate and validate ISO format
@@ -1032,6 +1042,8 @@ class OaiPmhControllerTest : BaseControllerTest() {
         mockMvc
             .perform(get("/v1/union-graphs/test-order-sets/oai-pmh").param("verb", "ListSets"))
             .andExpect(status().isOk)
+            .andExpect(xpath("/OAI-PMH/request").exists())
+            .andExpect(xpath("/OAI-PMH/request/@verb").string("ListSets"))
             .andExpect(content().contentType(MediaType.APPLICATION_XML))
             .andExpect(xpath("/OAI-PMH/ListSets/set/setSpec").string("org"))
             .andExpect(xpath("/OAI-PMH/ListSets/set/setName").string("Organization (by orgnr)"))
