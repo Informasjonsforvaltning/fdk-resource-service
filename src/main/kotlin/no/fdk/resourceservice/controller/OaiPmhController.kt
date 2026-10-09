@@ -162,7 +162,7 @@ class OaiPmhController(
                 )
 
         val doc = responseBuilder.createOaiPmhDocument()
-        val request = responseBuilder.createRequestElement(doc, "Identify", id, emptyMap(), httpRequest)
+        val request = responseBuilder.createRequestElement(doc, id, responseBuilder.requestParams("Identify"), httpRequest)
         val identify = doc.createElement("Identify")
 
         // Repository name
@@ -248,7 +248,7 @@ class OaiPmhController(
         if (identifier != null) {
             requestParams["identifier"] = identifier
         }
-        val request = responseBuilder.createRequestElement(doc, "ListMetadataFormats", id, requestParams, httpRequest)
+        val request = responseBuilder.createRequestElement(doc, id, mapOf("verb" to "ListMetadataFormats") + requestParams, httpRequest)
         val listMetadataFormats = doc.createElement("ListMetadataFormats")
 
         // Only support rdfxml format
@@ -352,9 +352,8 @@ class OaiPmhController(
         val request =
             responseBuilder.createRequestElement(
                 doc,
-                "GetRecord",
                 id,
-                mapOf("identifier" to identifier, "metadataPrefix" to metadataPrefix),
+                mapOf("verb" to "GetRecord", "identifier" to identifier, "metadataPrefix" to metadataPrefix),
                 httpRequest,
             )
         val getRecord = doc.createElement("GetRecord")
@@ -390,7 +389,7 @@ class OaiPmhController(
             )
         }
         val doc = responseBuilder.createOaiPmhDocument()
-        val request = responseBuilder.createRequestElement(doc, "ListSets", id, emptyMap(), httpRequest)
+        val request = responseBuilder.createRequestElement(doc, id, responseBuilder.requestParams("ListSets"), httpRequest)
         val listSets = doc.createElement("ListSets")
         val set = doc.createElement("set")
         set.appendChild(responseBuilder.createTextElement(doc, "setSpec", "org"))
@@ -615,7 +614,7 @@ class OaiPmhController(
                     set?.takeIf { it.isNotBlank() }?.let { put("set", it) }
                 }
             }
-        val request = responseBuilder.createRequestElement(doc, "ListIdentifiers", id, requestParams, httpRequest)
+        val request = responseBuilder.createRequestElement(doc, id, mapOf("verb" to "ListIdentifiers") + requestParams, httpRequest)
         val listIdentifiers = doc.createElement("ListIdentifiers")
 
         for (snapshot in snapshots) {
@@ -870,7 +869,7 @@ class OaiPmhController(
                     set?.takeIf { it.isNotBlank() }?.let { put("set", it) }
                 }
             }
-        val request = responseBuilder.createRequestElement(doc, "ListRecords", id, requestParams, httpRequest)
+        val request = responseBuilder.createRequestElement(doc, id, mapOf("verb" to "ListRecords") + requestParams, httpRequest)
         val listRecords = doc.createElement("ListRecords")
 
         for (snapshot in snapshots) {

@@ -122,13 +122,11 @@ class OaiPmhResponseBuilder {
 
     fun createRequestElement(
         doc: Document,
-        verb: String,
         id: String,
         params: Map<String, String> = emptyMap(),
         httpRequest: HttpServletRequest,
     ): Element {
         val request = doc.createElement("request")
-        request.setAttribute("verb", verb)
         request.textContent = getBaseUrl(id, httpRequest)
         params.forEach { (key, value) ->
             if (value.isNotEmpty()) {
@@ -165,8 +163,8 @@ class OaiPmhResponseBuilder {
     fun errorResponse(
         code: String,
         message: String,
-        id: String? = null,
-        httpRequest: HttpServletRequest? = null,
+        id: String,
+        httpRequest: HttpServletRequest,
         params: Map<String, String> = emptyMap(),
     ): ResponseEntity<String> {
         val doc = createOaiPmhDocument()
@@ -174,19 +172,10 @@ class OaiPmhResponseBuilder {
         error.setAttribute("code", code)
         error.textContent = message
 
+        val attributes = if (code == "badVerb" || code == "badArgument") emptyMap() else params
+
         val response = doc.getElementsByTagName("OAI-PMH").item(0) as Element
-        if (id != null && httpRequest != null) {
-            val request = doc.createElement("request")
-            request.textContent = getBaseUrl(id, httpRequest)
-            if (code != "badVerb" && code != "badArgument") {
-                params.forEach { (key, value) ->
-                    if (value.isNotEmpty()) {
-                        request.setAttribute(key, value)
-                    }
-                }
-            }
-            response.appendChild(request)
-        }
+        response.appendChild(createRequestElement(doc, id, attributes, httpRequest))
         response.appendChild(error)
 
         val status =
