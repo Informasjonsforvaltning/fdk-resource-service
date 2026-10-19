@@ -51,7 +51,18 @@ class ResourceServiceTest {
 
         val result = resourceService.getResourceJson("1", ResourceType.CONCEPT)
 
-        assertEquals(json, result)
+        assertEquals(json + ("isRemovedFromFDK" to false), result)
+    }
+
+    @Test
+    fun `getResourceJson includes isRemovedFromFDK flag when resource is deleted`() {
+        val json = mapOf("uri" to "https://example.com/1", "title" to "Concept")
+        val entity = ResourceEntity(id = "1", resourceType = "CONCEPT", resourceJson = json, deleted = true)
+        every { resourceRepository.findById("1") } returns Optional.of(entity)
+
+        val result = resourceService.getResourceJson("1", ResourceType.CONCEPT)
+
+        assertEquals(json + ("isRemovedFromFDK" to true), result)
     }
 
     @Test
@@ -108,7 +119,7 @@ class ResourceServiceTest {
 
         val result = resourceService.getResourceJsonByUri("https://example.com/concept/1", ResourceType.CONCEPT)
 
-        assertEquals(json, result)
+        assertEquals(json + ("isRemovedFromFDK" to false), result)
     }
 
     @Test
@@ -131,7 +142,7 @@ class ResourceServiceTest {
 
         val result = resourceService.getResourceJsonByUri("https://example.com/concept/1", ResourceType.CONCEPT)
 
-        assertEquals(json, result)
+        assertEquals(json + ("isRemovedFromFDK" to false), result)
     }
 
     @Test
@@ -142,7 +153,7 @@ class ResourceServiceTest {
 
         val result = resourceService.getResourceJsonByUri("https://example.com/1")
 
-        assertEquals(json, result)
+        assertEquals(json + ("isRemovedFromFDK" to false), result)
     }
 
     @Test

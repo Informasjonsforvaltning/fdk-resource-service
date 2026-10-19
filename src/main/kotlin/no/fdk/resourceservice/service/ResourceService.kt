@@ -56,14 +56,14 @@ class ResourceService(private val resourceRepository: ResourceRepository, privat
      *
      * @param id The unique identifier of the resource
      * @param resourceType The type of resource to retrieve
-     * @return JSON representation of the resource, or null if not found or type mismatch
+     * @return JSON representation of the resource including an `isRemovedFromFDK` flag, or null if not found or type mismatch
      */
     fun getResourceJson(id: String, resourceType: ResourceType): Map<String, Any>? {
         logger.debug("Getting resource JSON with id: {} and type: {}", id, resourceType)
 
         val entity = resourceRepository.findById(id).orElse(null)
         return if (entity?.resourceType == resourceType.name) {
-            entity.resourceJson
+            entity.resourceJsonWithRemovedFlag()
         } else {
             null
         }
@@ -75,14 +75,16 @@ class ResourceService(private val resourceRepository: ResourceRepository, privat
      * Uses getResourceEntityByUri for consistent URI lookup with fallback support.
      *
      * @param uri The URI of the resource
-     * @return JSON representation of the resource, or null if not found
+     * @return JSON representation of the resource including an `isRemovedFromFDK` flag, or null if not found
      */
     fun getResourceJsonByUri(uri: String): Map<String, Any>? {
         logger.debug("Getting resource JSON with uri: {} across all types", uri)
 
         val entity = getResourceEntityByUri(uri)
-        return entity?.resourceJson
+        return entity?.resourceJsonWithRemovedFlag()
     }
+
+    private fun ResourceEntity.resourceJsonWithRemovedFlag(): Map<String, Any>? = resourceJson?.plus(IS_REMOVED_FROM_FDK_FIELD to deleted)
 
     /**
      * Checks if a resource should be updated based on timestamp comparison.
@@ -175,7 +177,7 @@ class ResourceService(private val resourceRepository: ResourceRepository, privat
      *
      * @param uri The URI of the resource
      * @param resourceType The type of resource to retrieve
-     * @return JSON representation of the resource, or null if not found or type mismatch
+     * @return JSON representation of the resource including an `isRemovedFromFDK` flag, or null if not found or type mismatch
      */
     fun getResourceJsonByUri(uri: String, resourceType: ResourceType): Map<String, Any>? {
         logger.debug("Getting resource JSON with uri: {} and type: {}", uri, resourceType)
@@ -185,13 +187,13 @@ class ResourceService(private val resourceRepository: ResourceRepository, privat
             val conceptEntity = resourceRepository.findConceptByIdentifier(uri)
             if (conceptEntity != null && !conceptEntity.deleted) {
                 logger.debug("Concept found by identifier field for URI: {}", uri)
-                return conceptEntity.resourceJson
+                return conceptEntity.resourceJsonWithRemovedFlag()
             }
         }
 
         val entity = getResourceEntityByUri(uri)
         return if (entity?.resourceType == resourceType.name) {
-            entity.resourceJson
+            entity.resourceJsonWithRemovedFlag()
         } else {
             null
         }
@@ -402,5 +404,9 @@ class ResourceService(private val resourceRepository: ResourceRepository, privat
                 )
             resourceRepository.save(newEntity)
         }
+    }
+
+    companion object {
+        const val IS_REMOVED_FROM_FDK_FIELD = "isRemovedFromFDK"
     }
 }
