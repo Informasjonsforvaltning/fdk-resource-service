@@ -109,6 +109,7 @@ class ResourceServiceTimestampTest : BaseIntegrationTest() {
         val retrieved = resourceService.getResourceJson(resourceId, ResourceType.CONCEPT)
         assertNotNull(retrieved, "Resource should still be retrievable even when marked as deleted")
         assertEquals("To Delete", retrieved!!["title"])
+        assertEquals(true, retrieved["isRemovedFromFDK"])
 
         // Verify the deleted flag is set in the database
         val entity = resourceRepository.findById(resourceId).orElse(null)
@@ -134,6 +135,7 @@ class ResourceServiceTimestampTest : BaseIntegrationTest() {
         val retrieved = resourceService.getResourceJson(resourceId, ResourceType.CONCEPT)
         assertNotNull(retrieved, "Resource should still exist with lower timestamp deletion")
         assertEquals("Keep Me", retrieved!!["title"])
+        assertEquals(false, retrieved["isRemovedFromFDK"])
     }
 
     @Test
