@@ -54,10 +54,8 @@ class CircuitBreakerIntegrationTest : BaseIntegrationTest() {
         conceptCircuitBreaker = circuitBreakerRegistry.circuitBreaker("conceptConsumer")
             ?: throw IllegalStateException("Circuit breaker 'conceptConsumer' not found")
 
-        // Reset circuit breaker to CLOSED state for clean test
-        if (conceptCircuitBreaker.state != CircuitBreaker.State.CLOSED) {
-            conceptCircuitBreaker.transitionToClosedState()
-        }
+        // Reset state and metrics so calls recorded by earlier tests do not skew the failure rate
+        conceptCircuitBreaker.reset()
 
         // Mock Kafka listener container - listenerId must contain "concept-events" to match circuit breaker mapping
         mockListenerContainer = mockk<KafkaMessageListenerContainer<String, Any>>(relaxed = true)
