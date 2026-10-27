@@ -50,6 +50,10 @@ spring:
 
 server:
   port: 8080
+  compression:
+    enabled: true
+    min-response-size: 1024
+    additional-mime-types: text/turtle,application/ld+json,application/rdf+xml,application/n-triples,application/n-quads
 
 management:
   endpoints:
