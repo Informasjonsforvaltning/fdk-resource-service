@@ -50,6 +50,11 @@ spring:
 
 server:
   port: 8080
+  compression:
+    enabled: true
+    min-response-size: 1024
+    # Extends Spring Boot’s default list with the RDF types the service serves.
+    additional-mime-types: text/turtle,application/ld+json,application/rdf+xml,application/n-triples,application/n-quads
 
 management:
   endpoints:
