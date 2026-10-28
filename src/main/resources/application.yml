@@ -53,7 +53,7 @@ server:
   compression:
     enabled: true
     min-response-size: 1024
-    # Utvider Spring Boots standardliste med RDF-typene tjenesten serverer.
+    # Extends Spring Boot’s default list with the RDF types the service serves.
     additional-mime-types: text/turtle,application/ld+json,application/rdf+xml,application/n-triples,application/n-quads
 
 management:
