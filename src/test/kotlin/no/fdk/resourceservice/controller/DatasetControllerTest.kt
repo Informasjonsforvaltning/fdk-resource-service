@@ -151,6 +151,105 @@ class DatasetControllerTest : BaseControllerTest() {
     }
 
     @Test
+    fun `getDatasetGraph with includeCatalog should merge catalog graph`() {
+        val turtleData = """<http://example.com/dataset> a <http://www.w3.org/ns/dcat#Dataset> ."""
+        val catalogData = """<http://example.com/catalog> a <http://www.w3.org/ns/dcat#Catalog> ."""
+        val merged = "$turtleData\n$catalogData"
+        val entity =
+            ResourceEntity(
+                id = "test-id",
+                resourceType = ResourceType.DATASET.name,
+                resourceGraphData = turtleData,
+                resourceGraphFormat = "TURTLE",
+                catalogGraphData = catalogData,
+                catalogGraphFormat = "TURTLE",
+            )
+        every { resourceService.getResourceEntity("test-id", ResourceType.DATASET) } returns entity
+        every { rdfService.getBestFormat(null) } returns RdfService.RdfFormat.TURTLE
+        every {
+            rdfService.convertMergedFromFormats(
+                listOf(turtleData to "TURTLE", catalogData to "TURTLE"),
+                RdfService.RdfFormat.TURTLE,
+                RdfService.RdfFormatStyle.PRETTY,
+                true,
+                ResourceType.DATASET,
+            )
+        } returns merged
+        every { rdfService.getContentType(RdfService.RdfFormat.TURTLE) } returns MediaType("text", "turtle")
+
+        mockMvc
+            .perform(get("/v1/datasets/test-id/graph").param("includeCatalog", "true"))
+            .andExpect(status().isOk)
+            .andExpect(content().string(merged))
+    }
+
+    @Test
+    fun `getDatasetGraph without includeCatalog should not merge catalog graph`() {
+        val turtleData = """<http://example.com/dataset> a <http://www.w3.org/ns/dcat#Dataset> ."""
+        val entity =
+            ResourceEntity(
+                id = "test-id",
+                resourceType = ResourceType.DATASET.name,
+                resourceGraphData = turtleData,
+                resourceGraphFormat = "TURTLE",
+                catalogGraphData = """<http://example.com/catalog> a <http://www.w3.org/ns/dcat#Catalog> .""",
+                catalogGraphFormat = "TURTLE",
+            )
+        every { resourceService.getResourceEntity("test-id", ResourceType.DATASET) } returns entity
+        every { rdfService.getBestFormat(null) } returns RdfService.RdfFormat.TURTLE
+        every {
+            rdfService.convertFromFormat(
+                turtleData,
+                "TURTLE",
+                RdfService.RdfFormat.TURTLE,
+                RdfService.RdfFormatStyle.PRETTY,
+                true,
+                ResourceType.DATASET,
+            )
+        } returns turtleData
+        every { rdfService.getContentType(RdfService.RdfFormat.TURTLE) } returns MediaType("text", "turtle")
+
+        mockMvc
+            .perform(get("/v1/datasets/test-id/graph"))
+            .andExpect(status().isOk)
+            .andExpect(content().string(turtleData))
+    }
+
+    @Test
+    fun `getDatasetGraphByUri with includeCatalog and no catalog graph should return resource graph only`() {
+        val turtleData = """<http://example.com/dataset> a <http://www.w3.org/ns/dcat#Dataset> ."""
+        val entity =
+            ResourceEntity(
+                id = "test-id",
+                resourceType = ResourceType.DATASET.name,
+                resourceGraphData = turtleData,
+                resourceGraphFormat = "TURTLE",
+                uri = "https://example.com/dataset",
+            )
+        every { resourceService.getResourceEntityByUri("https://example.com/dataset") } returns entity
+        every { rdfService.getBestFormat(null) } returns RdfService.RdfFormat.TURTLE
+        every {
+            rdfService.convertFromFormat(
+                turtleData,
+                "TURTLE",
+                RdfService.RdfFormat.TURTLE,
+                RdfService.RdfFormatStyle.PRETTY,
+                true,
+                ResourceType.DATASET,
+            )
+        } returns turtleData
+        every { rdfService.getContentType(RdfService.RdfFormat.TURTLE) } returns MediaType("text", "turtle")
+
+        mockMvc
+            .perform(
+                get("/v1/datasets/by-uri/graph")
+                    .param("uri", "https://example.com/dataset")
+                    .param("includeCatalog", "true"),
+            ).andExpect(status().isOk)
+            .andExpect(content().string(turtleData))
+    }
+
+    @Test
     fun `getDatasetGraphByUri should return 404 when not found`() {
         // Given
         every { resourceService.getResourceEntityByUri("https://example.com/non-existent") } returns null

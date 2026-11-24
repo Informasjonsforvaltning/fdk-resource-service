@@ -121,7 +121,13 @@ class DataServiceController(resourceService: ResourceService, rdfService: RdfSer
             hidden = true,
         )
         @RequestHeader(HttpHeaders.ACCEPT, required = false) acceptHeader: String?,
-    ): ResponseEntity<Any> = handleGraphRequest(id, ResourceType.DATA_SERVICE, acceptHeader)
+        @Parameter(
+            description =
+            "If true, include catalog triples (dcat:Catalog, dcat:CatalogRecord, skos:Collection) " +
+                "from the resource's catalog graph in the response",
+        )
+        @RequestParam(defaultValue = "false") includeCatalog: Boolean,
+    ): ResponseEntity<Any> = handleGraphRequest(id, ResourceType.DATA_SERVICE, acceptHeader, includeCatalog)
 
     @GetMapping(
         "/by-uri/graph",
@@ -172,7 +178,13 @@ class DataServiceController(resourceService: ResourceService, rdfService: RdfSer
             hidden = true,
         )
         @RequestHeader(HttpHeaders.ACCEPT, required = false) acceptHeader: String?,
-    ): ResponseEntity<Any> = handleGraphRequestByUri(uri, ResourceType.DATA_SERVICE, acceptHeader)
+        @Parameter(
+            description =
+            "If true, include catalog triples (dcat:Catalog, dcat:CatalogRecord, skos:Collection) " +
+                "from the resource's catalog graph in the response",
+        )
+        @RequestParam(defaultValue = "false") includeCatalog: Boolean,
+    ): ResponseEntity<Any> = handleGraphRequestByUri(uri, ResourceType.DATA_SERVICE, acceptHeader, includeCatalog)
 
     @PostMapping
     @Operation(

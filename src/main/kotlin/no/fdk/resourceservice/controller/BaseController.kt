@@ -1,5 +1,6 @@
 package no.fdk.resourceservice.controller
 
+import no.fdk.resourceservice.model.ResourceEntity
 import no.fdk.resourceservice.model.ResourceType
 import no.fdk.resourceservice.service.RdfService
 import no.fdk.resourceservice.service.RdfService.RdfFormatStyle
@@ -8,7 +9,6 @@ import org.slf4j.LoggerFactory
 import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
-import org.springframework.web.bind.annotation.RequestHeader
 
 /**
  * Base controller providing common functionality for all resource endpoints.
@@ -85,33 +85,99 @@ abstract class BaseController(protected val resourceService: ResourceService, pr
      * @param id The resource ID
      * @param resourceType The type of resource
      * @param acceptHeader The Accept header for content negotiation
+     * @param includeCatalog If true, merges the stored catalog graph (dcat:Catalog, dcat:CatalogRecord,
+     *   skos:Collection) into the returned graph
      * @return ResponseEntity with the graph data in the requested format
      */
     protected fun handleGraphRequest(
         id: String,
         resourceType: ResourceType,
-        @RequestHeader(HttpHeaders.ACCEPT, required = false) acceptHeader: String?,
+        acceptHeader: String?,
+        includeCatalog: Boolean = false,
     ): ResponseEntity<Any> {
         logger.debug(
-            "Getting graph for {} with id: {}, Accept: {}",
+            "Getting graph for {} with id: {}, Accept: {}, includeCatalog: {}",
             resourceType.name.lowercase(),
             id,
             acceptHeader,
+            includeCatalog,
         )
 
         val entity = resourceService.getResourceEntity(id, resourceType) ?: return ResponseEntity.notFound().build()
+        return graphResponse(entity, resourceType, acceptHeader, includeCatalog)
+    }
+
+    /**
+     * Handles a graph request by URI with content negotiation.
+     *
+     * @param uri The resource URI
+     * @param resourceType The type of resource
+     * @param acceptHeader The Accept header for content negotiation
+     * @param includeCatalog If true, merges the stored catalog graph into the returned graph
+     * @return ResponseEntity with the graph data in the requested format
+     */
+    protected fun handleGraphRequestByUri(
+        uri: String,
+        resourceType: ResourceType,
+        acceptHeader: String?,
+        includeCatalog: Boolean = false,
+    ): ResponseEntity<Any> {
+        logger.debug(
+            "Getting graph for {} with uri: {}, Accept: {}, includeCatalog: {}",
+            resourceType.name.lowercase(),
+            uri,
+            acceptHeader,
+            includeCatalog,
+        )
+
+        val entity = resourceService.getResourceEntityByUri(uri)
+        if (entity == null || entity.resourceType != resourceType.name) {
+            return ResponseEntity.notFound().build()
+        }
+        return graphResponse(entity, resourceType, acceptHeader, includeCatalog)
+    }
+
+    /**
+     * Converts an entity's resource graph (optionally merged with its catalog graph) to the
+     * format negotiated from the Accept header and wraps it in a response.
+     *
+     * Returns 404 if the entity has no resource graph data, 500 if conversion fails.
+     * When [includeCatalog] is true but the entity has no catalog graph, the resource graph
+     * is returned as-is.
+     */
+    protected fun graphResponse(
+        entity: ResourceEntity,
+        resourceType: ResourceType?,
+        acceptHeader: String?,
+        includeCatalog: Boolean,
+    ): ResponseEntity<Any> {
         val resourceGraphData = entity.resourceGraphData ?: return ResponseEntity.notFound().build()
         val format = rdfService.getBestFormat(acceptHeader)
         val storedFormat = entity.resourceGraphFormat ?: "TURTLE"
+        val catalogGraphData = entity.catalogGraphData
+
         val convertedData =
-            rdfService.convertFromFormat(
-                resourceGraphData,
-                storedFormat,
-                format,
-                RdfFormatStyle.PRETTY,
-                expandUris = true,
-                resourceType,
-            )
+            if (includeCatalog && !catalogGraphData.isNullOrBlank()) {
+                rdfService.convertMergedFromFormats(
+                    listOf(
+                        resourceGraphData to storedFormat,
+                        catalogGraphData to (entity.catalogGraphFormat ?: "TURTLE"),
+                    ),
+                    format,
+                    RdfFormatStyle.PRETTY,
+                    expandUris = true,
+                    resourceType,
+                )
+            } else {
+                rdfService.convertFromFormat(
+                    resourceGraphData,
+                    storedFormat,
+                    format,
+                    RdfFormatStyle.PRETTY,
+                    expandUris = true,
+                    resourceType,
+                )
+            }
 
         return if (convertedData != null) {
             ResponseEntity
@@ -122,53 +188,6 @@ abstract class BaseController(protected val resourceService: ResourceService, pr
             ResponseEntity
                 .internalServerError()
                 .body("Failed to convert graph to requested format")
-        }
-    }
-
-    /**
-     * Handles a graph request by URI with content negotiation.
-     *
-     * @param uri The resource URI
-     * @param resourceType The type of resource
-     * @param acceptHeader The Accept header for content negotiation
-     * @return ResponseEntity with the graph data in the requested format
-     */
-    protected fun handleGraphRequestByUri(
-        uri: String,
-        resourceType: ResourceType,
-        @RequestHeader(HttpHeaders.ACCEPT, required = false) acceptHeader: String?,
-    ): ResponseEntity<Any> {
-        logger.debug(
-            "Getting graph for ${resourceType.name.lowercase()} with uri: $uri, Accept: $acceptHeader",
-        )
-
-        val entity = resourceService.getResourceEntityByUri(uri)
-        val resourceGraphData = entity?.resourceGraphData
-        return if (entity != null && entity.resourceType == resourceType.name && resourceGraphData != null) {
-            val format = rdfService.getBestFormat(acceptHeader)
-            val storedFormat = entity.resourceGraphFormat ?: "TURTLE"
-            val convertedData =
-                rdfService.convertFromFormat(
-                    resourceGraphData,
-                    storedFormat,
-                    format,
-                    RdfFormatStyle.PRETTY,
-                    expandUris = true,
-                    resourceType,
-                )
-
-            if (convertedData != null) {
-                ResponseEntity
-                    .ok()
-                    .contentType(rdfService.getContentType(format))
-                    .body(convertedData)
-            } else {
-                ResponseEntity
-                    .internalServerError()
-                    .body("Failed to convert graph to requested format")
-            }
-        } else {
-            ResponseEntity.notFound().build()
         }
     }
 }

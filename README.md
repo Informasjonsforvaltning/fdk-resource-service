@@ -67,6 +67,11 @@ mvn verify
 
 ## API Endpoints
 
+All resource `/graph` endpoints (including `GET /v1/resources/by-uri/graph`) accept an optional
+`includeCatalog=true` query parameter. When set, the resource's catalog graph (`dcat:Catalog`,
+`dcat:CatalogRecord`, `skos:Collection` from the Kafka `catalogGraph` field) is merged into the
+returned graph. Defaults to `false`.
+
 ### Concepts
 
 - `GET /v1/concepts` - Get all concepts

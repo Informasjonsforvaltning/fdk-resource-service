@@ -114,13 +114,16 @@ class ResourceController(resourceService: ResourceService, rdfService: RdfServic
             hidden = true,
         )
         @RequestHeader(HttpHeaders.ACCEPT, required = false) acceptHeader: String?,
+        @Parameter(
+            description =
+            "If true, include catalog triples (dcat:Catalog, dcat:CatalogRecord, skos:Collection) " +
+                "from the resource's catalog graph in the response",
+        )
+        @RequestParam(defaultValue = "false") includeCatalog: Boolean,
     ): ResponseEntity<Any> {
-        logger.debug("Getting resource graph with uri: {}, Accept: {}", uri, acceptHeader)
+        logger.debug("Getting resource graph with uri: {}, Accept: {}, includeCatalog: {}", uri, acceptHeader, includeCatalog)
 
         val entity = resourceService.getResourceEntityByUri(uri) ?: return ResponseEntity.notFound().build()
-        val resourceGraphData = entity.resourceGraphData ?: return ResponseEntity.notFound().build()
-        val format = rdfService.getBestFormat(acceptHeader)
-
         // Convert string resource type to enum
         val resourceType =
             try {
@@ -130,28 +133,6 @@ class ResourceController(resourceService: ResourceService, rdfService: RdfServic
                 null
             }
 
-        // Get the stored format, defaulting to TURTLE if not specified
-        val storedFormat = entity.resourceGraphFormat ?: "TURTLE"
-
-        val convertedData =
-            rdfService.convertFromFormat(
-                resourceGraphData,
-                storedFormat,
-                format,
-                RdfFormatStyle.PRETTY,
-                expandUris = true,
-                resourceType, // Use resource-specific prefixes based on the resource type
-            )
-
-        return if (convertedData != null) {
-            ResponseEntity
-                .ok()
-                .contentType(rdfService.getContentType(format))
-                .body(convertedData)
-        } else {
-            ResponseEntity
-                .internalServerError()
-                .body("Failed to convert graph to requested format")
-        }
+        return graphResponse(entity, resourceType, acceptHeader, includeCatalog)
     }
 }
