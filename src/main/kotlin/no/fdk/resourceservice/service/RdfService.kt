@@ -142,6 +142,56 @@ class RdfService(private val meterRegistry: MeterRegistry) {
     }
 
     /**
+     * Parses several RDF graphs (each in its own source format) into a single model
+     * and converts the merged result to the target format.
+     *
+     * Used e.g. to combine a resource graph with its catalog graph.
+     *
+     * @param graphs Pairs of (graph data, source format). Blank graph data is skipped.
+     * @param toFormat The target RDF format
+     * @param style The format style (PRETTY or STANDARD)
+     * @param expandUris Whether to expand URIs (clear namespace prefixes, default: false)
+     * @param resourceType Optional resource type to use resource-specific namespace prefixes
+     * @return The converted RDF data, or null if any graph failed to parse or conversion failed
+     */
+    fun convertMergedFromFormats(
+        graphs: List<Pair<String, String>>,
+        toFormat: RdfFormat,
+        style: RdfFormatStyle,
+        expandUris: Boolean = false,
+        resourceType: ResourceType? = null,
+    ): String? {
+        val sample = Timer.start(meterRegistry)
+        val toName = toFormat.name.lowercase()
+        val model = JenaModelFactory.createDefaultModel()
+        try {
+            for ((graphData, fromFormat) in graphs) {
+                if (graphData.isBlank()) continue
+                val fromLang =
+                    mapFormatToLang(fromFormat)
+                        ?: run {
+                            logger.error("Unsupported source format: $fromFormat")
+                            recordConversion(sample, "merged", toName, "failure")
+                            return null
+                        }
+                ByteArrayInputStream(graphData.toByteArray()).use { inputStream ->
+                    RDFDataMgr.read(model, inputStream, fromLang)
+                }
+            }
+
+            val result = doConvertFromModel(model, toFormat, style, expandUris, resourceType)
+            recordConversion(sample, "merged", toName, if (result != null) "success" else "failure")
+            return result
+        } catch (e: Exception) {
+            logger.error("Failed to parse/merge graph data: ${e.message}", e)
+            recordConversion(sample, "merged", toName, "failure")
+            return null
+        } finally {
+            model.close()
+        }
+    }
+
+    /**
      * Maps format string to Jena Lang enum.
      *
      * @param format The format string (TURTLE, JSON_LD, RDF_XML, N_TRIPLES, N_QUADS)

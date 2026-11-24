@@ -65,6 +65,69 @@ class RdfServiceTest {
     }
 
     @Test
+    fun `convertMergedFromFormats should merge graphs from different source formats`() {
+        val catalogNTriples =
+            "<https://example.com/catalog> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> " +
+                "<http://www.w3.org/ns/dcat#Catalog> .\n" +
+                "<https://example.com/catalog> <http://www.w3.org/ns/dcat#dataset> <https://example.com/resource> .\n"
+
+        val result =
+            rdfService.convertMergedFromFormats(
+                listOf(sampleTurtle to "TURTLE", catalogNTriples to "N_TRIPLES"),
+                RdfService.RdfFormat.N_TRIPLES,
+                RdfService.RdfFormatStyle.PRETTY,
+                expandUris = true,
+            )
+
+        assertNotNull(result)
+        assertTrue(
+            result!!.contains(
+                "<https://example.com/resource> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/ns/dcat#Dataset>",
+            ),
+        )
+        assertTrue(
+            result.contains(
+                "<https://example.com/catalog> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/ns/dcat#Catalog>",
+            ),
+        )
+        assertTrue(result.contains("<https://example.com/catalog> <http://www.w3.org/ns/dcat#dataset> <https://example.com/resource>"))
+    }
+
+    @Test
+    fun `convertMergedFromFormats should skip blank graphs`() {
+        val result =
+            rdfService.convertMergedFromFormats(
+                listOf(sampleTurtle to "TURTLE", "  " to "TURTLE"),
+                RdfService.RdfFormat.N_TRIPLES,
+                RdfService.RdfFormatStyle.PRETTY,
+                expandUris = true,
+            )
+
+        assertNotNull(result)
+        assertTrue(result!!.contains("http://www.w3.org/ns/dcat#Dataset"))
+    }
+
+    @Test
+    fun `convertMergedFromFormats should return null when a graph is invalid or format unsupported`() {
+        assertEquals(
+            null,
+            rdfService.convertMergedFromFormats(
+                listOf(sampleTurtle to "TURTLE", "not valid turtle <<<" to "TURTLE"),
+                RdfService.RdfFormat.TURTLE,
+                RdfService.RdfFormatStyle.PRETTY,
+            ),
+        )
+        assertEquals(
+            null,
+            rdfService.convertMergedFromFormats(
+                listOf(sampleTurtle to "UNKNOWN"),
+                RdfService.RdfFormat.TURTLE,
+                RdfService.RdfFormatStyle.PRETTY,
+            ),
+        )
+    }
+
+    @Test
     fun `getBestFormat should return TURTLE when Accept header is null`() {
         // When
         val result = rdfService.getBestFormat(null)

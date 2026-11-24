@@ -121,7 +121,13 @@ class InformationModelController(resourceService: ResourceService, rdfService: R
             hidden = true,
         )
         @RequestHeader(HttpHeaders.ACCEPT, required = false) acceptHeader: String?,
-    ): ResponseEntity<Any> = handleGraphRequest(id, ResourceType.INFORMATION_MODEL, acceptHeader)
+        @Parameter(
+            description =
+            "If true, include catalog triples (dcat:Catalog, dcat:CatalogRecord, skos:Collection) " +
+                "from the resource's catalog graph in the response",
+        )
+        @RequestParam(defaultValue = "false") includeCatalog: Boolean,
+    ): ResponseEntity<Any> = handleGraphRequest(id, ResourceType.INFORMATION_MODEL, acceptHeader, includeCatalog)
 
     @GetMapping(
         "/by-uri/graph",
@@ -172,7 +178,13 @@ class InformationModelController(resourceService: ResourceService, rdfService: R
             hidden = true,
         )
         @RequestHeader(HttpHeaders.ACCEPT, required = false) acceptHeader: String?,
-    ): ResponseEntity<Any> = handleGraphRequestByUri(uri, ResourceType.INFORMATION_MODEL, acceptHeader)
+        @Parameter(
+            description =
+            "If true, include catalog triples (dcat:Catalog, dcat:CatalogRecord, skos:Collection) " +
+                "from the resource's catalog graph in the response",
+        )
+        @RequestParam(defaultValue = "false") includeCatalog: Boolean,
+    ): ResponseEntity<Any> = handleGraphRequestByUri(uri, ResourceType.INFORMATION_MODEL, acceptHeader, includeCatalog)
 
     @PostMapping
     @Operation(

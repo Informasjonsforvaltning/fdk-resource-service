@@ -147,6 +147,7 @@ The FDK Resource Service is built on a microservices architecture with multiple 
 - `convertFromFormat()` - Converts from any RDF format to any target format
 - `convertFromTurtle()` - Converts Turtle to target format
 - `convertFromModel()` - Converts Jena Model to target format
+- `convertMergedFromFormats()` - Parses several graphs (e.g. resource + catalog graph) into one model and converts it; used by the `/graph` endpoints when `includeCatalog=true`
 - `getBestFormat()` - Determines best format from Accept header
 - `getContentType()` - Returns MediaType for RDF format
 
