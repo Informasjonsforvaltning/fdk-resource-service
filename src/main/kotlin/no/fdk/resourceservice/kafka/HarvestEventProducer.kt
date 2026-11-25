@@ -195,6 +195,7 @@ class HarvestEventProducer(
                     .setAcceptHeader(null)
                     .setChangedResourcesCount(null)
                     .setRemovedResourcesCount(null)
+                    .setForcedFdkIds(null)
                     .build()
 
             kafkaTemplate.send(harvestTopic, harvestRunId, harvestEvent)
